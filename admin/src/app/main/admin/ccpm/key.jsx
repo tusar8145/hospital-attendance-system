@@ -1,0 +1,6 @@
+   export  const  keys=[
+  {name:'dpc', type:'String', header:'DPC First 6 Digits', edit:1, validate:{required:1}, xlsx:'MDCｺｰﾄﾞ<+>分類ｺｰﾄﾞ' },
+  {name:'code', type:'String', header:'Compatible code', edit:1, validate:{required:1},   xlsx:'対応ｺｰﾄﾞ' },
+  {name:'k_code', type:'String', header:'K Code', edit:1, validate:{required:1},          xlsx:'__EMPTY_1' },
+  {name:'receipt', type:'Integer', header:'ID',edit:0, validate:{required:0},             xlsx:'<auto>' }
+]
