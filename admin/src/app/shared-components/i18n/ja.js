@@ -391,17 +391,16 @@ const locale = {
 
 
 
+"System Administrator": "システム管理者",
+"Chief Executive": "責任管理者",
+"Head Manager": "主任管理者",
+"Manager": "管理者", 
+"Data Input Person": "データ入力者",
 
-
-
-     "System Administrator": "システム管理者",
-     "Chief Executive": "最高責任者",
-
-
-    "Head Manager": "本部長",
-    "Manager": "マネージャー", 
-    "Data Input Person": "データ入力担当者"
-
+"User Management":"ユーザー管理",
+"Add User":"新しいスタッフの追加",
+"All User":"すべてのユーザー",
+"Filter by Hospital/Facility": "病院・施設で絞り込む"
 };
 export default locale;
 

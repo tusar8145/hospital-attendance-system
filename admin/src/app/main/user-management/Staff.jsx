@@ -32,13 +32,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import { MaterialReactTable, useMaterialReactTable } from 'material-react-table';
 
 // Import shared components
 import { CommonHeader } from '../../shared-components/new/CommonHeader';
@@ -46,6 +47,8 @@ import { ConfirmationDialog } from '../../shared-components/new/ConfirmationDial
 import { CommonDialog } from '../../shared-components/new/CommonDialog';
 import { toJapaneseDate } from '../../shared-components/new/dateHelpers';
 import { showMessage } from '@fuse/core/FuseMessage/fuseMessageSlice';
+// Add this import for Material React Table
+import { MaterialReactTable, useMaterialReactTable } from 'material-react-table';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -85,6 +88,9 @@ function StaffContent() {
   const [globalFilter, setGlobalFilter] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
+   const { hospital, toggleHospital } = useTheme();
+   
+
   useEffect(() => {
     toggleTheme(t(headingTitle));
   }, [t(headingTitle)]);
@@ -93,33 +99,62 @@ function StaffContent() {
     setFilterType(type);
   };
 
-  // Define filter options for roles
-  const filterOptions = [
-    { 
-      value: 'ALL', 
-      label: t('All Staff') 
-    },
-    { 
-      value: 'superAdmin', 
-      label: t('System Administrator') 
-    },
-    { 
-      value: 'admin', 
-      label: t('Chief Executive') 
-    },
-    { 
-      value: 'hospitalAssistant', 
-      label: t('Head Manager') 
-    },
-    { 
-      value: 'staff', 
-      label: t('Manager') 
-    },
-    { 
-      value: 'operator', 
-      label: t('Data Input Person') 
-    },
-  ];
+  // Get current user's role
+  const currentUserRole = user?.role || 'guest';
+
+  // Define available roles that current user can create
+  const getCreatableRoles = () => {
+    switch (currentUserRole) {
+      case 'superAdmin':
+        return ['hospitalAssistant', 'staff', 'operator'];
+      case 'admin':
+        return ['hospitalAssistant', 'staff', 'operator'];
+      case 'hospitalAssistant':
+        return ['staff', 'operator'];
+      case 'staff':
+        return ['operator'];
+      default:
+        return [];
+    }
+  };
+
+  // Define filter options based on user role
+  const getFilterOptions = () => {
+    const baseOptions = [{ value: 'ALL', label: t('All User') }];
+    
+    switch (currentUserRole) {
+      case 'superAdmin':
+      case 'admin':
+        return [
+          ...baseOptions,
+          { value: 'superAdmin', label: t('System Administrator') },
+          { value: 'admin', label: t('Chief Executive') },
+          { value: 'hospitalAssistant', label: t('Head Manager') },
+          { value: 'staff', label: t('Manager') },
+          { value: 'operator', label: t('Data Input Person') },
+        ];
+      case 'hospitalAssistant':
+        return [
+          ...baseOptions,
+          //{ value: 'hospitalAssistant', label: t('Head Manager') },
+          { value: 'staff', label: t('Manager') },
+          { value: 'operator', label: t('Data Input Person') },
+        ];
+      case 'staff':
+        return [
+          ...baseOptions,
+          { value: 'operator', label: t('Data Input Person') },
+        ];
+      default:
+        return baseOptions;
+    }
+  };
+
+  const filterOptions = getFilterOptions();
+  const creatableRoles = getCreatableRoles();
+
+  // Check if current user can create staff
+  const canCreateStaff = creatableRoles.length > 0;
 
   const buildFilter = () => {
     // If filterType is not 'ALL', add role filter
@@ -130,7 +165,6 @@ function StaffContent() {
       globalFilter: "",
       f_globalFilters: {},
       others: { 
-        role: 'staff', // This seems to be a base filter for staff only
         ...roleFilter // Add the selected role filter
       }
     };
@@ -143,9 +177,10 @@ function StaffContent() {
           title={headingTitle}
           filterType={filterType}
           onFilterChange={handleFilterType}
-          onCreate={() => setCreateModalOpen(true)}
+          onCreate={canCreateStaff ? () => setCreateModalOpen(true) : null}
           filterOptions={filterOptions}
-          createButtonText={t('Add Staff')}
+          createButtonText={t('Add User')}
+          showCreateButton={canCreateStaff}
         />
       }
       content={
@@ -160,7 +195,9 @@ function StaffContent() {
               tableName={tableName}
               createModalOpen={createModalOpen}
               setCreateModalOpen={setCreateModalOpen}
-              filterType={filterType} // Pass filterType to StaffTable
+              filterType={filterType}
+              currentUserRole={currentUserRole}
+              creatableRoles={creatableRoles}
             />
           </div>
         </div>
@@ -192,6 +229,45 @@ const StaffTable = (props) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // New state for medical center filter
+  const [filterByMedicalCenter, setFilterByMedicalCenter] = useState(false);
+  const { hospital } = useTheme();
+
+  // Get current user
+  const currentUser = User();
+
+  // Check if current user can perform actions on a staff member
+  const canEditStaff = (staff) => {
+    if (!staff || !currentUser) return false;
+    
+    // User cannot edit themselves
+    if (staff.email === currentUser.data?.email) return false;
+    
+    const staffRole = staff.role;
+    const userRole = currentUser.role;
+    
+    switch (userRole) {
+      case 'superAdmin':
+        return ['hospitalAssistant', 'staff', 'operator'].includes(staffRole);
+      case 'admin':
+        return ['hospitalAssistant', 'staff', 'operator'].includes(staffRole);
+      case 'hospitalAssistant':
+        return ['staff', 'operator'].includes(staffRole);
+      case 'staff':
+        return staffRole === 'operator';
+      default:
+        return false;
+    }
+  };
+
+  const canDeleteStaff = (staff) => {
+    return canEditStaff(staff); // Same permissions as edit
+  };
+
+  const canAssignMedicalCenters = (staff) => {
+    return canEditStaff(staff); // Same permissions as edit
+  };
 
   // Fetch medical centers for dropdown
   const { data: medicalCentersData } = useQuery({
@@ -372,19 +448,34 @@ const StaffTable = (props) => {
         size: 120,
         enableColumnFilter: false,
         enableSorting: false,
-        Cell: ({ row }) => (
-          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-            <IconButton
-              size="small"
-              onClick={(event) => handleMenuOpen(event, row)}
-            >
-              <MoreVertIcon />
-            </IconButton>
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          const canEdit = canEditStaff(row.original);
+          const canDelete = canDeleteStaff(row.original);
+          const canAssign = canAssignMedicalCenters(row.original);
+          
+          // Show actions menu only if user has at least one permission
+          const showActions = canEdit || canDelete || canAssign;
+          
+          return (
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              {showActions ? (
+                <IconButton
+                  size="small"
+                  onClick={(event) => handleMenuOpen(event, row)}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+              ) : (
+                <Typography variant="caption" color="text.secondary">
+                  {t('No actions')}
+                </Typography>
+              )}
+            </Box>
+          );
+        },
       },
     ],
-    [validationErrors, t, pagination.pageIndex, pagination.pageSize]
+    [validationErrors, t, pagination.pageIndex, pagination.pageSize, currentUser]
   );
 
   // Build filter payload
@@ -422,16 +513,23 @@ const StaffTable = (props) => {
       }
     }
 
+    // Add hospital_id filter if filterByMedicalCenter is checked and hospital exists
+    const hospitalFilter = filterByMedicalCenter && hospital?.id ? { hospital_id: hospital.id } : {};
+
     return {
       f_columnFilters,
       globalFilter: globalFilter || "",
       f_globalFilters,
-      others: { ...props.filter?.others }
+hospitalFilter,
+      others: { 
+        ...props.filter?.others,
+         // Add hospital filter if applicable
+      }
     };
   };
 
   const { data: { data: tableData = [], pagination: serverPagination = {} } = {}, isError, isFetching, isLoading, error, refetch } = useQuery({
-    queryKey: ['staff', pagination.pageIndex, pagination.pageSize, columnFilters, globalFilter, sorting, props.filter],
+    queryKey: ['staff', pagination.pageIndex, pagination.pageSize, columnFilters, globalFilter, sorting, props.filter, filterByMedicalCenter, hospital?.id],
     queryFn: async () => {
       const filterPayload = buildFilterPayload();
       
@@ -581,6 +679,10 @@ const StaffTable = (props) => {
     setSelectedRow(null);
   };
 
+  const handleFilterByMedicalCenterChange = (event) => {
+    setFilterByMedicalCenter(event.target.checked);
+  };
+
   const table = useMaterialReactTable({
     columns,
     data: tableData || [],
@@ -611,8 +713,27 @@ const StaffTable = (props) => {
     },
   });
 
+  // Check if user can see the medical center filter
+  const canSeeMedicalCenterFilter = ['superAdmin', 'admin'].includes(currentUser?.role);
+
   return (
     <div className="w-full">
+      {/* Medical Center Filter Checkbox */}
+      {canSeeMedicalCenterFilter && (
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={filterByMedicalCenter}
+                onChange={handleFilterByMedicalCenterChange}
+                color="primary"
+              />
+            }
+            label={t('Filter by Hospital/Facility')}
+          />
+        </Box>
+      )}
+
       <MaterialReactTable table={table} />
 
       {/* Actions Menu */}
@@ -629,34 +750,40 @@ const StaffTable = (props) => {
           horizontal: 'right',
         }}
       >
-        <MenuItem 
-          onClick={() => {
-            handleEditClick(selectedRow);
-            handleMenuClose();
-          }}
-        >
-          <EditIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
-          {t('Edit')}
-        </MenuItem>
-        <MenuItem 
-          onClick={() => {
-            handleAssignMedicalCentersClick(selectedRow);
-            handleMenuClose();
-          }}
-        >
-          <AssignmentIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
-          {t('Assign Medical Centers')}
-        </MenuItem>
-        <MenuItem 
-          onClick={() => {
-            handleDeleteClick(selectedRow);
-            handleMenuClose();
-          }}
-          sx={{ color: 'error.main' }}
-        >
-          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          {t('Delete')}
-        </MenuItem>
+        {selectedRow && canEditStaff(selectedRow.original) && (
+          <MenuItem 
+            onClick={() => {
+              handleEditClick(selectedRow);
+              handleMenuClose();
+            }}
+          >
+            <EditIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+            {t('Edit')}
+          </MenuItem>
+        )}
+        {selectedRow && canAssignMedicalCenters(selectedRow.original) && (
+          <MenuItem 
+            onClick={() => {
+              handleAssignMedicalCentersClick(selectedRow);
+              handleMenuClose();
+            }}
+          >
+            <AssignmentIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+            {t('Assign Medical Centers')}
+          </MenuItem>
+        )}
+        {selectedRow && canDeleteStaff(selectedRow.original) && (
+          <MenuItem 
+            onClick={() => {
+              handleDeleteClick(selectedRow);
+              handleMenuClose();
+            }}
+            sx={{ color: 'error.main' }}
+          >
+            <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+            {t('Delete')}
+          </MenuItem>
+        )}
       </Menu>
 
       {/* Confirmation Dialogs */}
@@ -688,6 +815,7 @@ const StaffTable = (props) => {
         isLoading={createMutation.isLoading}
         mutationError={createMutation.error}
         medicalCenters={medicalCentersData?.data || []}
+        creatableRoles={props.creatableRoles}
         key={props.createModalOpen ? 'create-modal-open' : 'create-modal-closed'}
       />
 
@@ -699,6 +827,7 @@ const StaffTable = (props) => {
         staff={selectedStaff}
         isLoading={updateMutation.isLoading}
         mutationError={updateMutation.error}
+        creatableRoles={props.creatableRoles}
       />
 
       {/* Assign Medical Centers Modal */}
@@ -717,27 +846,27 @@ const StaffTable = (props) => {
 };
 
 // Create Staff Modal Component
-const CreateStaffModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters }) => {
+const CreateStaffModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, creatableRoles }) => {
   const { t } = useTranslation('shared-components');
   const [formData, setFormData] = useState({ 
     name: '', 
     email: '', 
     phone: '', 
     password: '',
-    role: 'staff',
+    role: creatableRoles[0] || 'operator',
     medical_center_ids: [] 
   });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
 
-  // Role options with translations
+  // Role options with translations - only show creatable roles
   const roleOptions = [
     { value: 'operator', label: t('Data Input Person') },
     { value: 'staff', label: t('Manager') },
     { value: 'hospitalAssistant', label: t('Head Manager') },
     { value: 'admin', label: t('Chief Executive') },
     { value: 'superAdmin', label: t('System Administrator') }
-  ];
+  ].filter(option => creatableRoles.includes(option.value));
 
   useEffect(() => {
     if (open) {
@@ -746,13 +875,13 @@ const CreateStaffModal = ({ open, onClose, onSubmit, isLoading, mutationError, m
         email: '', 
         phone: '', 
         password: '',
-        role: 'staff',
+        role: creatableRoles[0] || 'operator',
         medical_center_ids: [] 
       });
       setErrors({});
       setApiError('');
     }
-  }, [open]);
+  }, [open, creatableRoles]);
 
   useEffect(() => {
     if (mutationError) {
@@ -819,7 +948,7 @@ const CreateStaffModal = ({ open, onClose, onSubmit, isLoading, mutationError, m
       email: '', 
       phone: '', 
       password: '',
-      role: 'staff',
+      role: creatableRoles[0] || 'operator',
       medical_center_ids: [] 
     });
     setErrors({});
@@ -895,7 +1024,7 @@ const CreateStaffModal = ({ open, onClose, onSubmit, isLoading, mutationError, m
               fullWidth
               error={!!errors.password}
               helperText={errors.password}
-              placeholder={t('Enter password')}
+              placeholder={t('Enter password (minimum 6 characters)')}
               disabled={isLoading}
             />
           </div>
@@ -925,7 +1054,7 @@ const CreateStaffModal = ({ open, onClose, onSubmit, isLoading, mutationError, m
         </FormControl>
       </div>
 
-      {/* Medical Centers */}
+      {/* Medical Centers - Required Field */}
       <div className="flex flex-col gap-2">
         <Typography variant="subtitle1" className="font-medium">
           {t('Medical Centers')} *
@@ -943,7 +1072,7 @@ const CreateStaffModal = ({ open, onClose, onSubmit, isLoading, mutationError, m
               {...params}
               placeholder={t('Select medical centers')}
               error={!!errors.medical_center_ids}
-              helperText={errors.medical_center_ids}
+              helperText={errors.medical_center_ids || t('Select at least one medical center')}
             />
           )}
           renderTags={(value, getTagProps) =>
@@ -999,20 +1128,22 @@ const CreateStaffModal = ({ open, onClose, onSubmit, isLoading, mutationError, m
 };
 
 // Edit Staff Modal Component
-const EditStaffModal = ({ open, onClose, onSubmit, staff, isLoading, mutationError }) => {
+const EditStaffModal = ({ open, onClose, onSubmit, staff, isLoading, mutationError, creatableRoles }) => {
   const { t } = useTranslation('shared-components');
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', role: '' });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
 
-  // Role options with translations
+  // Role options with translations - only show creatable roles and current role
   const roleOptions = [
     { value: 'operator', label: t('Data Input Person') },
     { value: 'staff', label: t('Manager') },
     { value: 'hospitalAssistant', label: t('Head Manager') },
     { value: 'admin', label: t('Chief Executive') },
     { value: 'superAdmin', label: t('System Administrator') }
-  ];
+  ].filter(option => 
+    creatableRoles.includes(option.value) || option.value === staff?.role
+  );
 
   useEffect(() => {
     if (staff && open) {
@@ -1049,7 +1180,7 @@ const EditStaffModal = ({ open, onClose, onSubmit, staff, isLoading, mutationErr
     if (!formData.role) {
       newErrors.role = t('This field is Required');
     }
-    // Password is optional in edit
+    // Password is optional in edit, but if provided, must be at least 6 characters
     if (formData.password && formData.password.length < 6) {
       newErrors.password = t('Password must be at least 6 characters');
     }
@@ -1159,8 +1290,8 @@ const EditStaffModal = ({ open, onClose, onSubmit, staff, isLoading, mutationErr
               onChange={(e) => handleChange('password', e.target.value)}
               fullWidth
               error={!!errors.password}
-              helperText={errors.password || t('Leave blank to keep current password')}
-              placeholder={t('Enter new password')}
+              helperText={errors.password || t('Leave blank to keep current password. Minimum 6 characters if changing.')}
+              placeholder={t('Enter new password (minimum 6 characters)')}
               disabled={isLoading}
             />
           </div>
@@ -1234,6 +1365,7 @@ const EditStaffModal = ({ open, onClose, onSubmit, staff, isLoading, mutationErr
 const AssignMedicalCentersModal = ({ open, onClose, onSubmit, staff, isLoading, mutationError, medicalCenters }) => {
   const { t } = useTranslation('shared-components');
   const [selectedMedicalCenters, setSelectedMedicalCenters] = useState([]);
+  const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
 
   useEffect(() => {
@@ -1249,6 +1381,7 @@ const AssignMedicalCentersModal = ({ open, onClose, onSubmit, staff, isLoading, 
       );
       
       setSelectedMedicalCenters(currentlyAssigned);
+      setErrors({});
       setApiError('');
     }
   }, [staff, open, medicalCenters]);
@@ -1262,14 +1395,29 @@ const AssignMedicalCentersModal = ({ open, onClose, onSubmit, staff, isLoading, 
     }
   }, [mutationError, t]);
 
+  const validateForm = () => {
+    const newErrors = {};
+    if (selectedMedicalCenters.length === 0) {
+      newErrors.medical_centers = t('At least one medical center is required');
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = () => {
     setApiError('');
+
+    if (!validateForm()) {
+      return;
+    }
+
     const medical_center_ids = selectedMedicalCenters.map(mc => mc.id);
     onSubmit({ admin_id: staff.id, medical_center_ids });
   };
 
   const handleClose = () => {
     setSelectedMedicalCenters([]);
+    setErrors({});
     setApiError('');
     onClose();
   };
@@ -1284,7 +1432,7 @@ const AssignMedicalCentersModal = ({ open, onClose, onSubmit, staff, isLoading, 
 
       <div className="flex flex-col gap-2">
         <Typography variant="subtitle1" className="font-medium">
-          {t('Medical Centers')}
+          {t('Medical Centers')} *
         </Typography>
         <Autocomplete
           multiple
@@ -1293,11 +1441,16 @@ const AssignMedicalCentersModal = ({ open, onClose, onSubmit, staff, isLoading, 
           value={selectedMedicalCenters}
           onChange={(event, newValue) => {
             setSelectedMedicalCenters(newValue);
+            if (errors.medical_centers) {
+              setErrors(prev => ({ ...prev, medical_centers: '' }));
+            }
           }}
           renderInput={(params) => (
             <TextField
               {...params}
               placeholder={t('Select medical centers')}
+              error={!!errors.medical_centers}
+              helperText={errors.medical_centers || t('Select at least one medical center')}
             />
           )}
           renderTags={(value, getTagProps) =>

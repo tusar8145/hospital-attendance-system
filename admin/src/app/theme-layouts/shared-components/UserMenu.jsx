@@ -39,21 +39,33 @@ function UserMenu() {
 				onClick={userMenuClick}
 				color="inherit"
 			>
-				<div className="mx-4 hidden flex-col items-end md:flex">
-					<Typography
-						component="span"
-						className="flex font-semibold"
-					>
-						{user.data.displayName}
-					</Typography>
-					<Typography
-						className="text-11 font-medium capitalize"
-						color="text.secondary"
-					>{t(user.role)}
-						
-						{(!user.role || (Array.isArray(user.role) && user.role.length === 0)) && 'Guest'}
-					</Typography>
-				</div>
+<div className="mx-4 hidden flex-col items-end md:flex">
+    <Typography
+        component="span"
+        className="flex font-semibold"
+    >
+        {user.data.displayName}
+    </Typography>
+    <Typography
+        className="text-11 font-medium capitalize"
+        color="text.secondary"
+    >
+        {user.role ? (
+            (() => {
+                const roleMap = {
+                    'superAdmin': t('System Administrator'),
+                    'admin': t('Chief Executive'),
+                    'hospitalAssistant': t('Head Manager'),
+                    'staff': t('Manager'),
+                    'operator': t('Data Input Person')
+                };
+                return roleMap[user.role] || user.role;
+            })()
+        ) : (
+            'Guest'
+        )}
+    </Typography>
+</div>
 
 				{user.data.photoURL ? (
 					<Avatar

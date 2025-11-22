@@ -188,7 +188,7 @@ function AboutTab() {
 					</Card>
 
  
-{user.role != 'admin' &&
+{/*user.role != 'admin' &&
 
  <Card
 						component={motion.div}
@@ -225,7 +225,7 @@ function AboutTab() {
  
 						</CardContent>
 					</Card>
-}
+*/}
                    
 
 

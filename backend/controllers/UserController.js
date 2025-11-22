@@ -119,13 +119,13 @@ export const update_password = async (req, res, next) => {
 
             res.status(200).json({
                 success: 'success',
-                message: 'Password updated successful',
+                message: 'パスワードの更新に成功しました',
             });
 
         }else{
             res.status(200).json({
                 success: 'error',
-                message: 'Invalid current password',
+                message: '現在のパスワードが無効です',
             });
         }
 

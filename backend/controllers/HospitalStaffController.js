@@ -133,6 +133,7 @@ export const manage_list = async (req, res, next) => {
     let globalFilter = req.body?.filter?.globalFilter
     let f_globalFilters = req.body?.filter?.f_globalFilters
     let others = req.body?.filter?.others
+    let hospitalFilter = req.body?.filter?.hospitalFilter
 
     // Get pagination parameters from request
     const page = parseInt(req.body?.page) || 1;
@@ -143,22 +144,157 @@ export const manage_list = async (req, res, next) => {
     const sortBy = req.body?.sortBy || 'created_at';
     const sortType = req.body?.sortType || 'desc';
 
-    // Build where clause
-    const whereClause = {
+    // Get current user role and medical centers
+    const currentUserRole = req.user.role;
+    let currentUserMedicalCenters = [];
+
+    // If user is hospitalAssistant or staff, get their assigned medical centers
+    if (currentUserRole === 'hospitalAssistant' || currentUserRole === 'staff') {
+      const userWithMedicalCenters = await prisma.admins.findUnique({
+        where: { id: req.user.id },
+        include: {
+          medical_centers: {
+            include: {
+              medical_center: {
+                select: { id: true }
+              }
+            }
+          }
+        }
+      });
+      
+      currentUserMedicalCenters = userWithMedicalCenters?.medical_centers?.map(mc => mc.medical_center.id) || [];
+    }
+
+    // Build base where clause
+    const baseWhereClause = {
       ...f_columnFilters ? { ...f_columnFilters } : {},
       ...globalFilter ? { ...f_globalFilters } : {},
-      role: 'staff',
       ...others ? { ...others } : {}
+    };
+
+    // Add role-based security filtering (doesn't override payload filters)
+    let finalWhereClause = { ...baseWhereClause };
+
+    // Handle hospitalFilter if provided
+    let medicalCenterFilter = {};
+    if (hospitalFilter?.hospital_id) {
+      medicalCenterFilter = {
+        some: {
+          medical_center_id: hospitalFilter.hospital_id
+        }
+      };
+    }
+
+    if (currentUserRole === 'hospitalAssistant') {
+      // hospitalAssistant can ONLY view staff & operator with at least 1 common medical center
+      // Combine payload role filter with security role filter
+      const allowedRoles = ['staff', 'operator'];
+      
+      if (finalWhereClause.role) {
+        // If payload has role filter, ensure it's within allowed roles
+        if (typeof finalWhereClause.role === 'string') {
+          if (!allowedRoles.includes(finalWhereClause.role)) {
+            finalWhereClause.id = -1; // Force no results if requested role is not allowed
+          }
+        } else if (finalWhereClause.role.in) {
+          // If payload has role.in filter, filter to only include allowed roles
+          finalWhereClause.role.in = finalWhereClause.role.in.filter(role => allowedRoles.includes(role));
+          if (finalWhereClause.role.in.length === 0) {
+            finalWhereClause.id = -1; // Force no results if no allowed roles remain
+          }
+        }
+      } else {
+        // If no role filter in payload, apply security role filter
+        finalWhereClause.role = { in: allowedRoles };
+      }
+      
+      // Apply medical center filter - combine hospitalFilter with user's medical centers
+      if (hospitalFilter?.hospital_id) {
+        // If hospitalFilter is provided, check if user has access to that hospital
+        if (currentUserMedicalCenters.length > 0 && currentUserMedicalCenters.includes(hospitalFilter.hospital_id)) {
+          finalWhereClause.medical_centers = medicalCenterFilter;
+        } else {
+          finalWhereClause.id = -1; // User doesn't have access to this hospital
+        }
+      } else {
+        // If no hospitalFilter, use user's assigned medical centers
+        if (currentUserMedicalCenters.length > 0) {
+          finalWhereClause.medical_centers = {
+            some: {
+              medical_center_id: {
+                in: currentUserMedicalCenters
+              }
+            }
+          };
+        } else {
+          finalWhereClause.id = -1; // Force no results
+        }
+      }
+    } else if (currentUserRole === 'staff') {
+      // staff can ONLY view operators with at least 1 common medical center
+      // Combine payload role filter with security role filter
+      const allowedRole = 'operator';
+      
+      if (finalWhereClause.role) {
+        // If payload has role filter, ensure it matches the allowed role
+        if (typeof finalWhereClause.role === 'string') {
+          if (finalWhereClause.role !== allowedRole) {
+            finalWhereClause.id = -1; // Force no results if requested role is not allowed
+          }
+        } else if (finalWhereClause.role.in) {
+          // If payload has role.in filter, filter to only include the allowed role
+          if (!finalWhereClause.role.in.includes(allowedRole)) {
+            finalWhereClause.id = -1; // Force no results if allowed role not in filter
+          } else {
+            finalWhereClause.role = allowedRole; // Replace with single role
+          }
+        }
+      } else {
+        // If no role filter in payload, apply security role filter
+        finalWhereClause.role = allowedRole;
+      }
+      
+      // Apply medical center filter - combine hospitalFilter with user's medical centers
+      if (hospitalFilter?.hospital_id) {
+        // If hospitalFilter is provided, check if user has access to that hospital
+        if (currentUserMedicalCenters.length > 0 && currentUserMedicalCenters.includes(hospitalFilter.hospital_id)) {
+          finalWhereClause.medical_centers = medicalCenterFilter;
+        } else {
+          finalWhereClause.id = -1; // User doesn't have access to this hospital
+        }
+      } else {
+        // If no hospitalFilter, use user's assigned medical centers
+        if (currentUserMedicalCenters.length > 0) {
+          finalWhereClause.medical_centers = {
+            some: {
+              medical_center_id: {
+                in: currentUserMedicalCenters
+              }
+            }
+          };
+        } else {
+          finalWhereClause.id = -1; // Force no results
+        }
+      }
+    } else if (currentUserRole === 'operator') {
+      // operator cannot view anyone
+      finalWhereClause.id = -1; // Force no results
+    } else if (currentUserRole === 'admin' || currentUserRole === 'superAdmin') {
+      // For admin/superAdmin, apply hospitalFilter if provided
+      if (hospitalFilter?.hospital_id) {
+        finalWhereClause.medical_centers = medicalCenterFilter;
+      }
     }
 
     // Get total count for pagination
     const totalCount = await prisma.admins.count({
-      where: whereClause
+      where: finalWhereClause
     });
 
     // Get paginated results
     let result_ = await prisma.admins.findMany({
-      where: whereClause,
+      where: finalWhereClause,
       include: {
         medical_centers: {
           include: {
