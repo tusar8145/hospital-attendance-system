@@ -30,7 +30,7 @@ function SummaryWidget(props) {
 					}
 				}
 				if(props.admin==1 ){
-					navigate('/hospital-management');
+					navigate('/user-management');
 				}
 			}}
 		>

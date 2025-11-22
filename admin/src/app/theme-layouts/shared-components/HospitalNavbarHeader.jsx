@@ -1,25 +1,22 @@
 import { darken, styled } from '@mui/material/styles';
-import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 import { useAppSelector } from 'app/store/hooks';
 import * as React from 'react';
-import InputLabel from '@mui/material/InputLabel';
+import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import FormHelperText from '@mui/material/FormHelperText';
-import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
 import '../../../styles/custom-header.css';
-import FuseSvgIcon from '../../../@fuse/core/FuseSvgIcon';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
-import { useMemo,useEffect, useState } from 'react';
-import {filterItemsEqual} from '../../helpers/commonHelpers';
-
-import  User  from '../../auth/user/user';
-
+import { useEffect, useState, useMemo } from 'react';
+import { filterItemsEqual } from '../../helpers/commonHelpers';
+import User from '../../auth/user/user';
 import axios from 'axios';
 import apiConfig from '../../configs/apiConfig';
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import { Box, Button, TextField, InputAdornment, Divider, ListSubheader, IconButton, Chip, Hidden } from "@mui/material";
 
 const Root = styled('div')(({ theme }) => ({
 	'& .username, & .email': {
@@ -27,168 +24,422 @@ const Root = styled('div')(({ theme }) => ({
 			duration: theme.transitions.duration.shortest,
 			easing: theme.transitions.easing.easeInOut
 		})
-	},
-	'& .avatar': {
-		background: darken(theme.palette.background.default, 0.05),
-		transition: theme.transitions.create('all', {
-			duration: theme.transitions.duration.shortest,
-			easing: theme.transitions.easing.easeInOut
-		}),
-		bottom: 0,
-		'& > img': {
-			borderRadius: '50%'
-		}
 	}
 }));
 
-/**
- * The user navbar header.
- */
-
- 
-
 function HospitalNavbarHeader() {
 	const { t } = useTranslation('shared-components');
-	const { hospital, toggleHospital, refreshHospital, toggleRefreshHospital} = useTheme();
+	const { hospital, toggleHospital, refreshHospital, toggleRefreshHospital } = useTheme();
 	const [hos, setHos] = React.useState('*');
 	const [hospitals, setHospitals] = React.useState([]);
-	const [fetchComlete, setFetchComlete] = React.useState(false);
-	let this_user=User()
+	const [fetchComplete, setFetchComplete] = React.useState(false);
+	const [anchorEl, setAnchorEl] = React.useState(null);
+	const [searchTerm, setSearchTerm] = React.useState('');
+	const open = Boolean(anchorEl);
+	let this_user = User();
 
-	console.log('yyyy',this_user)
+	// Memoized filtered hospitals for better performance
+	const filteredHospitals = useMemo(() => {
+		if (searchTerm.trim() === '') {
+			return hospitals;
+		}
+		return hospitals.filter(hospital =>
+			hospital.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			hospital.sort_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			(hospital.email && hospital.email.toLowerCase().includes(searchTerm.toLowerCase()))
+		);
+	}, [searchTerm, hospitals]);
 
 	async function hospitalFetch() {
-		let hos_present=0
-		const response = await axios.post(apiConfig.hospitalManageList,{});
-		let res=response.data.data
-		let new_obj=[]
+		let hos_present = 0;
+		const response = await axios.post(apiConfig.hospitalManageList, {});
+		let res = response.data.data;
+		let new_obj = [];
+		
 		for (let x = 0; x < res.length; x++) {
-
-
-			let f1=res[x].name.substring(0,22)
-
-			if(res[x].name.length>22){
-				f1=f1+'..'
+			let f1 = res[x].name.substring(0, 22);
+			if (res[x].name.length > 22) {
+				f1 = f1 + '..';
 			}
-			if(hos==res[x].id){
-				hos_present=1
-				/*toggleHospital({
-					id: res[x].id,
-					logo: res[x].logo,
-					name: res[x].name,
-					sort_name:f1,
-					email: res[x].admin_email,
-				})*/
-
+			if (hos == res[x].id) {
+				hos_present = 1;
 			}
 
 			new_obj.push({
 				id: res[x].id,
 				logo: res[x].logo,
 				name: res[x].name,
-				sort_name:f1,
+				sort_name: f1,
+				full_name: res[x].name,
 				email: res[x].admin_email,
-			}
-		  )
+			});
 		}
 		setHospitals(new_obj);
-		
-		if(hos_present==0){
-			setHos('*')
+
+		if (hos_present == 0) {
+			setHos('*');
 		}
-		setFetchComlete(true)
+		setFetchComplete(true);
 	}
 
-
 	useEffect(() => {
-		hospitalFetch()
+		hospitalFetch();
 	}, []);
 
-
 	useEffect(() => {
-		hospitalFetch()
+		hospitalFetch();
 	}, [refreshHospital]);
 
-	const handleChange = (event) => {
-		if(event.target.value>0){
-					let filter = filterItemsEqual(hospitals, 'id', event.target.value);
-					toggleHospital(filter[0])
-					setHos(event.target.value);
-		}else{
-			toggleHospital(null)
-			setHos('*')
-		}
-
-		
+	const handleMenuOpen = (event) => {
+		setAnchorEl(event.currentTarget);
+		setSearchTerm('');
 	};
 
-	function selectHospital  (id)   {
-		if(id>0){
-					let filter = filterItemsEqual(hospitals, 'id', id);
-					toggleHospital(filter[0])
-					setHos(id);
-		}else{
-			toggleHospital(null)
-			setHos('*')
-		}
+	const handleMenuClose = () => {
+		setAnchorEl(null);
+		setSearchTerm('');
 	};
+
+	const handleHospitalSelect = (hospitalId) => {
+		if (hospitalId > 0) {
+			let filter = filterItemsEqual(hospitals, 'id', hospitalId);
+			toggleHospital(filter[0]);
+			setHos(hospitalId);
+		} else {
+			toggleHospital(null);
+			setHos('*');
+		}
+		handleMenuClose();
+	};
+
+	const handleSearchChange = (event) => {
+		setSearchTerm(event.target.value);
+	};
+
+	const clearSearch = () => {
+		setSearchTerm('');
+	};
+
+	function selectHospital(id) {
+		if (id > 0) {
+			let filter = filterItemsEqual(hospitals, 'id', id);
+			toggleHospital(filter[0]);
+			setHos(id);
+		} else {
+			toggleHospital(null);
+			setHos('*');
+		}
+	}
 
 	useEffect(() => {
-		console.log(this_user.hospital,'this_user.hospital')
-		if(this_user.hospital!=null && fetchComlete==true){
-			selectHospital(this_user.hospital.id)	
+		if (this_user.hospital != null && fetchComplete == true) {
+			selectHospital(this_user.hospital.id);
 		}
-		if(this_user.hospital==null && fetchComlete==true){
-			selectHospital(null)	
+		if (this_user.hospital == null && fetchComplete == true) {
+			selectHospital(null);
 		}
-		
-	}, [this_user.hospital,fetchComlete]);
-
-
-	
+	}, [this_user.hospital, fetchComplete]);
 
 	const user = useAppSelector(selectUser);
-	return (
-		<Root className="user relative flex flex-col items-center justify-center p-16 pb-14 shadow-0">
-		{this_user?.role=='admin' && 
-			<div className='view-as'>
-				<Typography className="mb-6 username whitespace-nowrap text-14 font-medium  flex items-left pl-10 ">
-				<FuseSvgIcon className="text-48" size={24} color="action" >heroicons-outline:eye</FuseSvgIcon>	 {t('View as')+':'}
-				</Typography>
 
-
-				<div className=" flex items-center justify-center ">
-					<FormControl sx={{ m: 1, minWidth: 230 }} className='bg-[#0043CB] rounded-md' >
-						<InputLabel id="demo-simple-select-helper-label">Select</InputLabel>
-						<Select
-
-							labelId="demo-simple-select-helper-label"
-							id="demo-simple-select-helper"
-							value={hos}
-							label="Hos"
-							onChange={handleChange}
-						>
-							<MenuItem value="*">{t('ALL Hospital')}</MenuItem>
-
-							{hospitals.map((_item) => (
-								<MenuItem value={_item.id}>{_item.sort_name}</MenuItem>
-							))}
-
-							
-
-						</Select>
-					</FormControl>
-				</div>
-
-
-			</div>			
+	// Get the display title - selected facility name or "全病院・施設"
+	const getDisplayTitle = () => {
+		if (hos === '*') {
+			return "全病院・施設";
 		}
+		const selected = hospitals.find(h => h.id === hos);
+		return selected ? selected.name : "全病院・施設";
+	};
 
+	// Get the button text - always "施設切替"
+	const getButtonText = () => {
+		return "施設切替";
+	};
 
-	</Root>
+	// Get truncated title for mobile
+	const getTruncatedTitle = () => {
+		const title = getDisplayTitle();
+		if (title.length > 12) {
+			return title.substring(0, 12) + '...';
+		}
+		return title;
+	};
+
+	return (
+		<Root className="user relative flex flex-col items-center justify-center p-0">
+			{/* Desktop Version */}
+			<Hidden lgDown>
+				<Box
+					sx={{
+						display: "flex",
+						width: 260,
+						height: 45,
+						alignItems: "center",
+						justifyContent: "space-between",
+						px: 2,
+						py: 0,
+						bgcolor: "primary.main",
+						borderRadius: 2,
+						border: 1,
+						borderColor: "#dfe1e7",
+					}}
+				>
+					{/* Title - Shows selected facility name or "全病院・施設" */}
+					<Typography
+						sx={{
+							fontWeight: 600,
+							color: "white",
+							fontSize: "14px",
+							textAlign: "center",
+							whiteSpace: "nowrap",
+							maxWidth: 120,
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+						}}
+					>
+						{getDisplayTitle()}
+					</Typography>
+
+					{/* Button - Always shows "施設切替" */}
+					<Button
+						variant="outlined"
+						onClick={handleMenuOpen}
+						sx={{
+							minHeight: 25,
+							height: 25,
+							padding: "0 6px",
+							alignItems: "center",
+							bgcolor: "white",
+							borderRadius: 1,
+							textTransform: "none",
+							"&:hover": {
+								bgcolor: "grey.50",
+								borderColor: "#e0e0e0",
+							},
+						}}
+					>
+						<Typography
+							sx={{
+								fontWeight: 500,
+								color: "primary.main",
+								fontSize: "13px",
+								textAlign: "center",
+								whiteSpace: "nowrap",
+								lineHeight: 1,
+							}}
+						>
+							{getButtonText()}
+						</Typography>
+						<ArrowDropDownIcon
+							sx={{
+								width: 20,
+								height: 20,
+								color: "primary.main",
+							}}
+						/>
+					</Button>
+				</Box>
+			</Hidden>
+
+			{/* Mobile Version */}
+			<Hidden lgUp>
+				<Box
+					sx={{
+						display: "flex",
+						width: 170,
+						height: 32,
+						alignItems: "center",
+						justifyContent: "space-between",
+						px: 1.5,
+						py: 0,
+						bgcolor: "primary.main",
+						borderRadius: 1,
+						border: 1,
+						borderColor: "#dfe1e7",
+					}}
+				>
+					{/* Title - Shows truncated selected facility name or "全病院・施設" */}
+					<Typography
+						sx={{
+							fontWeight: 600,
+							color: "white",
+							fontSize: "12px",
+							textAlign: "center",
+							whiteSpace: "nowrap",
+							maxWidth: 80,
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+						}}
+					>
+						{getTruncatedTitle()}
+					</Typography>
+
+					{/* Button - Always shows "切替" on mobile */}
+					<Button
+						variant="outlined"
+						onClick={handleMenuOpen}
+						sx={{
+							minHeight: 20,
+							height: 20,
+							padding: "0 4px",
+							alignItems: "center",
+							bgcolor: "white",
+							borderRadius: 0.5,
+							textTransform: "none",
+							minWidth: 'auto',
+							"&:hover": {
+								bgcolor: "grey.50",
+								borderColor: "#e0e0e0",
+							},
+						}}
+					>
+						<Typography
+							sx={{
+								fontWeight: 500,
+								color: "primary.main",
+								fontSize: "11px",
+								textAlign: "center",
+								whiteSpace: "nowrap",
+								lineHeight: 1,
+							}}
+						>
+							切替
+						</Typography>
+						<ArrowDropDownIcon
+							sx={{
+								width: 16,
+								height: 16,
+								color: "primary.main",
+							}}
+						/>
+					</Button>
+				</Box>
+			</Hidden>
+
+			{/* Custom Dropdown Menu with Search - Same for both desktop and mobile */}
+			<Menu
+				anchorEl={anchorEl}
+				open={open}
+				onClose={handleMenuClose}
+				PaperProps={{
+					sx: {
+						width: { xs: 280, sm: 320 },
+						maxHeight: 400,
+						mt: 1,
+					}
+				}}
+			>
+				{/* Search Header */}
+				<ListSubheader sx={{ p: 2, pb: 1, lineHeight: 1 }}>
+					<TextField
+						fullWidth
+						size="small"
+						placeholder={t('Search facilities...')}
+						value={searchTerm}
+						onChange={handleSearchChange}
+						InputProps={{
+							startAdornment: (
+								<InputAdornment position="start">
+									<SearchIcon fontSize="small" color="action" />
+								</InputAdornment>
+							),
+							endAdornment: searchTerm && (
+								<InputAdornment position="end">
+									<IconButton size="small" onClick={clearSearch}>
+										<ClearIcon fontSize="small" />
+									</IconButton>
+								</InputAdornment>
+							),
+						}}
+						sx={{
+							'& .MuiOutlinedInput-root': {
+								backgroundColor: 'background.paper',
+							}
+						}}
+					/>
+					{searchTerm && (
+						<Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+							<Chip 
+								label={`${filteredHospitals.length} facilities found`}
+								size="small"
+								color="primary"
+								variant="outlined"
+							/>
+							<IconButton size="small" onClick={clearSearch}>
+								<ClearIcon fontSize="small" />
+							</IconButton>
+						</Box>
+					)}
+				</ListSubheader>
+
+				<Divider />
+
+				{/* ALL Hospital Option */}
+				<MenuItem 
+					onClick={() => handleHospitalSelect('*')}
+					selected={hos === '*'}
+					sx={{
+						fontWeight: hos === '*' ? 600 : 400,
+						backgroundColor: hos === '*' ? 'action.selected' : 'transparent',
+					}}
+				>
+					{t('ALL Hospital')}
+				</MenuItem>
+
+				<Divider />
+
+				{/* Facilities List */}
+				<Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+					{filteredHospitals.length > 0 ? (
+						filteredHospitals.map((_item) => (
+							<MenuItem 
+								key={_item.id} 
+								onClick={() => handleHospitalSelect(_item.id)}
+								selected={hos === _item.id}
+								sx={{
+									fontWeight: hos === _item.id ? 600 : 400,
+									py: 1.5,
+									backgroundColor: hos === _item.id ? 'action.selected' : 'transparent',
+								}}
+							>
+								<Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+									<Typography variant="body2" sx={{ fontWeight: 'inherit' }}>
+										{_item.name}
+									</Typography>
+									{_item.email && (
+										<Typography 
+											variant="caption" 
+											sx={{ 
+												color: 'text.secondary',
+												fontSize: '0.7rem',
+												lineHeight: 1.2,
+												mt: 0.5
+											}}
+										>
+											{_item.email}
+										</Typography>
+									)}
+								</Box>
+							</MenuItem>
+						))
+					) : (
+						<MenuItem disabled sx={{ justifyContent: 'center', py: 3 }}>
+							<Typography 
+								variant="body2" 
+								sx={{ 
+									color: 'text.secondary',
+									fontStyle: 'italic',
+									textAlign: 'center'
+								}}
+							>
+								{t('No facilities match your search')}
+							</Typography>
+						</MenuItem>
+					)}
+				</Box>
+			</Menu>
+		</Root>
 	);
 }
 
 export default HospitalNavbarHeader;
-
-

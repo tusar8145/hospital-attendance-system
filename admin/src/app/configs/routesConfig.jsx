@@ -19,8 +19,8 @@ import Treatment1Config from '../main/admin/layer-3/Treatment1Config';
 import Treatment2Config from '../main/admin/layer-3/Treatment2Config';
 import SecondaryInjuryConfig from '../main/admin/layer-3/SecondaryInjuryConfig';
 
-import HospitalConfig from '../main/admin/hospital-management/HospitalConfig';
-import StaffConfig from '../main/staff-management/StaffConfig';
+
+import StaffConfig from '../main/user-management/StaffConfig';
 import CCPMConfig from '../main/admin/ccpm/CCPMConfig';
 import DataUploadConfig from '../main/data-upload/DataUploadConfig';
 import DPCAnalysisConfig from '../main/dpc-analysis/DPCAnalysisConfig';
@@ -31,7 +31,13 @@ import ProfileConfig from '../main/profile/ProfileConfig';
 import DPCDiseaseConfig from '../main/admin/dpc-disease-classi/DPCDiseaseConfig';
 import DaysScoreConfig from '../main/admin/days-score/DaysScoreConfig';
 
-const routeConfigs = [DashboardConfig, InjuryIllnessConfig,MedicalPracticeConfig, MedicineConfig, MedicinalEfficacyConfig, SignOutConfig, SignInConfig, SignUpConfig, ICDtoDPCConfig, AgeBirthWeightConfig, SurgeryConfig, Treatment1Config, Treatment2Config,SecondaryInjuryConfig, HospitalConfig, StaffConfig, CCPMConfig, DataUploadConfig, DPCAnalysisConfig, SearchConfig, PageConfig , IssueConfig, ProfileConfig, DPCDiseaseConfig, DaysScoreConfig];
+import MedicalCenterConfig from '../main/admin/medical-center/MedicalCenterConfig';
+import DepartmentConfig from '../main/admin/department/DepartmentConfig';
+import DoctorConfig from '../main/admin/doctor/DoctorConfig';
+
+const routeConfigs = [DashboardConfig, InjuryIllnessConfig,MedicalPracticeConfig, MedicineConfig, MedicinalEfficacyConfig, SignOutConfig, SignInConfig, SignUpConfig, ICDtoDPCConfig, AgeBirthWeightConfig, SurgeryConfig, Treatment1Config, Treatment2Config,SecondaryInjuryConfig, StaffConfig, CCPMConfig, DataUploadConfig, DPCAnalysisConfig, SearchConfig, PageConfig , IssueConfig, ProfileConfig, DPCDiseaseConfig, DaysScoreConfig,
+	MedicalCenterConfig,DepartmentConfig, DoctorConfig
+];
 /**
  * The routes of the application.
  */

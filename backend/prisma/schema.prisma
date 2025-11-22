@@ -15,6 +15,7 @@ superAdmin
 admin
 hospitalAssistant
 staff
+operator
 }
 
 
@@ -26,25 +27,41 @@ model admins {
   email                        String?     @unique 
   password                     String
   address                      String?     @db.VarChar(300)
-  phone                        String?      @db.VarChar(20)
-  created_at                   DateTime? @default(now()) 
+  phone                        String?     @db.VarChar(20)
+  created_at                   DateTime?   @default(now()) 
   created_by                   Int?
-  updated_at                   DateTime? @default(now()) 
+  updated_at                   DateTime?   @default(now()) 
   updated_by                   Int? 
-  hospital_id                  Int?
   photo                        String?
 
-   hospitalCreate hospitals[] @relation("admin_con")
-  hospital  hospitals? 
-  admins  admins[] @relation("admin_con1")
-  creator admins? @relation("admin_con1", fields: [created_by], references: [id])
-  staff_hospital   hospitals?    @relation("abc", fields: [hospital_id], references: [id])
+  // Relations for admin hierarchy
+  admins                       admins[]    @relation("admin_con1")
+  creator                      admins?     @relation("admin_con1", fields: [created_by], references: [id])
 
- services_clients_issues_client_ services_clients_issues[] @relation("issue_client_")
- services_clients_issues_creator_ services_clients_issues[] @relation("issue_creator_")
+  // Many-to-many relation with medical centers
+  medical_centers              admin_medical_center[]
+
+  // Other relations
+  services_clients_issues_client_ services_clients_issues[] @relation("issue_client_")
+  services_clients_issues_creator_ services_clients_issues[] @relation("issue_creator_")
   services_clients_issues_reply_by_ services_clients_issues[] @relation("issue_reply_by_")
- services_clients_issues_reply_ services_clients_issues_reply[] @relation("issue_user_")
+  services_clients_issues_reply_ services_clients_issues_reply[] @relation("issue_user_")
 
+  // Medical centers created/updated by this admin
+  created_medical_centers      medical_center[]    @relation("MedicalCenterCreatedBy")
+  updated_medical_centers      medical_center[]    @relation("MedicalCenterUpdatedBy")
+  
+  // Departments created/updated by this admin
+  created_departments          department[]        @relation("DepartmentCreatedBy")
+  updated_departments          department[]        @relation("DepartmentUpdatedBy")
+  
+  // Doctors created/updated by this admin
+  created_doctors              doctor[]            @relation("DoctorCreatedBy")
+  updated_doctors              doctor[]            @relation("DoctorUpdatedBy")
+  
+  // Doctor departments created/updated by this admin
+  created_doctor_departments   doctor_department[] @relation("DoctorDepartmentCreatedBy")
+  updated_doctor_departments   doctor_department[] @relation("DoctorDepartmentUpdatedBy")
 }
  
 
@@ -64,10 +81,7 @@ model hospitals {
   sub_color_2 String?
 
 
-  creator admins? @relation("admin_con", fields: [created_by], references: [id])
-  admin   admins    @relation(fields: [admin_id], references: [id])
   test test[] @relation("test")
-  staff_admin admins[]   @relation("abc")
   dpc_generate dpc_generate[] @relation("hospital")
   dpc_disease_classi dpc_disease_classi[] @relation("dpc_disease_classi")
 }
@@ -558,3 +572,119 @@ model surgery_k {
   updated_by                   Int?
 }
  
+/////////////////////////////
+// Enum for Medical Center Type
+/////////////////////////////
+enum medical_center_type {
+  large_hospital
+  hospital
+  welfare
+}
+
+/////////////////////////////
+// MedicalCenter
+/////////////////////////////
+model medical_center {
+  id           Int                 @id @default(autoincrement())
+  name         String              @unique
+  type         medical_center_type
+  address      String?
+  status       Int                 @default(1)
+  logo         String?             // New field for logo
+  primary_color String?            // New field for primary color
+  sub_color_1  String?             // New field for sub color 1
+  sub_color_2  String?             // New field for sub color 2
+  
+  doctors      doctor[]
+  
+  created_by   Int
+  created_at   DateTime?           @default(now())
+  updated_by   Int?
+  updated_at   DateTime?           @default(now())
+
+  // Many-to-many relation with admins
+  admins       admin_medical_center[]
+
+  // Relations
+  created_admin admins? @relation("MedicalCenterCreatedBy", fields: [created_by], references: [id])
+  updated_admin admins? @relation("MedicalCenterUpdatedBy", fields: [updated_by], references: [id])
+}
+
+model admin_medical_center {
+  id              Int            @id @default(autoincrement())
+  admin_id        Int
+  medical_center_id Int
+  created_at      DateTime?      @default(now())
+
+  admin           admins         @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  medical_center  medical_center @relation(fields: [medical_center_id], references: [id], onDelete: Cascade)
+
+  @@unique([admin_id, medical_center_id])
+}
+
+/////////////////////////////
+// Department
+/////////////////////////////
+model department {
+  id           Int        @id @default(autoincrement())
+  name         String     @unique
+  status       Int        @default(1)
+  
+  doctor_links doctor_department[]
+  
+  created_by   Int
+  created_at   DateTime?  @default(now())
+  updated_by   Int?
+  updated_at   DateTime?  @default(now())
+
+  // Relations
+  created_admin admins? @relation("DepartmentCreatedBy", fields: [created_by], references: [id])
+  updated_admin admins? @relation("DepartmentUpdatedBy", fields: [updated_by], references: [id])
+}
+
+/////////////////////////////
+// Doctor
+/////////////////////////////
+model doctor {
+  id                 Int        @id @default(autoincrement())
+  name               String
+  license_no         String?
+  medical_center     medical_center   @relation(fields: [medical_center_id], references: [id])
+  medical_center_id  Int
+  status             Int        @default(1)
+  dept_links         doctor_department[]
+
+  @@unique([name, medical_center_id])
+
+  created_by   Int
+  created_at   DateTime?           @default(now())
+  updated_by   Int?
+  updated_at   DateTime?           @default(now())
+
+  // Relations
+  created_admin admins? @relation("DoctorCreatedBy", fields: [created_by], references: [id])
+  updated_admin admins? @relation("DoctorUpdatedBy", fields: [updated_by], references: [id])
+}
+
+/////////////////////////////
+// Doctor ↔ Department Mapping
+/////////////////////////////
+model doctor_department {
+  id           Int        @id @default(autoincrement())
+  doctor       doctor     @relation(fields: [doctor_id], references: [id])
+  doctor_id    Int
+  department   department @relation(fields: [department_id], references: [id])
+  department_id Int
+  status       Int        @default(1)
+
+  @@unique([doctor_id, department_id])
+
+  created_by   Int
+  created_at   DateTime?           @default(now())
+  updated_by   Int?
+  updated_at   DateTime?           @default(now())
+
+  // Relations
+  created_admin admins? @relation("DoctorDepartmentCreatedBy", fields: [created_by], references: [id])
+  updated_admin admins? @relation("DoctorDepartmentUpdatedBy", fields: [updated_by], references: [id])
+}

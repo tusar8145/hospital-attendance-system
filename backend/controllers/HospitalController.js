@@ -45,102 +45,211 @@ export const illness = async (req, res, next) => {
     }
 };
 
-export const manage_list = async (req, res, next) => {
+/*export const manage_list = async (req, res, next) => {
   try {
-
     let f_columnFilters = req.body?.filter?.f_columnFilters
     let globalFilter = req.body?.filter?.globalFilter
     let f_globalFilters = req.body?.filter?.f_globalFilters
+    let others = req.body?.filter?.others
 
-      let result_=await prisma.hospitals.findMany({
-          ...response.list_paginate(req),
-          where: {
-            ...f_columnFilters ? { ...f_columnFilters } : {},
-            ...globalFilter ?{...f_globalFilters} : {},
-          },
+    // Get medical centers with optional admin association
+    let medicalCenters = await prisma.medical_center.findMany({
+      ...response.list_paginate(req),
+      where: {
+        ...f_columnFilters ? { ...f_columnFilters } : {},
+        ...globalFilter ? { ...f_globalFilters } : {},
+        ...others ? { ...others } : {},
+        status: 1
+      },
+      include: {
+        admins: {
           include: {
-            admin: true,
-            creator:{select:{
-              name:true
-            }},
-          },
-        })
-
-        const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
-        const result=[]
-        for (let h = 0; h < result_.length; h++) {
-            let this_=result_[h]
-
-            let logo = this_.logo || 'default.png'
-
-            
-
-            result.push({
-              "id": this_.id,
-              "logo": url.origin+'/api/hospital-manage/image/'+logo,
-              "name": this_.name,
-              "address": this_.address,
-              "created_by": 1,
-              "created_at": timeBeauty(this_.created_at),
-              "updated_at": timeBeauty(this_.updated_at),
-              "admin_id": this_.admin.id,
-              "admin_name": this_.admin.name,
-              "admin_email": this_.admin.email,
-              "admin_password":null,
-              "admin_phone": this_.admin.phone,
-              "admin_role": this_.admin.role,
-              "creator":this_.creator.name,
-              "primary_color":this_.primary_color
-            })
+            admin: {
+              include: {
+                creator: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        created_admin: {
+          select: {
+            name: true
+          }
         }
-   
-      response.list(result,res)
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
+
+    const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
+    const result = [];
+
+    for (let medicalCenter of medicalCenters) {
+      // Find hospital assistant admin for this medical center
+      let hospitalAssistant = medicalCenter.admins.find(amc => 
+        amc.admin.role === 'hospitalAssistant'
+      )?.admin;
+
+      let logo = medicalCenter.logo || 'default.png';
+      
+      result.push({
+        "id": medicalCenter.id,
+        "logo": url.origin + '/api/hospital-manage/image/' + logo,
+        "name": medicalCenter.name,
+        "address": medicalCenter.address || '',
+        "created_by": medicalCenter.created_by,
+        "created_at": medicalCenter.created_at ? 
+          new Date(medicalCenter.created_at).toISOString().replace('T', ' ').substring(0, 16) : null,
+        "updated_at": medicalCenter.updated_at ? 
+          new Date(medicalCenter.updated_at).toISOString().replace('T', ' ').substring(0, 16) : null,
+        "admin_id": hospitalAssistant ? hospitalAssistant.id : null,
+        "admin_name": hospitalAssistant ? hospitalAssistant.name : 'Not Assigned',
+        "admin_email": hospitalAssistant ? hospitalAssistant.email : '',
+        "admin_password": null,
+        "admin_phone": hospitalAssistant ? hospitalAssistant.phone : '',
+        "admin_role": hospitalAssistant ? hospitalAssistant.role : '',
+        "creator":  '',
+        "primary_color": medicalCenter.primary_color || '#009843',
+        "sub_color_1": medicalCenter.sub_color_1 || '',
+        "sub_color_2": medicalCenter.sub_color_2 || ''
+      });
+    }
+
+    response.list(result, res);
+
   } catch (error) {
-      response.error(error,res,next)    
+    response.error(error, res, next);
+  }
+};*/
+
+export const manage_list = async (req, res, next) => {
+  try {
+    let f_columnFilters = req.body?.filter?.f_columnFilters
+    let globalFilter = req.body?.filter?.globalFilter
+    let f_globalFilters = req.body?.filter?.f_globalFilters
+    let others = req.body?.filter?.others
+
+    // Get the logged-in user from the request (assuming it's set by auth middleware)
+    const loggedInUser = req.user; // Make sure your auth middleware sets req.user
+    const userRole = loggedInUser?.role;
+    const userId = loggedInUser?.id;
+
+    // Build the base where clause
+    let whereClause = {
+      ...f_columnFilters ? { ...f_columnFilters } : {},
+      ...globalFilter ? { ...f_globalFilters } : {},
+      ...others ? { ...others } : {},
+      status: 1
+    };
+
+    // If user is not admin, only show medical centers assigned to them
+    if (userRole !== 'admin' && userRole !== 'superAdmin') {
+      whereClause = {
+        ...whereClause,
+        admins: {
+          some: {
+            admin_id: userId
+          }
+        }
+      };
+    }
+
+    // Get medical centers with optional admin association
+    let medicalCenters = await prisma.medical_center.findMany({
+      ...response.list_paginate(req),
+      where: whereClause,
+      include: {
+        admins: {
+          include: {
+            admin: {
+              include: {
+                creator: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        created_admin: {
+          select: {
+            name: true
+          }
+        }
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
+
+    const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
+    const result = [];
+
+    for (let medicalCenter of medicalCenters) {
+      // Find hospital assistant admin for this medical center
+      let hospitalAssistant = medicalCenter.admins.find(amc => 
+        amc.admin.role === 'hospitalAssistant'
+      )?.admin;
+
+      let logo = medicalCenter.logo || 'default.png';
+      
+      result.push({
+        "id": medicalCenter.id,
+        "logo": url.origin + '/api/hospital-manage/image/' + logo,
+        "name": medicalCenter.name,
+        "address": medicalCenter.address || '',
+        "created_by": medicalCenter.created_by,
+        "created_at": medicalCenter.created_at ? 
+          new Date(medicalCenter.created_at).toISOString().replace('T', ' ').substring(0, 16) : null,
+        "updated_at": medicalCenter.updated_at ? 
+          new Date(medicalCenter.updated_at).toISOString().replace('T', ' ').substring(0, 16) : null,
+        "admin_id": hospitalAssistant ? hospitalAssistant.id : null,
+        "admin_name": hospitalAssistant ? hospitalAssistant.name : 'Not Assigned',
+        "admin_email": hospitalAssistant ? hospitalAssistant.email : '',
+        "admin_password": null,
+        "admin_phone": hospitalAssistant ? hospitalAssistant.phone : '',
+        "admin_role": hospitalAssistant ? hospitalAssistant.role : '',
+        "creator": medicalCenter.created_admin ? medicalCenter.created_admin.name : '',
+        "primary_color": medicalCenter.primary_color || '#009843',
+        "sub_color_1": medicalCenter.sub_color_1 || '',
+        "sub_color_2": medicalCenter.sub_color_2 || ''
+      });
+    }
+
+    response.list({data: result, }, res);
+
+  } catch (error) {
+    response.error(error, res, next);
   }
 };
 
-
-
-
+////////////////////////////////////////
 export const manage_create = async (req, res, next) => {
   try {
+      req.body.name = req.body.name
+      req.body.email = req.body.email
+      req.body.phone = req.body.phone
+      req.body.medical_center_ids = req.body.medical_center_ids // Changed from hospital_id to medical_center_ids
+      req.body.role = 'staff'
+      req.body.created_by = user_id
+      req.body.password = req.body.password
+      req.body.return = true
+      
+      let reg = await registration(req, res, next)
+      let clock = created_at()
  
- 
-      req.body.name=req.body.admin_name
-      req.body.email=req.body.admin_email
-      req.body.phone=req.body.admin_phone
-      req.body.role='hospitalAssistant'
-
-      req.body.password=req.body.admin_password
-
-      req.body.return=true
-      let reg=await registration(req, res, next)
-      let clock=created_at()
-
-      let hospital_data={
-        "name": req.body.name,
-        "address": req.body.address,
-        "created_at": clock,
-        "created_by":user_id,
-        primary_color:req.body.primary_color,
-
-        admin_id:reg
-      }
-
-      let hos=null
-      if(reg>0){
-        //create hospital
-        req.body=hospital_data
-        req.query.return=true
-        req.params.table='hospitals'
-        hos=await create(req, res, next)
-      }
-      response.create(hos,res)
+      response.create(reg, res)
   } catch (error) {
-      response.error(error,res,next)    
+      response.error(error, res, next)    
   }
 };
+
 
 export const image =   async (req, res, next) => {
   let image = req.params.image
@@ -191,7 +300,7 @@ export const manage_logo =   async (req, res, next) => {
 
 
         //update hospital db
-        const updatedHospital = await prisma.hospitals.update({
+        const updatedHospital = await prisma.medical_center.update({
           where: { id: id },
           data: { logo: trimmedStr_1 },
         });
@@ -210,68 +319,56 @@ export const manage_logo =   async (req, res, next) => {
 
 export const manage_update = async (req, res, next) => {
   try {
-    let clock=created_at()
+    let clock = created_at()
  
-    //admin update
-    let name=req.body.admin_name
-    let email=req.body.admin_email
-    let phone=req.body.admin_phone
-    let primary_color=req.body.primary_color
+    let id = req.body.id
+    let name = req.body.name
+    let email = req.body.email
+    let phone = req.body.phone
+    let medical_center_ids = req.body.medical_center_ids // New field for multiple medical centers
 
- 
-    let password=null
-    if(req.body.admin_password){
-      password=req.body.admin_password
+    let password = null
+    if(req.body.password){
+      password = req.body.password
     }
-    
-    //hospital update
-    let id=req.body.id
-    let h_name=req.body.name
-    let h_address=req.body.address
-    let updated_at=clock
-    let updated_by=user_id
-
  
-    const filterhospitals = await prisma.hospitals.findMany({
-      where: {
-        id:id,
-      },
+    // Start transaction to update admin and medical center relations
+    const result = await prisma.$transaction(async (prisma) => {
+      // Update admin basic info
+      const updateAdmin = await prisma.admins.update({
+        where: { id: id },
+        data: {
+          name: name,
+          email: email,
+          phone: phone,
+          ...password ? {password: md5(password)} : {},
+        },
+      });
+
+      // Update medical center relations if provided
+      if (medical_center_ids) {
+        // Delete existing relations
+        await prisma.admin_medical_center.deleteMany({
+          where: { admin_id: id }
+        });
+
+        // Create new relations
+        if (medical_center_ids.length > 0) {
+          await prisma.admin_medical_center.createMany({
+            data: medical_center_ids.map(mcId => ({
+              admin_id: id,
+              medical_center_id: mcId
+            }))
+          });
+        }
+      }
+
+      return updateAdmin;
     });
-
-
-    const update1 = await prisma.admins.updateMany({
-      where: {
-        id: filterhospitals[0].admin_id,
-      },
-      data: {
-         name:name,
-         email:email,
-         phone:phone,
-        ...password?{password:md5(password)}:{},
-      },
-    });
-
-    const update2 = await prisma.hospitals.updateMany({
-      where: {
-        id: id,
-      },
-      data: {
-         name:h_name,
-         address:h_address,
-         updated_at:updated_at,
-         updated_by:updated_by,
-         primary_color:primary_color,
-
-      },
-    });
-
-    let res_final=[]
-    if(update1){res_final=update1}else{res_final=update2}
  
-
-      response.update([],res)
+    response.update(result, res)
   } catch (error) {
-      response.error(error,res,next)    
+    response.error(error, res, next)    
   }
 };
 
@@ -328,3 +425,51 @@ export const manage_remove = async (req, res, next) => {
   }
 };
 
+
+export const manage_medical_center_logo = async (req, res, next) => {
+  const uploadDir = path.join(__dirname.replace("\controllers", "") + '/uploads'); 
+  
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, '0777', true);
+  const customOptions = { uploadDir: uploadDir, keepExtensions: true, allowEmptyFiles: false, maxFileSize: 5 * 1024 * 1024 * 1024, multiples: true };
+  const form = new IncomingForm(customOptions);
+  
+  let file_count = req.query.counts
+  let id = parseInt(req.query.id)
+
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      next(err);
+      return;
+    }
+    
+    for (let x = 0; x < file_count; x++) {
+      try {
+        const file = files['file-' + x.toString()]
+        let str = file.toString()
+        const myArray = str.split(",");
+
+        const ssmyArray1 = myArray[1].split(":");
+        var trimmedStr = ssmyArray1[1].trimStart();
+        trimmedStr = trimmedStr.trimEnd();
+        const newFilepath = `${uploadDir}/${trimmedStr}`;
+
+        const ssmyArray1_1 = myArray[0].split(":");
+        var trimmedStr_1 = ssmyArray1_1[1].trimStart();
+        trimmedStr_1 = trimmedStr_1.trimEnd();
+        const newFilepath_1 = `${uploadDir}/${'fff'+trimmedStr_1}`;
+
+        fs.rename(newFilepath_1, newFilepath, err => err);
+
+        // Update medical center with logo
+        const updatedMedicalCenter = await prisma.medical_center.update({
+          where: { id: id },
+          data: { logo: trimmedStr_1 },
+        });
+
+      } catch (error) {
+        console.log(error, 'error')
+      }
+    }
+    res.status(200).json({});
+  });
+};

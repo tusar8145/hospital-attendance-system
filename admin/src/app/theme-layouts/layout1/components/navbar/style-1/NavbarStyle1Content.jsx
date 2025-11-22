@@ -6,6 +6,8 @@ import Navigation from 'app/theme-layouts/shared-components/navigation/Navigatio
 import NavbarToggleButton from 'app/theme-layouts/shared-components/navbar/NavbarToggleButton';
 import Logo from '../../../../shared-components/Logo';
 import HospitalNavbarHeader from '../../../../shared-components/HospitalNavbarHeader';
+import { Box } from '@mui/material';
+
 
 const Root = styled('div')(({ theme }) => ({
 	backgroundColor: theme.palette.background.default,
@@ -46,7 +48,7 @@ function NavbarStyle1Content(props) {
 				className="flex min-h-0 flex-1 flex-col"
 				option={{ suppressScrollX: true, wheelPropagation: false }}
 			>
-				<HospitalNavbarHeader />
+<br></br>
 
 				<Navigation layout="vertical" />
 

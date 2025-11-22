@@ -12,6 +12,10 @@ import { HospitalStaffRoute } from "./routes/HospitalStaffRoute.js";
 import { PatientRoute } from "./routes/PatientRoute.js";
 import { IssueRoute } from "./routes/issueRoute.js";
 
+import { MedicalCenterRoute  } from "./routes/MedicalCenterRoute.js";
+import { DepartmentRoute  } from "./routes/DepartmentRoute.js";
+import { DoctorRoute } from "./routes/DoctorRoute.js";
+
 const app = express();
 const SYSVERSION = "/api/";
 
@@ -34,6 +38,9 @@ app.use(SYSVERSION, HospitalStaffRoute);
 app.use(SYSVERSION, CrudRoute);
 app.use(SYSVERSION, PatientRoute);
 app.use(SYSVERSION, IssueRoute);
+app.use(SYSVERSION, MedicalCenterRoute);
+app.use(SYSVERSION, DepartmentRoute);
+app.use(SYSVERSION, DoctorRoute);
 
 app.use((req, res, next) => {
   res.status(404).json({

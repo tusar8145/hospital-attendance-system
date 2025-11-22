@@ -71,5 +71,30 @@ const apiConfig = {
     IssueUpdateIssues:base_url+'issue/update_issues',
 
     updatePassword:base_url+'admin/update_password',
+
+    // Medical Centers
+    medicalCenterList: base_url + 'medical-center/list',
+    medicalCenterCreate: base_url + 'medical-center/create',
+    medicalCenterUpdate: base_url + 'medical-center/update',
+    medicalCenterStatus: base_url + 'medical-center/status',
+    medicalCenterRemove: base_url + 'medical-center/remove',
+
+    // Departments
+    departmentList: base_url + 'department/list',
+    departmentCreate: base_url + 'department/create',
+    departmentUpdate: base_url + 'department/update',
+    departmentStatus: base_url + 'department/status',
+    departmentRemove: base_url + 'department/remove',
+
+    // Doctors
+    doctorList: base_url + 'doctor/list',
+    doctorCreate: base_url + 'doctor/create',
+    doctorUpdate: base_url + 'doctor/update',
+    doctorStatus: base_url + 'doctor/status',
+    doctorRemove: base_url + 'doctor/remove',
+    doctorAssignDepartments: base_url + 'doctor/assign-departments',
+
+    hospitalStaffManageAssignMedicalCenters:base_url +  `hospital-staff-manage/assign-medical-centers`,
+
 }
 export default apiConfig;

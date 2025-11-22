@@ -111,7 +111,7 @@ class FuseAuthorization extends Component {
 				if (!redirectUrl || redirectUrl == '/') {
 					setTimeout(() => history.push('/dashboard'), 0);
 					resetSessionRedirectUrl();
-				} else if(redirectUrl == '/hospital-management' && this.props.userRole == 'admin'){
+				} else if(redirectUrl == '/user-management' && this.props.userRole == 'admin'){
 					    setTimeout(() => history.push(redirectUrl), 0);
 						resetSessionRedirectUrl();
 					}  else {

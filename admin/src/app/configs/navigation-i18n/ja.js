@@ -35,8 +35,10 @@ const locale = {
 	DiseaseClassification:'DPC 疾患分類',
 
 
-
-
+	FacilityList : '施設一覧',
+	Department : '診療科',
+	Doctor : '医師',
+	UserManagement : 'ユーザー管理',
 
 
 

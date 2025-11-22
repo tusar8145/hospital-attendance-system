@@ -1,6 +1,6 @@
 export const create = (result,res) => {
   try {   
-      let success='success'
+      let success='true'
       let message="Created Successful"
       if(result.count==0){
           success='error'
@@ -19,7 +19,7 @@ export const create = (result,res) => {
 
 export const update = (result,res) => {
   try {   
-      let success='success'
+      let success='true'
       let message="Update Successful"
       if(result.count==0){
           success='error'
@@ -36,14 +36,14 @@ export const update = (result,res) => {
 
 export const list = (data,res) => {
   try {   
-      let success='success'
+      let success='true'
       let message="Data Fetch Successful"
       if(data.count==0){
           success='error'
           message="Unable to Fetch"
       }
       return res.status(200).json({
-        success:success, message:message, data:data,
+        success:success, message:message, ...data,
       });
 
      }catch(error){
@@ -54,7 +54,7 @@ export const list = (data,res) => {
 
 export const count = (data,res) => {
   try {   
-      let success='success'
+      let success='true'
       let message="Data Count Successful"
       if(data.count==0){
           success='error'
@@ -72,7 +72,7 @@ export const count = (data,res) => {
 
 export const remove = (data,res) => {
   try {   
-      let success='success'
+      let success='true'
       let message="Data Delete Successful"
       if(data.count==0){
           success='error'
@@ -94,8 +94,8 @@ export const error = (error,res,next) => {
       next(error)
       let message="Something Went Wrong"
       //log_report(error)
-      return res.status(200).json({
-        success:'error', message:str 
+      return res.status(500).json({
+        success:'false', message:str 
       });
      }catch(error){
        return false

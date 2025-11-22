@@ -15,7 +15,7 @@ import NavigationShortcuts from '../../shared-components/navigation/NavigationSh
 import NavigationSearch from '../../shared-components/navigation/NavigationSearch';
 import UserMenu from '../../shared-components/UserMenu';
 import QuickPanelToggleButton from '../../shared-components/quickPanel/QuickPanelToggleButton';
-
+import HospitalNavbarHeader from '../../shared-components/HospitalNavbarHeader';
 import { useTheme } from '../../../context/ThemeContext';
 
 /**
@@ -28,7 +28,6 @@ function ToolbarLayout1(props) {
 	const toolbarTheme = useAppSelector(selectToolbarTheme);
 
 	const { theme, toggleTheme } = useTheme();
-
 
 	return (
 		<ThemeProvider theme={toolbarTheme}>
@@ -65,22 +64,24 @@ function ToolbarLayout1(props) {
 							</>
 						)}
 
-						<Hidden lgDown>
-							
- 
-      <h1 class=" px-12">{theme}</h1>
-     
+						 
+							{/* Hospital/Facility Selection Header */}
+							<HospitalNavbarHeader />
 
+							{/* 
+							<h1 class=" px-12">{theme}</h1>
+							
 							<NavigationShortcuts 
-							title={title}/>
-						</Hidden>
+								title={title}/> 
+							*/}
+					 
 					</div>
 
 					<div className="flex h-full items-center overflow-x-auto px-8">
 						<LanguageSwitcher />
-						<AdjustFontSize />
+						{/*<AdjustFontSize />
 						<FullScreenToggle />
-						{/*<NavigationSearch />
+						<NavigationSearch />
 						<QuickPanelToggleButton />*/}
 						<UserMenu />
 					</div>

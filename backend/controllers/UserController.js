@@ -137,97 +137,7 @@ export const update_password = async (req, res, next) => {
     }
 };     
 
-export const login = async (req, res, next) => {
-    try {
-        
-        const req_data = req.body
-
-        const email = req.body.email;
-        const password = req.body.password;
-
-        if (!email.length > 2 && !password.length > 2) {
-            res.status(401).json({
-                success: false,
-                message: "unauthorize",
-            });
-        }
-
-        var admins = null;
-        admins = await prisma.admins.findMany({
-            where: {
-                email: email,
-                password: md5(password),
-            },
-            include:{hospital:{select:{logo:true, name: true, address:true, id:true, primary_color:true, sub_color_1:true, sub_color_2:true, }}}
-        });
-
-        let hospital=null
-        if(admins[0]?.hospital_id>0){
-              hospital = await prisma.hospitals.findUnique({
-                where: {
-                    id: admins[0]?.hospital_id, 
-                }, 
-            });
-
-          
-        }
-
  
-        if (Object.keys(admins).length > 0) {
-
- 
-            let this_user = admins[0]
-
-            const authorization = jwt.sign(
-                { ...admins[0],  ...this_user.hospital_id?{"hospital":{id:this_user.hospital_id, name:hospital?.name, logo:hospital?.logo, address:hospital?.address, primary_color:hospital?.primary_color, sub_color_1:hospital?.sub_color_1, sub_color_2:hospital?.sub_color_2, }}:{"hospital":this_user?.hospital,}, },
-                process.env.JWT_SECRET,
-                { expiresIn: process.env.JWT_VALIDITY }
-            );           
-
-            const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
-            let logo = this_user.photo || 'brian-hughes.jpg'
-            res.status(200).json(
-                {
-
-
-                    "user": {
-                        "uid": this_user.id,
-                        "role": this_user.role,
-                        "data": {
-                            "displayName": this_user.name,
-                            "phone":this_user.phone,
-                            "photoURL": url.origin+'/api/hospital-manage/image/'+logo,
-                            "email": this_user.email,
-                            "settings": {
-                                "layout": {},
-                                "theme": {}
-                            },
-                            "shortcuts": [
-                                "apps.calendar",
-                                "apps.mailbox",
-                                "apps.contacts"
-                            ]
-                        },
-                        
-                        ...this_user.hospital_id?{"hospital":{id:this_user.hospital_id, name:hospital?.name, logo:hospital?.logo, address:hospital?.address, primary_color:hospital?.primary_color, sub_color_1:hospital?.sub_color_1, sub_color_2:hospital?.sub_color_2,}}:{"hospital":this_user?.hospital,},
-                        "title": "hi"
-                    },
-                    "access_token": authorization
-
-                }
-            );
-
-        } else {
-            res.status(404).json({
-                success: false,
-                getadmin: admins,
-            });
-        }
-    } catch (error) {
-        //next(error)
-        response.error(error,res,next)
-    }
-};
 
 export const refresh = async (req, res, next) => {
     try {
@@ -272,11 +182,104 @@ export const refresh = async (req, res, next) => {
     }
 };
 
+export const login = async (req, res, next) => {
+    try {
+        
+        const req_data = req.body
+        const email = req.body.email;
+        const password = req.body.password;
 
+        if (!email.length > 2 && !password.length > 2) {
+            res.status(401).json({
+                success: false,
+                message: "unauthorize",
+            });
+        }
+
+        var admins = null;
+        admins = await prisma.admins.findMany({
+            where: {
+                email: email,
+                password: md5(password),
+            },
+            include: {
+                // Get all medical centers associated with this admin
+                medical_centers: {
+                    include: {
+                        medical_center: {
+                            select: {
+                                id: true,
+                                name: true,
+                                address: true,
+                                logo: true,
+                                primary_color: true,
+                                sub_color_1: true,
+                                sub_color_2: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (Object.keys(admins).length > 0) {
+            let this_user = admins[0]
+
+            // Extract medical centers from the join table
+            const medicalCenters = this_user.medical_centers.map(item => item.medical_center);
+
+            const authorization = jwt.sign(
+                { 
+                    ...admins[0], 
+                    medical_centers: medicalCenters 
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: process.env.JWT_VALIDITY }
+            );           
+
+            const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
+            let logo = this_user.photo || 'brian-hughes.jpg'
+            
+            res.status(200).json({
+                "user": {
+                    "uid": this_user.id,
+                    "role": this_user.role,
+                    "data": {
+                        "displayName": this_user.name,
+                        "phone": this_user.phone,
+                        "photoURL": url.origin+'/api/hospital-manage/image/'+logo,
+                        "email": this_user.email,
+                        "settings": {
+                            "layout": {},
+                            "theme": {}
+                        },
+                        "shortcuts": [
+                            "apps.calendar",
+                            "apps.mailbox",
+                            "apps.contacts"
+                        ]
+                    },
+                    // Return all medical centers instead of single hospital
+                    "medical_centers": medicalCenters,
+                    "title": "hi"
+                },
+                "access_token": authorization
+            });
+
+        } else {
+            res.status(404).json({
+                success: false,
+                getadmin: admins,
+            });
+        }
+    } catch (error) {
+        response.error(error,res,next)
+    }
+};
 
 export const registration = async (req, res, next) => {
     try {
-        const { name, password, email, phone, role, hospital_id, created_by } = req.body;
+        const { name, password, email, phone, role, medical_center_ids, created_by } = req.body;
        
         // Check if the email is already in use
         const existingadmin = await prisma.admins.findUnique({
@@ -289,17 +292,23 @@ export const registration = async (req, res, next) => {
             return res.status(200).json({ success: 'error', message: 'Email already in use' });
         }
 
-        // Hash the password
-        // Save the admin to the database
+        // Create the admin
         const addadmin = await prisma.admins.create({
             data: {
                 name: name,
                 email: email,
                 phone: phone,
                 role: role,
-                ...hospital_id?{hospital_id:hospital_id}:{},
                 ...created_by?{created_by:created_by}:{},
                 password: md5(password),
+                // Create relations with medical centers if provided
+                ...(medical_center_ids && medical_center_ids.length > 0) ? {
+                    medical_centers: {
+                        create: medical_center_ids.map(mcId => ({
+                            medical_center: { connect: { id: mcId } }
+                        }))
+                    }
+                } : {}
             },
         });
 
@@ -317,12 +326,8 @@ export const registration = async (req, res, next) => {
             });            
         }
 
-
-
     } catch (error) {
-   
         response.error(error,res,next)
-        //next(error)
     }
-}; 
+};
 

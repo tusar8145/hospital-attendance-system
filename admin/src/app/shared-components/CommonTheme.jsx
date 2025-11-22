@@ -23,7 +23,7 @@ function CommonTheme() {
 
 	const userxx = useAppSelector(selectUserSettings);
 
-    if(user.role == 'staff' || user.role == 'hospitalAssistant'){
+    /*if(user.role == 'staff' || user.role == 'hospitalAssistant'){
 		if(userxx?.layout?.style){
 			console.log('1','gggg')
 		}else{
@@ -149,7 +149,7 @@ function CommonTheme() {
 			dispatch(changeFuseTheme(_theme?.section)).then(() => { });
 			console.log('2','gggg')
 		}
-	}
+	}*/
 
 	return (
 	 <></>

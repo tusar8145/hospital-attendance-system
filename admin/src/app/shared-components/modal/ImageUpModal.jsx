@@ -28,7 +28,7 @@ const style = {
     p: 4,
 };
 
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import EditIcon from '@mui/icons-material/Edit';
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
     clipPath: 'inset(50%)',
@@ -60,7 +60,7 @@ export default function ImageUpModal(props) {
 
     return (<div>
  
-      <Button component="label" onClick={handleOpen} style={{alignItems:"center", textAlign:"center"}} size="small" variant="text" startIcon={<CloudUploadIcon />}> {t('Change')} </Button>
+      <Button component="label" onClick={handleOpen} style={{alignItems:"center", textAlign:"center"}} size="small" variant="text" startIcon={<EditIcon />}>  </Button>
 
       <Modal open={open} onClose={handleClose} aria-labelledby="modal-modal-title" aria-describedby="modal-modal-description">
         <Box sx={style}>

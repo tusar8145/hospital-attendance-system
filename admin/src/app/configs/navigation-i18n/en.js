@@ -33,6 +33,6 @@ const locale = {
 	Profile:'Profile',
 
 	DiseaseClassification:'Disease Classification',
-
+	UserManagement:'User Management',
 };
 export default locale;
