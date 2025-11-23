@@ -36,7 +36,7 @@ import { showMessage } from '@fuse/core/FuseMessage/fuseMessageSlice';
 import { CommonHeader } from '../../../shared-components/new/CommonHeader';
 import { ConfirmationDialog } from '../../../shared-components/new/ConfirmationDialog';
 import { CommonDialog } from '../../../shared-components/new/CommonDialog';
-import { toJapaneseDate } from '../../../shared-components/new/dateHelpers';
+import { toJapaneseDate } from '../../../shared-components/new/DateHelpers';
 
 const ImageUpModal = lazy(() => import('../../../shared-components/modal/ImageUpModal')); 
 

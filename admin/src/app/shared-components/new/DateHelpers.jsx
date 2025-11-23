@@ -16,10 +16,10 @@ export const toJapaneseDate = (dateString) => {
   const day = String(date.getDate()).padStart(2, '0');
   
   return `${year}年${month}月${day}日`;
-};
+}; 
 
 /**
- * Convert date to Japanese format with time: YYYY年MM月DD日 HH:MM
+ * Con vert date to Japanese format with time: YYYY年MM月DD日 HH:MM
  */
 export const toJapaneseDateTime = (dateString) => {
   if (!dateString) return '';
