@@ -54,36 +54,36 @@ export const themesConfig = {
 		}
 	},
 	defaultDark: {
-		palette: {
-			mode: 'dark',
-			divider: 'rgba(241,245,249,.12)',
-			text: darkPaletteText,
-			common: {
-				black: 'rgb(17, 24, 39)',
-				white: 'rgb(255, 255, 255)'
-			},
-			primary: {
-				light: '#64748b',
-				main: '#334155',
-				dark: '#0f172a',
-				contrastText: darkPaletteText.primary
-			},
-			secondary: {
-				light: '#818cf8',
-				main: '#4f46e5',
-				dark: '#3730a3',
-				contrastText: darkPaletteText.primary
-			},
-			background: {
-				paper: '#1e293b',
-				default: '#155EEF'
-			},
-			error: {
-				light: '#ffcdd2',
-				main: '#f44336',
-				dark: '#b71c1c'
-			}
-		}
+palette: {
+    mode: 'dark',
+    divider: 'rgba(255,255,255,0.12)',
+    text: darkPaletteText,
+    common: {
+        black: 'rgb(10, 15, 25)',
+        white: 'rgb(255, 255, 255)'
+    },
+    primary: {
+        light: '#5eead4',
+        main: '#14b8a6',
+        dark: '#0f766e',
+        contrastText: darkPaletteText.primary
+    },
+    secondary: {
+        light: '#c084fc',
+        main: '#a855f7',
+        dark: '#7c3aed',
+        contrastText: darkPaletteText.primary
+    },
+    background: {
+        paper: '#1a1f2e',
+        default: '#0f172a'
+    },
+    error: {
+        light: '#fca5a5',
+        main: '#ef4444',
+        dark: '#dc2626'
+    }
+}
 	},
 	darkBlueSilver: {
 		palette: {

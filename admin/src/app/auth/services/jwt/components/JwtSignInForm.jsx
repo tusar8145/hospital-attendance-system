@@ -1,6 +1,5 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
- 
 import { z } from 'zod';
 import _ from '@lodash';
 import TextField from '@mui/material/TextField';
@@ -73,104 +72,104 @@ function JwtSignInForm() {
 
 	return (
 		<>
-
-		<form
-			name="loginForm"
-			noValidate
-			className="mt-32 flex w-full flex-col justify-center"
-			onSubmit={handleSubmit(onSubmit)}
-		>
-
-
-
-
-
-
-			<Controller
-				name="email"
-				control={control}
-				render={({ field }) => (
-					<TextField
-						{...field}
-						className="mb-24"
-						label="Email"
-						autoFocus
-						type="email"
-						error={!!errors.email}
-						helperText={errors?.email?.message}
-						variant="outlined"
-						required
-						fullWidth
-					/>
-				)}
-			/>
-
-			<Controller
-				name="password"
-				control={control}
-				render={({ field }) => (
-					<TextField
-						{...field}
-						className="mb-24"
-						label="Password"
-						type="password"
-						error={!!errors.password}
-						helperText={errors?.password?.message}
-						variant="outlined"
-						required
-						fullWidth
-					/>
-				)}
-			/>
-
-			<div className="flex flex-col items-center justify-center sm:flex-row sm:justify-between">
-				<Controller
-					name="remember"
-					control={control}
-					render={({ field }) => (
-						<FormControl>
-							<FormControlLabel
-								label="Remember me"
-								control={
-									<Checkbox
-										size="small"
-										{...field}
-									/>
-								}
-							/>
-						</FormControl>
-					)}
-				/>
-
-				{/*<Link
-					className="text-md font-medium"
-					to="/pages/auth/forgot-password"
-				>
-					Forgot password?
-				</Link>*/}
-			</div>
-
-			<Button
-				variant="contained"
-				color="secondary"
-				className=" mt-16 w-full"
-				aria-label="Sign in"
-				disabled={_.isEmpty(dirtyFields) || !isValid}
-				type="submit"
-				size="large"
+			<form
+				name="loginForm"
+				noValidate
+				className="w-full"
+				onSubmit={handleSubmit(onSubmit)}
 			>
-				Sign in
-			</Button>
-		</form>
+				<div className="space-y-24">
+					<Controller
+						name="email"
+						control={control}
+						render={({ field }) => (
+							<FormControl fullWidth>
+								<label className="mb-8 text-sm font-medium text-gray-700">Email</label>
+								<TextField
+									{...field}
+									placeholder="Enter your email"
+									type="email"
+									error={!!errors.email}
+									helperText={errors?.email?.message}
+									variant="outlined"
+									required
+									fullWidth
+								/>
+							</FormControl>
+						)}
+					/>
 
-{alert==true &&
+					<Controller
+						name="password"
+						control={control}
+						render={({ field }) => (
+							<FormControl fullWidth>
+								<label className="mb-8 text-sm font-medium text-gray-700">Password</label>
+								<TextField
+									{...field}
+									placeholder="Enter your password"
+									type="password"
+									error={!!errors.password}
+									helperText={errors?.password?.message}
+									variant="outlined"
+									required
+									fullWidth
+								/>
+							</FormControl>
+						)}
+					/>
+				</div>
 
-		<Alert variant="outlined" severity="error" className='mt-24'>
-           {t('Email or password not match')}
-       </Alert>
-}
+				<div className="mt-16 flex items-center justify-between">
+					<Controller
+						name="remember"
+						control={control}
+						render={({ field }) => (
+							<FormControl>
+								<FormControlLabel
+									label="Remember me"
+									control={
+										<Checkbox
+											size="small"
+											{...field}
+										/>
+									}
+								/>
+							</FormControl>
+						)}
+					/>
 
-		
+					<Link
+						className="text-sm font-medium text-primary-600 hover:text-primary-500"
+						to="/pages/auth/forgot-password"
+					>
+						Forgot password?
+					</Link>
+				</div>
+
+				<Button
+					variant="contained"
+					color="primary"
+					className="mt-24 w-full"
+					aria-label="Sign in"
+					disabled={_.isEmpty(dirtyFields) || !isValid}
+					type="submit"
+					size="large"
+					sx={{ py: 1.5 }}
+				>
+					Sign in
+				</Button>
+			</form>
+
+			{alert && (
+				<Alert 
+					variant="outlined" 
+					severity="error" 
+					className='mt-24'
+				>
+					{t('Email or password not match')}
+				</Alert>
+			)}
 		</>
 	);
 }

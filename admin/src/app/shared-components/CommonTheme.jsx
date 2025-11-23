@@ -16,7 +16,7 @@ function CommonTheme() {
 	let primary_color='#ff0000'
 
 	try {
-		 primary_color=user?.hospital?.primary_color || '#ff0000'
+		// primary_color=user?.hospital?.primary_color || '#ff0000'
 	} catch (error) {
 		
 	}

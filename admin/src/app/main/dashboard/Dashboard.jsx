@@ -169,7 +169,7 @@ function Dashboard() {
 					{successAlert != null && <Alert severity="success">{t(successAlert)}.</Alert>}
 					{failAlert != null && <Alert severity="error">{t(failAlert)}..</Alert>}
 		
-					{hospital?.id>0? 
+					{/*hospital?.id>0? 
 					
 								        <motion.div
 											className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-24 w-full min-w-0 py-24"
@@ -220,7 +220,7 @@ function Dashboard() {
 								<SummaryWidget count={countStaff}  admin={1}   color={'blueviolet'}  title={t('Hospital Staff')}  icon={'heroicons-outline:user-group'}/>
 							</motion.div>
 						</motion.div>
-					}
+					*/}
 				</div>
 			}
 	/>

@@ -70,9 +70,11 @@ function HospitalNavbarHeader() {
 				logo: res[x].logo,
 				name: res[x].name,
 				sort_name: f1,
+				address: res[x].address,
 				full_name: res[x].name,
 				email: res[x].admin_email,
 			});
+			console.log(response,new_obj,'ggggggggg')
 		}
 		setHospitals(new_obj);
 
@@ -406,7 +408,7 @@ function HospitalNavbarHeader() {
 									<Typography variant="body2" sx={{ fontWeight: 'inherit' }}>
 										{_item.name}
 									</Typography>
-									{_item.email && (
+									{_item.address && (
 										<Typography 
 											variant="caption" 
 											sx={{ 
@@ -416,7 +418,7 @@ function HospitalNavbarHeader() {
 												mt: 0.5
 											}}
 										>
-											{_item.email}
+											{_item.address}
 										</Typography>
 									)}
 								</Box>
