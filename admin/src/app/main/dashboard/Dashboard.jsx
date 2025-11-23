@@ -163,12 +163,12 @@ function Dashboard() {
 				</div>
 			}
 			content={
-				<div className="flex flex-col items-center p-24 sm:p-40 container">
+				<div className="flex flex-col items- p-24 sm:p-40 container">
 
  					
 					{successAlert != null && <Alert severity="success">{t(successAlert)}.</Alert>}
 					{failAlert != null && <Alert severity="error">{t(failAlert)}..</Alert>}
-		
+		<h1>Dashboard</h1>
 					{/*hospital?.id>0? 
 					
 								        <motion.div
