@@ -27,6 +27,9 @@ import {
   Typography,
   Autocomplete,
   Grid,
+  Checkbox,
+  FormControlLabel,
+  Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -157,27 +160,44 @@ const DoctorTable = (props) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
 
-  // Fetch medical centers for dropdown
+  // New state for medical center filter
+  const [filterByMedicalCenter, setFilterByMedicalCenter] = useState(false);
+  const { hospital } = useTheme();
+
+  // Get current user
+  const currentUser = User();
+
+  // Fetch medical centers for dropdown - only active ones (status: 1)
   const { data: medicalCentersData } = useQuery({
     queryKey: ['medicalCenters'],
     queryFn: async () => {
       const response = await axios.post(apiConfig.medicalCenterList, {
         page: 1,
         perPage: 1000,
-        filter: {}
+        filter: {
+          f_columnFilters: { status: { equals: 1 } }, // Only active medical centers
+          globalFilter: "",
+          f_globalFilters: null,
+          others: {}
+        }
       });
       return response.data;
     },
   });
 
-  // Fetch departments for dropdown
+  // Fetch departments for dropdown - only active ones (status: 1)
   const { data: departmentsData } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
       const response = await axios.post(apiConfig.departmentList, {
         page: 1,
         perPage: 1000,
-        filter: {}
+        filter: {
+          f_columnFilters: { status: { equals: 1 } }, // Only active departments
+          globalFilter: "",
+          f_globalFilters: null,
+          others: {}
+        }
       });
       return response.data;
     },
@@ -246,7 +266,29 @@ const DoctorTable = (props) => {
         header: t('Hospital/Facility'),
         size: 200,
         enableColumnFilter: true,
-        Cell: ({ cell }) => cell.getValue() || 'N/A',
+        Cell: ({ row }) => {
+          const medicalCenter = row.original.medical_center;
+          const medicalCenterName = medicalCenter?.name || 'N/A';
+          const isMedicalCenterActive = medicalCenter?.status === 1;
+          
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2">
+                {medicalCenterName}
+              </Typography>
+              {!isMedicalCenterActive && (
+                <Tooltip title={t('Inactive Hospital/Facility')}>
+                  <Chip
+                    label={t('Inactive')}
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                  />
+                </Tooltip>
+              )}
+            </Box>
+          );
+        },
       },
       {
         accessorKey: 'dept_links',
@@ -255,10 +297,15 @@ const DoctorTable = (props) => {
         enableColumnFilter: false,
         Cell: ({ cell }) => {
           const departments = cell.getValue() || [];
+          // Filter out inactive departments (status: 0)
+          const activeDepartments = departments.filter(link => 
+            link.department?.status === 1
+          );
+          
           return (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {departments.length > 0 ? (
-                departments.map((link, index) => (
+              {activeDepartments.length > 0 ? (
+                activeDepartments.map((link, index) => (
                   <Chip
                     key={link.id}
                     label={link.department?.name}
@@ -269,7 +316,7 @@ const DoctorTable = (props) => {
                 ))
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  {t('No departments assigned')}
+                  {t('No active departments assigned')}
                 </Typography>
               )}
             </Box>
@@ -334,7 +381,7 @@ const DoctorTable = (props) => {
     [validationErrors, t, pagination.pageIndex, pagination.pageSize]
   );
 
-  // Build filter payload
+  // Build filter payload - Updated structure
   const buildFilterPayload = () => {
     let f_columnFilters = {};
     let f_globalFilters = null;
@@ -366,16 +413,20 @@ const DoctorTable = (props) => {
       }
     }
 
+    // Add hospital_id to the main filter object, not inside others
+    const hospital_id = filterByMedicalCenter && hospital?.id ? hospital.id : null;
+
     return {
       f_columnFilters,
       globalFilter: globalFilter || "",
       f_globalFilters,
-      others: props.filter?.others || {}
+      others: props.filter?.others || null,
+      hospital_id // Add hospital_id at the root level of filter
     };
   };
 
   const { data: { data: tableData = [], pagination: serverPagination = {} } = {}, isError, isFetching, isLoading, error, refetch } = useQuery({
-    queryKey: ['doctors', pagination.pageIndex, pagination.pageSize, columnFilters, globalFilter, sorting, props.filter],
+    queryKey: ['doctors', pagination.pageIndex, pagination.pageSize, columnFilters, globalFilter, sorting, props.filter, filterByMedicalCenter, hospital?.id],
     queryFn: async () => {
       const filterPayload = buildFilterPayload();
       
@@ -412,14 +463,15 @@ const DoctorTable = (props) => {
         } else {
           dispatch(showMessage({ message: t('Doctor created successfully'), variant: 'success' }));
         }
+        props.setCreateModalOpen(false);
       } else if (data.message && data.message.includes('Created Successful')) {
         dispatch(showMessage({ message: t('Doctor created successfully'), variant: 'success' }));
+        props.setCreateModalOpen(false);
       }
-      
-      props.setCreateModalOpen(false);
     },
     onError: (error) => {
       console.error('Error creating doctor:', error);
+      // Don't close the modal on error - let the user fix the issue
     },
   });
 
@@ -433,12 +485,12 @@ const DoctorTable = (props) => {
       
       if (data.success === "true" || data.success === true || data.message?.includes('Updated Successful')) {
         dispatch(showMessage({ message: t('Doctor updated successfully'), variant: 'success' }));
+        setEditModalOpen(false);
       }
-      
-      setEditModalOpen(false);
     },
     onError: (error) => {
       console.error('Error updating doctor:', error);
+      // Don't close the modal on error
     },
   });
 
@@ -573,6 +625,20 @@ const DoctorTable = (props) => {
     setSelectedRow(null);
   };
 
+  const handleFilterByMedicalCenterChange = (event) => {
+    setFilterByMedicalCenter(event.target.checked);
+  };
+
+  // Auto-check filter when hospital is selected and hospital_id is present
+  useEffect(() => {
+    if (hospital?.id) {
+      setFilterByMedicalCenter(true);
+    }
+  }, [hospital?.id]);
+
+  // Check if user can see the medical center filter
+  const canSeeMedicalCenterFilter = ['superAdmin', 'admin'].includes(currentUser?.role);
+
   const table = useMaterialReactTable({
     columns,
     data: tableData || [],
@@ -605,6 +671,22 @@ const DoctorTable = (props) => {
 
   return (
     <div className="w-full">
+      {/* Medical Center Filter Checkbox */}
+      {canSeeMedicalCenterFilter && (
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={filterByMedicalCenter}
+                onChange={handleFilterByMedicalCenterChange}
+                color="primary"
+              />
+            }
+            label={t('Filter by Hospital/Facility')}
+          />
+        </Box>
+      )}
+
       <MaterialReactTable table={table} />
 
       {/* Actions Menu */}
@@ -680,6 +762,8 @@ const DoctorTable = (props) => {
         mutationError={createMutation.error}
         medicalCenters={medicalCentersData?.data || []}
         departments={departmentsData?.data || []}
+        filterByMedicalCenter={filterByMedicalCenter}
+        hospital={hospital}
         key={props.createModalOpen ? 'create-modal-open' : 'create-modal-closed'}
       />
 
@@ -709,29 +793,37 @@ const DoctorTable = (props) => {
 };
 
 // Create Doctor Modal Component
-const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, departments }) => {
+const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, departments, filterByMedicalCenter, hospital }) => {
   const { t } = useTranslation('shared-components');
   const [doctors, setDoctors] = useState([{ name: '', license_no: '', medical_center_id: '', department_ids: [] }]);
   const [errors, setErrors] = useState([]);
-  const [duplicateErrors, setDuplicateErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [lastSelectedHospital, setLastSelectedHospital] = useState('');
 
   useEffect(() => {
     if (open) {
-      setDoctors([{ name: '', license_no: '', medical_center_id: '', department_ids: [] }]);
+      // Auto-select hospital if filter is active and hospital exists
+      const initialMedicalCenterId = filterByMedicalCenter && hospital?.id ? hospital.id : '';
+      
+      setDoctors([{ 
+        name: '', 
+        license_no: '', 
+        medical_center_id: initialMedicalCenterId, 
+        department_ids: [] 
+      }]);
       setErrors([]);
-      setDuplicateErrors({});
       setApiError('');
-      setLastSelectedHospital('');
+      setLastSelectedHospital(initialMedicalCenterId);
     }
-  }, [open]);
+  }, [open, filterByMedicalCenter, hospital]);
 
   useEffect(() => {
     if (mutationError) {
       const errorMessage = mutationError.response?.data?.message || t('Error creating doctor');
       
-      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('license_no')) {
+      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('doctor_name_medical_center_id_key')) {
+        setApiError(t('A doctor with the same name already exists in this hospital/facility'));
+      } else if (errorMessage.includes('license_no')) {
         setApiError(t('Doctor already exists'));
       } else {
         setApiError(errorMessage);
@@ -764,40 +856,10 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     return newErrors.every(error => Object.keys(error).length === 0);
   };
 
-  const checkForDuplicates = () => {
-    const licenseCount = {};
-    const newDuplicateErrors = {};
-    
-    doctors.forEach((doctor, index) => {
-      if (doctor.license_no.trim()) {
-        const normalizedLicense = doctor.license_no.trim().toLowerCase();
-        if (!licenseCount[normalizedLicense]) {
-          licenseCount[normalizedLicense] = [];
-        }
-        licenseCount[normalizedLicense].push(index);
-      }
-    });
-
-    Object.keys(licenseCount).forEach(license => {
-      if (licenseCount[license].length > 1) {
-        licenseCount[license].forEach(index => {
-          newDuplicateErrors[index] = { license_no: t('Duplicate license number in this form') };
-        });
-      }
-    });
-
-    setDuplicateErrors(newDuplicateErrors);
-    return Object.keys(newDuplicateErrors).length === 0;
-  };
-
   const handleSubmit = () => {
     setApiError('');
 
     if (!validateForm()) {
-      return;
-    }
-
-    if (!checkForDuplicates()) {
       return;
     }
 
@@ -823,6 +885,14 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     };
     setDoctors([...doctors, newDoctor]);
     setErrors([...errors, {}]);
+    
+    // Scroll to bottom when adding new doctor
+    setTimeout(() => {
+      const modalContent = document.querySelector('.MuiDialogContent-root');
+      if (modalContent) {
+        modalContent.scrollTop = modalContent.scrollHeight;
+      }
+    }, 100);
   };
 
   const updateDoctor = (index, field, value) => {
@@ -841,12 +911,6 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       setErrors(updatedErrors);
     }
 
-    if (duplicateErrors[index]?.[field]) {
-      const updatedDuplicateErrors = { ...duplicateErrors };
-      delete updatedDuplicateErrors[index][field];
-      setDuplicateErrors(updatedDuplicateErrors);
-    }
-
     if (apiError) {
       setApiError('');
     }
@@ -856,23 +920,12 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     if (doctors.length > 1) {
       setDoctors(doctors.filter((_, i) => i !== index));
       setErrors(errors.filter((_, i) => i !== index));
-      
-      const updatedDuplicateErrors = { ...duplicateErrors };
-      delete updatedDuplicateErrors[index];
-      Object.keys(updatedDuplicateErrors).forEach(key => {
-        if (parseInt(key) > index) {
-          updatedDuplicateErrors[parseInt(key) - 1] = updatedDuplicateErrors[key];
-          delete updatedDuplicateErrors[key];
-        }
-      });
-      setDuplicateErrors(updatedDuplicateErrors);
     }
   };
 
   const handleClose = () => {
     setDoctors([{ name: '', license_no: '', medical_center_id: '', department_ids: [] }]);
     setErrors([]);
-    setDuplicateErrors({});
     setApiError('');
     setLastSelectedHospital('');
     onClose();
@@ -883,7 +936,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       {doctors.map((doctor, index) => (
         <div
           key={index}
-          className="flex flex-col gap-4 border border-gray-200 p-6 rounded-lg relative bg-gray-50"
+          className="flex mt-20 mb-10 flex-col gap-4 border border-gray-200 p-6 rounded-lg relative bg-gray-50"
         >
           {/* Name and Last Name in same row */}
           <Grid container spacing={2}>
@@ -896,8 +949,8 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                   value={doctor.license_no}
                   onChange={(e) => updateDoctor(index, 'license_no', e.target.value)}
                   fullWidth
-                  error={!!errors[index]?.license_no || !!duplicateErrors[index]?.license_no}
-                  helperText={errors[index]?.license_no || duplicateErrors[index]?.license_no}
+                  error={!!errors[index]?.license_no}
+                  helperText={errors[index]?.license_no}
                   placeholder={t('Enter last name')}
                   disabled={isLoading}
                 />
@@ -920,7 +973,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
               </div>
             </Grid>
           </Grid>
-
+<br></br>
           {/* Hospital/Facility and Clinical Department in same row */}
           <Grid container spacing={2}>
             <Grid item xs={6}>
@@ -965,6 +1018,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                   onChange={(event, newValue) => {
                     updateDoctor(index, 'department_ids', newValue.map(dept => dept.id));
                   }}
+                  disableCloseOnSelect
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1072,7 +1126,9 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
     if (mutationError) {
       const errorMessage = mutationError.response?.data?.message || t('Error updating doctor');
       
-      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('license_no')) {
+      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('doctor_name_medical_center_id_key')) {
+        setApiError(t('A doctor with the same name already exists in this hospital/facility'));
+      } else if (errorMessage.includes('license_no')) {
         setApiError(t('Doctor already exists'));
       } else {
         setApiError(errorMessage);
@@ -1131,7 +1187,7 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
   if (!doctor) return null;
 
   const dialogContent = (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 mt-20">
       {/* Name and Last Name in same row */}
       <Grid container spacing={2}>
                 <Grid item xs={6}>
@@ -1170,7 +1226,7 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
       </Grid>
 
       {/* Hospital/Facility */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 mt-20">
         <Typography variant="subtitle1" className="font-medium">
           {t('Hospital/Facility')} *
         </Typography>
@@ -1246,7 +1302,7 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
 
   useEffect(() => {
     if (doctor && open) {
-      // Set currently assigned departments
+      // Set currently assigned departments - only active ones
       const currentDepartmentIds = doctor.dept_links?.map(link => link.department_id) || [];
       setSelectedDepartments(departments.filter(dept => currentDepartmentIds.includes(dept.id)));
       setApiError('');
@@ -1294,6 +1350,7 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
           onChange={(event, newValue) => {
             setSelectedDepartments(newValue);
           }}
+          disableCloseOnSelect
           renderInput={(params) => (
             <TextField
               {...params}

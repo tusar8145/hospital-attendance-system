@@ -400,7 +400,10 @@ const locale = {
 "User Management":"ユーザー管理",
 "Add User":"新しいスタッフの追加",
 "All User":"すべてのユーザー",
-"Filter by Hospital/Facility": "病院・施設で絞り込む"
+"Filter by Hospital/Facility": "病院・施設で絞り込む",
+
+"A doctor with the same name already exists in this hospital/facility":"この病院/施設には同じ名前の医師が既に存在します。",
+
 };
 export default locale;
 

@@ -8,12 +8,17 @@ export const doctor_list = async (req, res, next) => {
   try {
     const { page = 1, perPage = 10, sortBy = 'id', sortType = 'asc', filter = {} } = req.body;
     
-    const { f_columnFilters = {}, globalFilter = '', f_globalFilters = {}, others = {} } = filter;
+    const { f_columnFilters = {}, globalFilter = '', f_globalFilters = {}, others = {}, hospital_id } = filter;
 
     // Build where clause
     let where = {
       ...others
     };
+
+    // Apply hospital_id filter if provided
+    if (hospital_id) {
+      where.medical_center_id = parseInt(hospital_id);
+    }
 
     // Apply column filters
     if (Object.keys(f_columnFilters).length > 0) {
@@ -40,13 +45,13 @@ export const doctor_list = async (req, res, next) => {
       where,
       include: {
         medical_center: {
-          select: { id: true, name: true, type: true }
+          select: { id: true, name: true, type: true, status:true }
         },
         dept_links: {
           where: { status: 1 },
           include: {
             department: {
-              select: { id: true, name: true }
+              select: { id: true, name: true, status:true }
             }
           }
         },
