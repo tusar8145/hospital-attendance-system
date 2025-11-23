@@ -859,6 +859,7 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       title={`Create Department${departments.length > 1 ? 's' : ''}`}
       actions={dialogActions}
       disabled={isLoading}
+      maxWidth='xs'
     >
       {dialogContent}
     </CommonDialog>

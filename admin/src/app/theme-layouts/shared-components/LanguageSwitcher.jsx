@@ -34,7 +34,7 @@ function LanguageSwitcher() {
 		<>
 
 
-<Clock/>
+ 
 			<Button
 				className="h-40 w-64"
 				onClick={langMenuClick}
