@@ -616,6 +616,7 @@ const Table = (props) => {
 };
 
 // Create Department Modal Component
+// Create Department Modal Component
 const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationError }) => {
   const { t } = useTranslation('shared-components');
   const [departments, setDepartments] = useState([{ name: '' }]);
@@ -714,6 +715,14 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
   const addDepartment = () => {
     setDepartments([...departments, { name: '' }]);
     setErrors([...errors, {}]);
+    
+    // Scroll to bottom after adding new department
+    setTimeout(() => {
+      const dialogContent = document.querySelector('.MuiDialogContent-root');
+      if (dialogContent) {
+        dialogContent.scrollTop = dialogContent.scrollHeight;
+      }
+    }, 100);
   };
 
   const updateDepartment = (index, field, value) => {
@@ -830,8 +839,6 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
           {t('Add Another Department')}
         </Button>
       </div>
-
-
     </div>
   );
 

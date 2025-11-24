@@ -404,6 +404,9 @@ const locale = {
 
 "A doctor with the same name already exists in this hospital/facility":"この病院/施設には同じ名前の医師が既に存在します。",
 
+"Enter medical center name (minimum 3 characters)": "医療センター名を入力してください（3文字以上）",
+"Hospital/Facility Name must be at least 3 characters long": "病院・施設名は3文字以上で入力してください"
+
 };
 export default locale;
 

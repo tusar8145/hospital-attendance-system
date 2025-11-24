@@ -744,7 +744,9 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
       const fieldErrors = {};
       if (!medicalCenter.name.trim()) {
         fieldErrors.name = t('This field is Required');
-      }
+      }/* else if (medicalCenter.name.trim().length < 3) {
+        fieldErrors.name = t('Hospital/Facility Name must be at least 3 characters long');
+      }*/
       if (!medicalCenter.type) {
         fieldErrors.type = t('This field is Required');
       }
@@ -804,6 +806,23 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
   };
 
   const addMedicalCenter = () => {
+    // Validate existing medical centers before adding new one
+    const hasEmptyNames = medicalCenters.some(mc => !mc.name.trim());
+    const hasShortNames = medicalCenters.some(mc => mc.name.trim().length > 0 && mc.name.trim().length < 3);
+    
+    /*if (hasEmptyNames || hasShortNames) {
+      // Trigger validation to show errors for existing fields
+      validateForm();
+      // Scroll to the first error
+      setTimeout(() => {
+        const firstErrorField = document.querySelector('.Mui-error');
+        if (firstErrorField) {
+          firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return; // Don't add new medical center if validation fails
+    }*/
+
     setMedicalCenters([...medicalCenters, { name: '', type: 'hospital', address: '' }]);
     setErrors([...errors, {}]);
     
@@ -811,6 +830,17 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
     if (apiError) {
       setApiError('');
     }
+
+    // Scroll to the newly added medical center after a short delay
+    setTimeout(() => {
+      const lastMedicalCenter = document.querySelectorAll('.border-gray-200').length - 1;
+      if (lastMedicalCenter >= 0) {
+        const lastElement = document.querySelectorAll('.border-gray-200')[lastMedicalCenter];
+        if (lastElement) {
+          lastElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    }, 100);
   };
 
   const updateMedicalCenter = (index, field, value) => {
