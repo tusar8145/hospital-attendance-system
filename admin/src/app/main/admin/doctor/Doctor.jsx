@@ -680,6 +680,7 @@ const DoctorTable = (props) => {
                 checked={filterByMedicalCenter}
                 onChange={handleFilterByMedicalCenterChange}
                 color="primary"
+                disabled={!hospital?.id}
               />
             }
             label={t('Filter by Hospital/Facility')}

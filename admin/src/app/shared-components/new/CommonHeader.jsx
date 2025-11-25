@@ -1,7 +1,9 @@
-import { Button, Typography } from '@mui/material';
+import { Button, Typography, IconButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import { useTranslation } from 'react-i18next';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 
 const FilterButton = styled(Button)(({ theme, selected }) => ({
   backgroundColor: selected ? theme.palette.primary.main : 'transparent',
@@ -22,6 +24,10 @@ export const CommonHeader = ({
   createButtonText
 }) => {
   const { t } = useTranslation('shared-components');
+  const theme = useTheme();
+
+  // Detect mobile screen
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   return (
     <div className="p-24">
@@ -29,16 +35,36 @@ export const CommonHeader = ({
         <Typography variant="h4" className="font-bold">
           {t(title)}
         </Typography>
-        {createButtonText && <Button
-          color="primary"
-          onClick={onCreate}
-          startIcon={<AddIcon />}
-          variant="contained"
-        >
-          {t(createButtonText)}
-        </Button>}
+
+        {/* MOBILE => only show round plus icon */}
+        {isMobile ? (
+          <IconButton 
+            color="primary" 
+            onClick={onCreate}
+            sx={{ 
+              backgroundColor: theme.palette.primary.main, 
+              color: theme.palette.primary.contrastText,
+              '&:hover': { backgroundColor: theme.palette.primary.dark }
+            }}
+          >
+            <AddIcon />
+          </IconButton>
+        ) : (
+          // DESKTOP => full button with text
+          createButtonText && (
+            <Button
+              color="primary"
+              onClick={onCreate}
+              startIcon={<AddIcon />}
+              variant="contained"
+            >
+              {t(createButtonText)}
+            </Button>
+          )
+        )}
       </div>
-      <div className="flex gap-12 mt-16">
+
+      <div className="flex flex-wrap gap-12 mt-16">
         {filterOptions?.map((option) => (
           <FilterButton 
             key={option.value}

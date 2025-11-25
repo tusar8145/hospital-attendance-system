@@ -56,6 +56,17 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
 }));
 
 function MedicalCenter() {
+        const [message, setMessage] = useState("Waiting...");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMessage("State changed after 4 seconds!");
+    }, 2000);
+
+    // Cleanup to avoid memory leaks
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <MedicalCenterContent />

@@ -207,6 +207,7 @@ function StaffContent() {
 }
 
 // Staff Table Component
+// Staff Table Component
 const StaffTable = (props) => {
   const queryClient = useQueryClient();
   const { t } = useTranslation('shared-components');
@@ -236,6 +237,15 @@ const StaffTable = (props) => {
 
   // Get current user
   const currentUser = User();
+
+  // Auto-check filter when hospital.id exists, uncheck when it doesn't
+  useEffect(() => {
+    if (hospital?.id) {
+      setFilterByMedicalCenter(true);
+    } else {
+      setFilterByMedicalCenter(false);
+    }
+  }, [hospital?.id]);
 
   // Check if current user can perform actions on a staff member
   const canEditStaff = (staff) => {
@@ -520,7 +530,7 @@ const StaffTable = (props) => {
       f_columnFilters,
       globalFilter: globalFilter || "",
       f_globalFilters,
-hospitalFilter,
+      hospitalFilter,
       others: { 
         ...props.filter?.others,
          // Add hospital filter if applicable
@@ -727,6 +737,7 @@ hospitalFilter,
                 checked={filterByMedicalCenter}
                 onChange={handleFilterByMedicalCenterChange}
                 color="primary"
+                disabled={!hospital?.id} // Disable if no hospital.id
               />
             }
             label={t('Filter by Hospital/Facility')}
