@@ -65,512 +65,6 @@ model admins {
 }
  
 
-model hospitals {
-  id                           Int         @id @default(autoincrement())
-  logo                         String?
-  name                         String     
-  address                      String?   
-  created_by                   Int  
-  admin_id                     Int @unique          
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  primary_color String?
-  sub_color_1 String?
-  sub_color_2 String?
-
-
-  test test[] @relation("test")
-  dpc_generate dpc_generate[] @relation("hospital")
-  dpc_disease_classi dpc_disease_classi[] @relation("dpc_disease_classi")
-}
-
- 
-
-model injuries {
-  id                           Int         @id @default(autoincrement())
-  receipt                      Int         
-  icd                          String      
-  name                         String      @db.VarChar(300)
-  hospital_id                  Int?
-  parent_id                    Int?
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs injuries[] @relation("injuries")
-  parents injuries? @relation("injuries", fields: [parent_id], references: [id])
-}
-
-//     score   
-model medical_practices {
-  id                           Int         @id @default(autoincrement())
-  receipt                      Int         
-  name                         String      @db.VarChar(300)
-  class                        String
-  score                        Int      
-  hospital_id                  Int?
-  parent_id                    Int?
-treat_code String?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs medical_practices[] @relation("medical_practices")
-  parents medical_practices? @relation("medical_practices", fields: [parent_id], references: [id])
-}
-
-      
-model medicines {
-  id                           Int         @id @default(autoincrement())
-  receipt                      Int        
-  name                         String      @db.VarChar(300)
-  class                        String
-  unit                         String      
-  price                        Int
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs medicines[] @relation("medicines")
-  parents medicines? @relation("medicines", fields: [parent_id], references: [id])
-
-}
-
-  
-model medicinal_efficacy {
-  id                           Int         @id @default(autoincrement())
-  receipt                      Int         
-  name                         String       
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs medicinal_efficacy[] @relation("medicinal_efficacy")
-  parents medicinal_efficacy? @relation("medicinal_efficacy", fields: [parent_id], references: [id])
-}
-
-
-model icd_dpc {
-  id                           Int         @id @default(autoincrement())
-  receipt                      Int         
-  dpc                          String
-  name                         String
-  icd                          String
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-
-  childs icd_dpc[] @relation("icd_dpc")
- 
-  parents icd_dpc? @relation("icd_dpc", fields: [parent_id], references: [id])
-}
-
-model age_birth_weight {
-  id                           Int         @id @default(autoincrement())
-  receipt                      Int         
-  dpc                          String
-  name                         String
-  class                        Int
-  code                         String?
-  judge                        String?
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs age_birth_weight[] @relation("age_birth_weight")
-  parents age_birth_weight? @relation("age_birth_weight", fields: [parent_id], references: [id])
-}
-
-model surgery {
-  id                           Int         @id @default(autoincrement())
-  receipt                      Int         
-  dpc                          String
-  code                         String
-  k_code                       String
-  hospital_id                  Int?
-  parent_id                    Int?
-  name                         String
-  recept_main                 Int?
-
-  k_code_2                      String?
-  recept_main_2                 String?
-  k_code_3                      String?
-  recept_main_3                 String?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs surgery[] @relation("surgery")
-  parents surgery? @relation("surgery", fields: [parent_id], references: [id])
-}
-
-
-model treatment_1 {
-  id                           Int         @id @default(autoincrement())
-  
-  corres_code                  String
-  dpc_6digit                   String
-  name                         String
-  recept_main                 Int?
-  recept_main_2                 String?
-
-  receipt                      Int    
-  k_code                       String
-  k_code_2                     String?
-
-
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs treatment_1[] @relation("treatment_1")
-  parents treatment_1? @relation("treatment_1", fields: [parent_id], references: [id])
-}
-
-
-model treatment_2 {
-  id                           Int         @id @default(autoincrement())
-
-  corres_code                  String
-  dpc_6digit                   String
-  name                         String
-  recept_main                  String?
-  receipt                      Int       
-code  String?
-
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs treatment_2[] @relation("treatment_2")
-  parents treatment_2? @relation("treatment_2", fields: [parent_id], references: [id])
-}
-
-model secondary_injury {
-  id                           Int         @id @default(autoincrement())
-  corres_code                  String?
-  dpc                          String
-  disease_name                 String  
-  receipt                      Int         
-  drug_name                    String
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs secondary_injury[] @relation("secondary_injury")
-  parents secondary_injury? @relation("secondary_injury", fields: [parent_id], references: [id])
-}
-
-model days_score {
-  id                           Int         @id @default(autoincrement())
-  receipt                      String  
-  period_2                      String?  
-
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  hos_days_1  String?
-  hos_days_2  Int?
-  hos_days_3  Int?
-
-  hos_score_1  Int?
-  hos_score_2  Int?
-  hos_score_3  Int?
-
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs days_score[] @relation("days_score")
-  parents days_score? @relation("days_score", fields: [parent_id], references: [id])
-}
-
-
-model ccpm {
-  id                           Int         @id @default(autoincrement())
-  
-  dpc                          String
-  ccpm_group                   String
-  receipt                      Int         
-  hospital_id                  Int?
-  parent_id                    Int?
-
-  created_by                   Int            
-  created_at                   DateTime? @default(now()) 
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  childs ccpm[] @relation("ccpm")
-  parents ccpm? @relation("ccpm", fields: [parent_id], references: [id])
-}
-
-
-model dpc_generate {
-  id              Int         @id @default(autoincrement())      
-  hospital_id     Int
- 
-patient_code	  Int
-doctor			    String?
-receipt_obj		  String?
-items_obj 			String?
-amount_obj		  String?
-ward 			      String?
-icd_code 		    String
-admission_date 	String	
-admission_date_gap String
-discharge_date  String?	
-treatment_date 	String?	
-date_of_birth 	String?	
-
-
-
-dpc_6  String
-and_1  String?
-age_1  String?
-sur_2  String?
-tre1_1 String?
-tre2_1 String?
-sec_1  String?
-sco_1  String?
-
-s_dpc_6  String?
-s_and_1  String?
-s_age_1  String?
-s_sur_2  String?
-s_tre1_1 String?
-s_tre2_1 String?
-s_sec_1  String?
-s_sco_1  String?
-
-dpc_code String?
-
-hospitalization_days String?
-
-is_verified Int?  @default(0)
-verified_by Int?
-verified_at String?
-
-
-
-
-
-arr_doctor String? @db.Text
-arr_receipt String? @db.Text
-arr_date String? @db.Text
-arr_name String? @db.Text
-arr_amount String? @db.Text
-arr_dept String? @db.Text
-arr_disease String? @db.Text
-arr_color String? @db.Text
-
-arr_treno String? @db.Text
-arr_icd String? @db.Text
-arr_temp String? @db.Text
-
-  created_at                   DateTime? @default(now()) 
-  created_by                   Int            
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int? 
-
-  parent_id                    Int?
-  uid  BigInt @unique
-
-  childs dpc_generate[] @relation("dpc")
-  parents dpc_generate? @relation("dpc", fields: [parent_id], references: [id])
-
-  hospital hospitals? @relation("hospital", fields: [hospital_id], references: [id])
-
-  dpc_disease_classi dpc_disease_classi? @relation("icd_dpcx", fields: [dpc_6], references: [dpc_6]) 
-  dpc_disease_classi2 dpc_disease_classi? @relation("icd_dpcx2", fields: [s_dpc_6], references: [dpc_6]) 
-
-  temp_same_date Int?
-  temp_is_changed Int? @default(0)
-
-}
-
-
-
-
-
-model test {
-  id                       Int         @id @default(autoincrement())
-  a                        String
-  recept                   Int
-  parent_id                Int?
-  hospital_id              Int?   
-  hospital hospitals? @relation("test", fields: [hospital_id], references: [id])
-  test test[] @relation("test2")
-  parents test? @relation("test2", fields: [parent_id], references: [id])
-}
-
-
-
-
-model services_clients_issues {
-  id         Int     @id @default(autoincrement())
-  subject       String? 
-  issue  String? @db.MediumText()
-  reply  String? @db.MediumText()
-
-  link String?
-
-  is_delete Int?    @default(0)
-  is_seen                  Int?    @default(0)
-  is_solved                  Int?    @default(0)
-
-  access_users String? 
-
-  client_id                  Int? 
-  client_   admins?  @relation ("issue_client_", fields:[client_id], references:[id]) 
-
-  creator                      Int?
-  creator_   admins?  @relation ("issue_creator_", fields:[creator], references:[id]) 
-
-  reply_by                      Int?
-  reply_by_   admins?  @relation ("issue_reply_by_", fields:[reply_by], references:[id]) 
-
-
-
-  created                      String? @db.VarChar(40)
-  replied                      String? @db.VarChar(40)
-  status_date  String? @db.VarChar(40)
-
-
-  issues_reply services_clients_issues_reply[] @relation("issues_reply")
-}
- 
-
-
-model services_clients_issues_reply {
-  id         Int     @id @default(autoincrement())
-  user_id         Int
-  issue_user_id         Int
-  reply   String? @db.MediumText()
-  link String?
-  issue_id         Int
-  is_seen                    Int?    @default(0)
-  is_active                    Int?    @default(1)
-  created                      String? @db.VarChar(40)
-  modified                     String? @db.VarChar(40)
-  creator                      Int?
-  modifier                     Int?
-  issue   services_clients_issues  @relation ("issues_reply", fields:[issue_id], references:[id])
-  user_   admins?  @relation ("issue_user_", fields:[user_id], references:[id]) 
-}
-
-
-
- 
-
-
-model dpc_disease_classi {
-  id                       Int         @id @default(autoincrement())
-
-  dpc_6  String?    @unique 
-  and_1  String?
-  age_1  String?
-  sur_2  String?
-  tre1_1 String?
-  tre2_1 String?
-  sec_1  String?
-  sco_1  String?
-  codes String? @db.Text
-  receipt                   Int
-
-  parent_id                Int?
-  hospital_id              Int?   
-
-  created_at                   DateTime? @default(now()) 
-  created_by                   Int            
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int?
-
-  dpc_generate dpc_generate[] @relation("icd_dpcx")
-  dpc_generate2 dpc_generate[] @relation("icd_dpcx2")
-
-  hospital hospitals? @relation("dpc_disease_classi", fields: [hospital_id], references: [id])
-  childs dpc_disease_classi[] @relation("dpc_disease_classi2")
-  parents dpc_disease_classi? @relation("dpc_disease_classi2", fields: [parent_id], references: [id])
-}
-
-
-model secondary_injury_new {
-  id         Int         @id @default(autoincrement())
-
-  dpc_6  String?     
-  batch_code String?   @db.MediumText()
-  codes String?   @db.MediumText()
-  receipt                   Int
-
-  parent_id                Int?
-  hospital_id              Int?   
-
-  created_at                   DateTime? @default(now()) 
-  created_by                   Int            
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int?
-
-
-  //hospital hospitals? @relation("dpc_disease_classi", fields: [hospital_id], references: [id])
-  childs secondary_injury_new[] @relation("dpc_disease_classi2x")
-  parents secondary_injury_new? @relation("dpc_disease_classi2x", fields: [parent_id], references: [id])
-}
-
-
-
-model surgery_k {
-  id         Int         @id @default(autoincrement())
-
-  receipt  Int?     
-  name String?   
-  name_kana String?    
-  score    Int?
-  k_code    String?
-
-
-  created_at                   DateTime? @default(now()) 
-  created_by                   Int            
-  updated_at                   DateTime? @default(now()) 
-  updated_by                   Int?
-}
  
 /////////////////////////////
 // Enum for Medical Center Type
@@ -688,3 +182,59 @@ model doctor_department {
   created_admin admins? @relation("DoctorDepartmentCreatedBy", fields: [created_by], references: [id])
   updated_admin admins? @relation("DoctorDepartmentUpdatedBy", fields: [updated_by], references: [id])
 }
+
+
+
+model services_clients_issues {
+  id         Int     @id @default(autoincrement())
+  subject       String? 
+  issue  String? @db.MediumText()
+  reply  String? @db.MediumText()
+
+  link String?
+
+  is_delete Int?    @default(0)
+  is_seen                  Int?    @default(0)
+  is_solved                  Int?    @default(0)
+
+  access_users String? 
+
+  client_id                  Int? 
+  client_   admins?  @relation ("issue_client_", fields:[client_id], references:[id]) 
+
+  creator                      Int?
+  creator_   admins?  @relation ("issue_creator_", fields:[creator], references:[id]) 
+
+  reply_by                      Int?
+  reply_by_   admins?  @relation ("issue_reply_by_", fields:[reply_by], references:[id]) 
+
+
+
+  created                      String? @db.VarChar(40)
+  replied                      String? @db.VarChar(40)
+  status_date  String? @db.VarChar(40)
+
+
+  issues_reply services_clients_issues_reply[] @relation("issues_reply")
+}
+ 
+
+
+model services_clients_issues_reply {
+  id         Int     @id @default(autoincrement())
+  user_id         Int
+  issue_user_id         Int
+  reply   String? @db.MediumText()
+  link String?
+  issue_id         Int
+  is_seen                    Int?    @default(0)
+  is_active                    Int?    @default(1)
+  created                      String? @db.VarChar(40)
+  modified                     String? @db.VarChar(40)
+  creator                      Int?
+  modifier                     Int?
+  issue   services_clients_issues  @relation ("issues_reply", fields:[issue_id], references:[id])
+  user_   admins?  @relation ("issue_user_", fields:[user_id], references:[id]) 
+}
+
+ 
