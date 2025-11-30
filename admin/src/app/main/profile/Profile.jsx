@@ -1,244 +1,679 @@
-import Button from '@mui/material/Button';
-import _ from '@lodash';
-import { useEffect, useState } from 'react';
-import { lazy } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from 'app/store/hooks';
+import { showMessage } from '@fuse/core/FuseMessage/fuseMessageSlice';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '../../context/ThemeContext';
-import { styled } from '@mui/material/styles';
-import FusePageSimple from '@fuse/core/FusePageSimple';
+import {
+  Avatar,
+  IconButton,
+  Box,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Button,
+  Card,
+  CardContent,
+  Typography,
+  TextField,
+  Grid,
+  Paper,
+  Divider,
+  alpha,
+  useTheme
+} from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import LockIcon from '@mui/icons-material/Lock';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import PersonIcon from '@mui/icons-material/Person';
+import EmailIcon from '@mui/icons-material/Email';
+import PhoneIcon from '@mui/icons-material/Phone';
+import BadgeIcon from '@mui/icons-material/Badge';
+import SecurityIcon from '@mui/icons-material/Security';
 import axios from 'axios';
 import apiConfig from '../../configs/apiConfig';
-import Alert from '@mui/material/Alert';
-import {createdAt} from '../../helpers/timeHelpers';
-import {filterItemsEqual} from '../../helpers/commonHelpers';
-import SummaryWidget from '../../shared-components/card/SummaryWidget';
 import { motion } from 'framer-motion';
-import  User  from '../../auth/user/user';
-import { changeFuseTheme } from '@fuse/core/FuseSettings/fuseSettingsSlice';
-import { useAppDispatch } from 'app/store/hooks';
-import Avatar from '@mui/material/Avatar';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
-import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
-import useThemeMediaQuery from '@fuse/hooks/useThemeMediaQuery';
+import { selectUser } from '../../auth/user/store/userSlice';
 
-import AboutTab from './About';
-import PasswordTab from './Password';
-
-
-
-const Root = styled(FusePageSimple)(({ theme }) => ({
-	'& .FusePageSimple-header': {
-		backgroundColor: theme.palette.background.paper,
-		borderBottomWidth: 1,
-		borderStyle: 'solid',
-		borderColor: theme.palette.divider
-	},
-	'& .FusePageSimple-content': {},
-	'& .FusePageSimple-sidebarHeader': {},
-	'& .FusePageSimple-sidebarContent': {}
-}));
-
-
-
-
-
-
-
- 
 function Profile() {
-	let user=User()
- 
-	const [selectedTab, setSelectedTab] = useState(0);
-	const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down('lg'));
-
-	function handleTabChange(event, value) {
-		setSelectedTab(value);
-	}
-
-
-	const { t } = useTranslation('shared-components');
-	let tableName=''
-	let headingTitle='Profile'
+  const { t } = useTranslation('shared-components');
+  const dispatch = useAppDispatch();
+  const theme = useTheme();
+  const user = useAppSelector(selectUser);
   
- 
- 
+  // Refs
+  const profileFileInputRef = useRef(null);
+  
+  // States
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  
+  // Password states
+  const [formData, setFormData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  
+  const [errors, setErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
-	const [loading, setLoading] = useState(false);
- 
- 
-	const [successAlert, setSuccessAlert] = useState(null);
-	const [failAlert, setFailAlert] = useState(null);
- 
-	const { theme, toggleTheme } = useTheme();
-	const { hospital, toggleHospital } = useTheme();
-	
-	useEffect(() => {  toggleTheme(t(headingTitle))  }, [t(headingTitle)]);
+  // Get full image URL
+  const getImageUrl = (filename) => {
+    if (!filename) return '/assets/images/avatars/default.jpg';
+    if (filename.startsWith('http')) return filename;
+    return `${apiConfig.baseUrl}/uploads/${filename}`;
+  };
 
+  // Profile Image Functions
+  const handleProfileEditClick = () => {
+    setProfileDialogOpen(true);
+  };
 
-	const container = {
-		show: {
-			transition: {
-				staggerChildren: 0.04
-			}
-		}
-	};
-	const item = {
-		hidden: { opacity: 0, y: 20 },
-		show: { opacity: 1, y: 0 }
-	};
+  const handleProfileFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (!validateImageFile(file)) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewUrl(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-	const [countHospital, setCountHospital] = useState(0);
-	const [countAdmin, setCountAdmin] = useState(0);
-	const [countAssistant, setCountAssistant] = useState(0);
-	const [countStaff, setCountStaff] = useState(0);
+  const handleProfileUpload = async () => {
+    if (!profileFileInputRef.current?.files[0]) {
+      dispatch(showMessage({
+        message: t('Please select an image first'),
+        variant: 'warning',
+        autoHideDuration: 3000
+      }));
+      return;
+    }
 
-	const [count3rd, setCount3rd] = useState(0);
-	const [count7th, setCount7th] = useState(0);
-	const [countAll, setCountAll] = useState(0);
-	const [countDischarged, setCountDischarged] = useState(0);
-	const [countWithC, setCountWithC] = useState(0);
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('profileImage', profileFileInputRef.current.files[0]);
 
+    try {
+      const response = await axios.post(
+        `${apiConfig.hospitalStaffManageLogo}?id=${user.uid}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
 
-	async function dashboardCount(){
-		let data = await axios.post(apiConfig.countAdminGroup, {});
-		let getData=data.data.count
+      if (response.data.success) {
+        dispatch(showMessage({
+          message: t('Profile image updated successfully'),
+          variant: 'success',
+          autoHideDuration: 2000
+        }));
 
-		for(let x=0; x<getData.length; x++){
-			let this_=getData[x]
+        setProfileDialogOpen(false);
+        setPreviewUrl(null);
+        profileFileInputRef.current.value = '';
+        
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      dispatch(showMessage({
+        message: t(error.response?.data?.message || 'Failed to update profile image'),
+        variant: 'error',
+        autoHideDuration: 5000
+      }));
+    } finally {
+      setUploading(false);
+    }
+  };
 
-			if(this_.role=='admin'){setCountAdmin(this_._count.id)}
-			if(this_.role=='hospitalAssistant'){setCountAssistant(this_._count.id)}
-			if(this_.role=='staff'){setCountStaff(this_._count.id)}
- 	
-		}
+  // Common validation function
+  const validateImageFile = (file) => {
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      dispatch(showMessage({
+        message: t('Please select a valid image file (JPEG, PNG, GIF)'),
+        variant: 'error',
+        autoHideDuration: 3000
+      }));
+      return false;
+    }
 
+    if (file.size > 5 * 1024 * 1024) {
+      dispatch(showMessage({
+        message: t('Image size should be less than 5MB'),
+        variant: 'error',
+        autoHideDuration: 3000
+      }));
+      return false;
+    }
 
-		 data = await axios.post(apiConfig.countHospital, {});
-		 getData=data.data.count._count.id
-		 setCountHospital(getData)
-		  
-	}
+    return true;
+  };
 
-	async function dashboardPatientCount(hospital){
-		let data = await axios.post(apiConfig.PatientDashboardCount, {hospital_id:hospital.id});
-		let getData=data.data.data
- 
-		setCount3rd(getData.total_3_hospitalized_count)
-		setCount7th(getData.total_7_hospitalized_count)
-		setCountAll(getData.total_hospitalized_count)
-		setCountDischarged(getData.total_discharge_count)
- 
-	}
-	 
-	useEffect(() => {  
-		if(user?.role!='admin'){
-			dashboardPatientCount(hospital)
-		}else{
-			dashboardCount()
-		}
-	}, [user,hospital]);
+  // Password Functions
+  const handlePasswordChange = (field) => (event) => {
+    const value = event.target.value;
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
 
+  const validatePasswordForm = () => {
+    const newErrors = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    };
 
+    let isValid = true;
 
+    if (!formData.currentPassword.trim()) {
+      newErrors.currentPassword = t('This field is required');
+      isValid = false;
+    }
 
+    if (!formData.newPassword.trim()) {
+      newErrors.newPassword = t('This field is required');
+      isValid = false;
+    } else if (formData.newPassword.length < 6) {
+      newErrors.newPassword = t('Password must be at least 6 characters');
+      isValid = false;
+    }
 
+    if (!formData.confirmPassword.trim()) {
+      newErrors.confirmPassword = t('This field is required');
+      isValid = false;
+    } else if (formData.newPassword !== formData.confirmPassword) {
+      newErrors.confirmPassword = t('Passwords do not match');
+      isValid = false;
+    }
 
+    setErrors(newErrors);
+    return isValid;
+  };
 
-	return (
-		<Root
-			header={
-				<div className="flex flex-col w-full">
-					<img
-						className="h-160 lg:h-320 object-cover w-full"
-						src="assets/images/pages/profile/cover.jpg"
-						alt="Profile Cover"
-					/>
+  const handlePasswordSubmit = async (event) => {
+    event.preventDefault();
+    
+    if (!validatePasswordForm()) {
+      return;
+    }
 
-					<div className="flex flex-col flex-0 lg:flex-row items-center max-w-5xl w-full mx-auto px-32 lg:h-72">
-						<div className="-mt-96 lg:-mt-88 rounded-full">
-							<motion.div
-								initial={{ scale: 0 }}
-								animate={{ scale: 1, transition: { delay: 0.1 } }}
-							>
-								<Avatar
-									sx={{ borderColor: 'background.paper' }}
-									className="w-128 h-128 border-4"
-									src={user.data?.photoURL} 
-									alt="User avatar"
-								/>
-							</motion.div>
-						</div>
+    setUploading(true);
 
-						<div className="flex flex-col items-center lg:items-start mt-16 lg:mt-0 lg:ml-32">
-							<Typography className="text-lg font-bold leading-none">{user.data?.displayName}</Typography>
-							<Typography color="text.secondary">{user.role}</Typography>
-							
-						</div>
+    try {
+      const response = await axios.post(apiConfig.updatePassword, {
+        id: user.uid,
+        old_password: formData.currentPassword,
+        password: formData.newPassword
+      });
 
-						<div className="hidden lg:flex h-32 mx-32 border-l-2" />
+      dispatch(showMessage({
+        message: t(response.data.message),
+        autoHideDuration: 2000,
+        anchorOrigin: {
+          vertical: 'top',
+          horizontal: 'right'
+        },
+        variant: response.data.success === 'success' ? 'success' : 'error'
+      }));
 
-		 
+      if (response.data.success === 'success') {
+        setFormData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setErrors({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setPasswordDialogOpen(false);
+      }
+    } catch (error) {
+      console.error('Password update error:', error);
+      dispatch(showMessage({
+        message: t('An error occurred while updating password'),
+        autoHideDuration: 2000,
+        anchorOrigin: {
+          vertical: 'top',
+          horizontal: 'right'
+        },
+        variant: 'error'
+      }));
+    } finally {
+      setUploading(false);
+    }
+  };
 
-						<div className="flex flex-1 justify-end my-16 lg:my-0">
-							<Tabs
-								value={selectedTab}
-								onChange={handleTabChange}
-								indicatorColor="primary"
-								textColor="inherit"
-								variant="scrollable"
-								scrollButtons={false}
-								className="-mx-4 min-h-40"
-								classes={{ indicator: 'flex justify-center bg-transparent w-full h-full' }}
-								TabIndicatorProps={{
-									children: (
-										<Box
-											sx={{ bgcolor: 'text.disabled' }}
-											className="w-full h-full rounded-full opacity-20"
-										/>
-									)
-								}}
-							>
-					 
-								<Tab
-									className="text-14 font-semibold min-h-40 min-w-64 mx-4 px-12 "
-									disableRipple
-									label={t("About")}
-								/>
-								<Tab
-									className="text-14 font-semibold min-h-40 min-w-64 mx-4 px-12 "
-									disableRipple
-									label={t("Update Password")}
-								/>
-							</Tabs>
-						</div>
-					</div>
-				</div>
-			}
-			content={
-				<div className="flex flex-auto justify-center w-full max-w-5xl mx-auto p-24 sm:p-32">
- 
-{selectedTab==0?
-<>
- 
-<AboutTab /> 
- 
-</>:
-<>
-<PasswordTab/>
-</>}
+  // Dialog close handlers
+  const handleCloseProfileDialog = () => {
+    setProfileDialogOpen(false);
+    setPreviewUrl(null);
+    if (profileFileInputRef.current) {
+      profileFileInputRef.current.value = '';
+    }
+  };
 
+  const handleClosePasswordDialog = () => {
+    setPasswordDialogOpen(false);
+    setFormData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+    setErrors({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+  };
 
+  // Role translation mapping
+  const roleTranslations = {
+    'superAdmin': t('Super Admin'),
+    'admin': t('Admin'),
+    'manager': t('Manager'),
+    'staff': t('Staff'),
+    'user': t('User')
+  };
 
+  const getUserRoleText = (role) => {
+    return roleTranslations[role] || role;
+  };
 
-				 
-				</div>
-			}
-			scroll={isMobile ? 'normal' : 'page'}
-	/>
+  return (
+    <Box sx={{ flex: 1, p: 3 }}>
+      {/* Header Section - Clean Design */}
+      <Card
+        component={motion.div}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        sx={{ 
+          mb: 4, 
+          background: 'white',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+          border: `1px solid ${theme.palette.divider}`
+        }}
+      >
+        <CardContent sx={{ p: 4, position: 'relative' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Box sx={{ position: 'relative' }}>
+              <Avatar
+                src={previewUrl || getImageUrl(user?.data?.photoURL)}
+                sx={{
+                  width: 120,
+                  height: 120,
+                  border: `4px solid ${theme.palette.background.paper}`,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                }}
+              />
+              <IconButton
+                sx={{
+                  position: 'absolute',
+                  bottom: 4,
+                  right: 4,
+                  backgroundColor: theme.palette.primary.main,
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: theme.palette.primary.dark
+                  },
+                  width: 36,
+                  height: 36
+                }}
+                onClick={handleProfileEditClick}
+                size="small"
+              >
+                <PhotoCameraIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Box>
+            
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600, mb: 1, color: 'text.primary' }}>
+                {user?.data?.displayName || t('User Name')}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
+                <SecurityIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 500 }}>
+                  {getUserRoleText(user?.role)}
+                </Typography>
+              </Box>
+              <Typography variant="body1" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <EmailIcon sx={{ fontSize: 18 }} />
+                {user?.data?.email || t('No email provided')}
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
 
-	);
+      {/* Content Grid */}
+      <Grid container spacing={4}>
+        {/* Personal Information Card */}
+        <Grid item xs={12} md={8}>
+          <Card
+            component={motion.div}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            sx={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h5" gutterBottom sx={{ 
+                fontWeight: 600, 
+                mb: 4, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 2,
+                color: 'text.primary',
+                pb: 2,
+                borderBottom: `2px solid ${theme.palette.primary.main}`
+              }}>
+                <PersonIcon color="primary" />
+                {t('Personal Information')}
+              </Typography>
+              
+              <Grid container spacing={4}>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 2, bgcolor: 'grey.50' }}>
+                    <BadgeIcon color="primary" sx={{ mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        {t('User ID')}
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                        {user?.uid || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 2, bgcolor: 'grey.50' }}>
+                    <PersonIcon color="primary" sx={{ mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        {t('Full Name')}
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                        {user?.data?.displayName || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 2, bgcolor: 'grey.50' }}>
+                    <EmailIcon color="primary" sx={{ mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        {t('Email Address')}
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                        {user?.data?.email || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 2, bgcolor: 'grey.50' }}>
+                    <PhoneIcon color="primary" sx={{ mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        {t('Phone Number')}
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                        {user?.data?.phone || t('Not provided')}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 2, bgcolor: 'grey.50' }}>
+                    <SecurityIcon color="primary" sx={{ mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        {t('Role')}
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary', textTransform: 'capitalize' }}>
+                        {getUserRoleText(user?.role)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Actions Card */}
+        <Grid item xs={12} md={4}>
+          <Card
+            component={motion.div}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            sx={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ 
+                fontWeight: 600, 
+                mb: 3,
+                color: 'text.primary',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                {t('Quick Actions')}
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<PhotoCameraIcon />}
+                  onClick={handleProfileEditClick}
+                  fullWidth
+                  sx={{ 
+                    justifyContent: 'flex-start', 
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '1rem'
+                  }}
+                >
+                  {t('Change Profile Photo')}
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  startIcon={<LockIcon />}
+                  onClick={() => setPasswordDialogOpen(true)}
+                  fullWidth
+                  sx={{ 
+                    justifyContent: 'flex-start', 
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    borderColor: 'primary.main',
+                    color: 'primary.main',
+                    '&:hover': {
+                      borderColor: 'primary.dark',
+                      backgroundColor: 'primary.light'
+                    }
+                  }}
+                >
+                  {t('Change Password')}
+                </Button>
+              </Box>
+
+              <Divider sx={{ my: 4 }} />
+
+              <Box sx={{ textAlign: 'center', color: 'text.secondary', p: 2 }}>
+                <Typography variant="caption" display="block" gutterBottom>
+                  {t('Member since')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>
+                  {new Date().toLocaleDateString('ja-JP')}
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Profile Image Change Dialog */}
+      <Dialog open={profileDialogOpen} onClose={handleCloseProfileDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ pb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {t('Change Profile Image')}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, py: 2 }}>
+            <Avatar
+              src={previewUrl || getImageUrl(user?.data?.photoURL)}
+              sx={{ width: 150, height: 150 }}
+            />
+            
+            <Button
+              variant="outlined"
+              component="label"
+              disabled={uploading}
+              startIcon={<PhotoCameraIcon />}
+              sx={{ borderRadius: 2 }}
+            >
+              {t('Select Image')}
+              <input
+                type="file"
+                ref={profileFileInputRef}
+                onChange={handleProfileFileSelect}
+                accept="image/jpeg,image/jpg,image/png,image/gif"
+                hidden
+              />
+            </Button>
+            
+            <Box sx={{ textAlign: 'center', color: 'text.secondary' }}>
+              <Typography variant="caption" display="block">
+                {t('Supported formats: JPEG, PNG, GIF')}
+              </Typography>
+              <Typography variant="caption" display="block">
+                {t('Max file size: 1MB')}
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={handleCloseProfileDialog} disabled={uploading} sx={{ borderRadius: 2 }}>
+            {t('Cancel')}
+          </Button>
+          <Button 
+            onClick={handleProfileUpload} 
+            variant="contained" 
+            disabled={uploading || !profileFileInputRef.current?.files[0]}
+            startIcon={uploading ? <CircularProgress size={16} /> : null}
+            sx={{ borderRadius: 2 }}
+          >
+            {uploading ? t('Uploading...') : t('Update Image')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Password Change Dialog */}
+      <Dialog open={passwordDialogOpen} onClose={handleClosePasswordDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ pb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <LockIcon color="primary" />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {t('Change Password')}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <form onSubmit={handlePasswordSubmit}>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, py: 1 }}>
+              <TextField
+                fullWidth
+                type="password"
+                label={t("Current Password") + "*"}
+                value={formData.currentPassword}
+                onChange={handlePasswordChange('currentPassword')}
+                error={!!errors.currentPassword}
+                helperText={errors.currentPassword}
+                disabled={uploading}
+                sx={{ borderRadius: 2 }}
+              />
+              
+              <TextField
+                fullWidth
+                type="password"
+                label={t("New Password") + "*"}
+                value={formData.newPassword}
+                onChange={handlePasswordChange('newPassword')}
+                error={!!errors.newPassword}
+                helperText={errors.newPassword || t("Password must be at least 6 characters")}
+                disabled={uploading}
+                sx={{ borderRadius: 2 }}
+              />
+              
+              <TextField
+                fullWidth
+                type="password"
+                label={t("Confirm New Password") + "*"}
+                value={formData.confirmPassword}
+                onChange={handlePasswordChange('confirmPassword')}
+                error={!!errors.confirmPassword}
+                helperText={errors.confirmPassword}
+                disabled={uploading}
+                sx={{ borderRadius: 2 }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 0 }}>
+            <Button onClick={handleClosePasswordDialog} disabled={uploading} sx={{ borderRadius: 2 }}>
+              {t('Cancel')}
+            </Button>
+            <Button 
+              type="submit"
+              variant="contained" 
+              disabled={uploading}
+              startIcon={uploading ? <CircularProgress size={16} /> : null}
+              sx={{ borderRadius: 2 }}
+            >
+              {uploading ? t('Updating...') : t('Update Password')}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </Box>
+  );
 }
 
 export default Profile;

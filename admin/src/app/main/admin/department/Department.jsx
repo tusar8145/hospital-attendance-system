@@ -24,6 +24,11 @@ import {
   Menu,
   Chip,
   Typography,
+  Autocomplete,
+  Grid,
+  Checkbox,
+  FormControlLabel,
+  Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -163,6 +168,30 @@ const Table = (props) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
 
+  // Get hospital from theme context
+  const { hospital } = useTheme();
+
+  // Get current user
+  const currentUser = User();
+
+  // Fetch medical centers for dropdown - only active ones (status: 1)
+  const { data: medicalCentersData } = useQuery({
+    queryKey: ['medicalCenters'],
+    queryFn: async () => {
+      const response = await axios.post(apiConfig.medicalCenterList, {
+        page: 1,
+        perPage: 1000,
+        filter: {
+          f_columnFilters: { status: { equals: 1 } }, // Only active medical centers
+          globalFilter: "",
+          f_globalFilters: null,
+          others: {}
+        }
+      });
+      return response.data;
+    },
+  });
+
   const columns = useMemo(
     () => [
       {
@@ -211,6 +240,35 @@ const Table = (props) => {
               >
                 {cell.getValue()}
               </Box>
+            </Box>
+          );
+        },
+      },
+      {
+        accessorKey: 'medical_center.name',
+        header: t('Hospital/Facility'),
+        size: 200,
+        enableColumnFilter: true,
+        Cell: ({ row }) => {
+          const medicalCenter = row.original.medical_center;
+          const medicalCenterName = medicalCenter?.name || 'N/A';
+          const isMedicalCenterActive = medicalCenter?.status === 1;
+          
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2">
+                {medicalCenterName}
+              </Typography>
+              {!isMedicalCenterActive && (
+                <Tooltip title={t('Inactive Hospital/Facility')}>
+                  <Chip
+                    label={t('Inactive')}
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                  />
+                </Tooltip>
+              )}
             </Box>
           );
         },
@@ -287,28 +345,30 @@ const Table = (props) => {
     [validationErrors, t, pagination.pageIndex, pagination.pageSize]
   );
 
-  // Build filter payload based on your existing structure
+  // Build filter payload - Updated structure with hospital_id
   const buildFilterPayload = () => {
     let f_columnFilters = {};
     let f_globalFilters = null;
 
-    // Process column filters - only for Name
+    // Process column filters
     if (columnFilters.length > 0) {
       columnFilters.forEach(filter => {
-        // Only process filters for Name column
         if (filter.id === 'name' && filter.value && filter.value !== '') {
           f_columnFilters[filter.id] = { contains: filter.value };
+        } else if (filter.id === 'medical_center.name' && filter.value && filter.value !== '') {
+          f_columnFilters['medical_center'] = { name: { contains: filter.value } };
         }
       });
     }
 
-    // Process global filter - only search in Name
+    // Process global filter
     if (globalFilter) {
       const globalFilterConditions = [
-        { name: { contains: globalFilter } }
+        { name: { contains: globalFilter } },
+        { medical_center: { name: { contains: globalFilter } } }
       ].filter(condition => {
         const key = Object.keys(condition)[0];
-        return !f_columnFilters[key]; // Only add if not already in column filters
+        return !f_columnFilters[key];
       });
 
       if (globalFilterConditions.length > 0) {
@@ -316,16 +376,20 @@ const Table = (props) => {
       }
     }
 
+    // Add hospital_id to the main filter object when hospital is selected
+    const hospital_id = hospital?.id || null;
+
     return {
       f_columnFilters,
       globalFilter: globalFilter || "",
       f_globalFilters,
-      others: props.filter?.others || {}
+      others: props.filter?.others || null,
+      hospital_id // Add hospital_id at the root level of filter
     };
   };
 
   const { data: { data: tableData = [], pagination: serverPagination = {} } = {}, isError, isFetching, isLoading, error, refetch } = useQuery({
-    queryKey: ['departments', pagination.pageIndex, pagination.pageSize, columnFilters, globalFilter, sorting, props.filter],
+    queryKey: ['departments', pagination.pageIndex, pagination.pageSize, columnFilters, globalFilter, sorting, props.filter, hospital?.id],
     queryFn: async () => {
       const filterPayload = buildFilterPayload();
       
@@ -443,8 +507,8 @@ const Table = (props) => {
 
   const handleCreateDepartments = (departments) => {
     if (Array.isArray(departments)) {
-      const createPromises = departments.map(department => 
-        createMutation.mutateAsync(department)
+      const createPromises = departments.map(async department => 
+        await createMutation.mutateAsync(department)
       );
       
       Promise.all(createPromises)
@@ -509,7 +573,7 @@ const Table = (props) => {
     enableEditing: false,
     enableRowActions: false,
     enableColumnFilters: true,
-    enableGlobalFilter: false,
+    enableGlobalFilter: true,
     enableFullScreenToggle: false,
     enableMultiRowSelection: false,
     manualFiltering: true,
@@ -599,6 +663,8 @@ const Table = (props) => {
         onSubmit={handleCreateDepartments}
         isLoading={createMutation.isLoading}
         mutationError={createMutation.error}
+        medicalCenters={medicalCentersData?.data || []}
+        hospital={hospital}
         key={props.createModalOpen ? 'create-modal-open' : 'create-modal-closed'} // Force re-render
       />
 
@@ -610,30 +676,37 @@ const Table = (props) => {
         department={selectedDepartment}
         isLoading={updateMutation.isLoading}
         mutationError={updateMutation.error}
+        medicalCenters={medicalCentersData?.data || []}
       />
     </div>
   );
 };
 
 // Create Department Modal Component
-// Create Department Modal Component
-const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationError }) => {
+const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, hospital }) => {
   const { t } = useTranslation('shared-components');
-  const [departments, setDepartments] = useState([{ name: '' }]);
+  const [departments, setDepartments] = useState([{ name: '', medical_center_id: '' }]);
   const [errors, setErrors] = useState([]);
   const [duplicateErrors, setDuplicateErrors] = useState({});
   const [apiError, setApiError] = useState('');
+  const [lastSelectedHospital, setLastSelectedHospital] = useState('');
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
-      // Reset form when modal opens
-      setDepartments([{ name: '' }]);
+      // Auto-select hospital if hospital exists
+      const initialMedicalCenterId = hospital?.id || '';
+      
+      setDepartments([{ 
+        name: '', 
+        medical_center_id: initialMedicalCenterId 
+      }]);
       setErrors([]);
       setDuplicateErrors({});
       setApiError('');
+      setLastSelectedHospital(initialMedicalCenterId);
     }
-  }, [open]);
+  }, [open, hospital]);
 
   // Handle mutation errors
   useEffect(() => {
@@ -641,8 +714,8 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       const errorMessage = mutationError.response?.data?.message || t('Error creating department');
       
       // Handle unique constraint error specifically
-      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('department_name_key')) {
-        setApiError(t('Department name already exists'));
+      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('department_name_medical_center_id_key')) {
+        setApiError(t('Department name already exists in this hospital/facility'));
       } else {
         setApiError(errorMessage);
       }
@@ -657,6 +730,9 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       if (!department.name.trim()) {
         fieldErrors.name = t('This field is Required');
       }
+      if (!department.medical_center_id) {
+        fieldErrors.medical_center_id = t('This field is Required');
+      }
       return fieldErrors;
     });
 
@@ -669,20 +745,21 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
     const newDuplicateErrors = {};
     
     departments.forEach((department, index) => {
-      if (department.name.trim()) {
+      if (department.name.trim() && department.medical_center_id) {
         const normalizedName = department.name.trim().toLowerCase();
-        if (!nameCount[normalizedName]) {
-          nameCount[normalizedName] = [];
+        const key = `${normalizedName}_${department.medical_center_id}`;
+        if (!nameCount[key]) {
+          nameCount[key] = [];
         }
-        nameCount[normalizedName].push(index);
+        nameCount[key].push(index);
       }
     });
 
     // Mark duplicates
-    Object.keys(nameCount).forEach(name => {
-      if (nameCount[name].length > 1) {
-        nameCount[name].forEach(index => {
-          newDuplicateErrors[index] = t('Duplicate department name in this form');
+    Object.keys(nameCount).forEach(key => {
+      if (nameCount[key].length > 1) {
+        nameCount[key].forEach(index => {
+          newDuplicateErrors[index] = t('Duplicate department name in this hospital/facility');
         });
       }
     });
@@ -703,7 +780,9 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       return;
     }
 
-    const validDepartments = departments.filter(dept => dept.name.trim() !== '');
+    const validDepartments = departments.filter(dept => 
+      dept.name.trim() !== '' && dept.medical_center_id !== ''
+    );
     
     if (validDepartments.length === 0) {
       return;
@@ -713,7 +792,11 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
   };
 
   const addDepartment = () => {
-    setDepartments([...departments, { name: '' }]);
+    const newDepartment = { 
+      name: '', 
+      medical_center_id: lastSelectedHospital || '' 
+    };
+    setDepartments([...departments, newDepartment]);
     setErrors([...errors, {}]);
     
     // Scroll to bottom after adding new department
@@ -729,6 +812,11 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
     const updated = [...departments];
     updated[index][field] = value;
     setDepartments(updated);
+
+    // Update last selected hospital when hospital is selected
+    if (field === 'medical_center_id' && value) {
+      setLastSelectedHospital(value);
+    }
 
     // Clear errors when user types
     if (errors[index]?.[field]) {
@@ -770,10 +858,11 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
 
   const handleClose = () => {
     // Reset form when closing
-    setDepartments([{ name: '' }]);
+    setDepartments([{ name: '', medical_center_id: '' }]);
     setErrors([]);
     setDuplicateErrors({});
     setApiError('');
+    setLastSelectedHospital('');
     onClose();
   };
 
@@ -782,29 +871,60 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       {departments.map((department, index) => (
         <div
           key={index}
-          className="flex gap-14 border border-gray-200 p-6 rounded-lg items-start relative bg-gray-50"
+          className="flex mt-20 mb-10 flex-col gap-4 border border-gray-200 p-6 rounded-lg relative bg-gray-50"
         >
-          {/* Department Name */}
-          <div className="flex flex-col gap-1 flex-[2] min-w-[300px]">
-            <Typography variant="subtitle1" className="font-medium">
-              {t('Clinical Department')} *
-            </Typography>
-            <TextField
-              value={department.name}
-              onChange={(e) =>
-                updateDepartment(index, 'name', e.target.value)
-              }
-              fullWidth
-              error={!!errors[index]?.name || !!duplicateErrors[index]}
-              helperText={errors[index]?.name || duplicateErrors[index]}
-              placeholder={t('Enter department name')}
-              disabled={isLoading}
-            />
-          </div>
+          {/* Department Name and Hospital/Facility in same row */}
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <div className="flex flex-col gap-1">
+                <Typography variant="subtitle1" className="font-medium">
+                  {t('Clinical Department')} *
+                </Typography>
+                <TextField
+                  value={department.name}
+                  onChange={(e) => updateDepartment(index, 'name', e.target.value)}
+                  fullWidth
+                  error={!!errors[index]?.name || !!duplicateErrors[index]}
+                  helperText={errors[index]?.name || duplicateErrors[index]}
+                  placeholder={t('Enter department name')}
+                  disabled={isLoading}
+                />
+              </div>
+            </Grid>
+            <Grid item xs={6}>
+              <div className="flex flex-col gap-1">
+                <Typography variant="subtitle1" className="font-medium">
+                  {t('Hospital/Facility')} *
+                </Typography>
+                <FormControl fullWidth error={!!errors[index]?.medical_center_id}>
+                  <Select
+                    value={department.medical_center_id}
+                    onChange={(e) => updateDepartment(index, 'medical_center_id', e.target.value)}
+                    displayEmpty
+                    disabled={isLoading}
+                  >
+                    <MenuItem value="">
+                      <em>{t('Select hospital/facility')}</em>
+                    </MenuItem>
+                    {medicalCenters.map((center) => (
+                      <MenuItem key={center.id} value={center.id}>
+                        {center.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errors[index]?.medical_center_id && (
+                    <Typography variant="caption" color="error">
+                      {errors[index]?.medical_center_id}
+                    </Typography>
+                  )}
+                </FormControl>
+              </div>
+            </Grid>
+          </Grid>
 
           {departments.length > 1 && (
             <IconButton
-              className="absolute top-0 right-0 mt-1"
+              className="absolute top-2 right-2"
               onClick={() => removeDepartment(index)}
               color="error"
               size="small"
@@ -816,12 +936,12 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
         </div>
       ))}
 
-      {/* API Error Alert - Moved to bottom */}
+      {/* API Error Alert */}
       {apiError && (
         <Alert 
           severity="error" 
           sx={{ 
-            px: 0, // Remove horizontal padding
+            px: 0,
           }}
         >
           {apiError}
@@ -866,7 +986,7 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       title={`Create Department${departments.length > 1 ? 's' : ''}`}
       actions={dialogActions}
       disabled={isLoading}
-      maxWidth='xs'
+      maxWidth='md'
     >
       {dialogContent}
     </CommonDialog>
@@ -874,16 +994,17 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
 };
 
 // Edit Department Modal Component
-const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, mutationError }) => {
+const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, mutationError, medicalCenters }) => {
   const { t } = useTranslation('shared-components');
-  const [formData, setFormData] = useState({ name: '' });
+  const [formData, setFormData] = useState({ name: '', medical_center_id: '' });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
 
   useEffect(() => {
     if (department && open) {
       setFormData({
-        name: department.name || ''
+        name: department.name || '',
+        medical_center_id: department.medical_center_id || ''
       });
       setApiError('');
     }
@@ -895,8 +1016,8 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
       const errorMessage = mutationError.response?.data?.message || t('Error updating department');
       
       // Handle unique constraint error specifically
-      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('department_name_key')) {
-        setApiError(t('Department name already exists'));
+      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('department_name_medical_center_id_key')) {
+        setApiError(t('Department name already exists in this hospital/facility'));
       } else {
         setApiError(errorMessage);
       }
@@ -909,6 +1030,9 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
     const newErrors = {};
     if (!formData.name.trim()) {
       newErrors.name = t('This field is Required');
+    }
+    if (!formData.medical_center_id) {
+      newErrors.medical_center_id = t('This field is Required');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -938,7 +1062,7 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
 
   const handleClose = () => {
     // Reset form when closing
-    setFormData({ name: '' });
+    setFormData({ name: '', medical_center_id: '' });
     setErrors({});
     setApiError('');
     onClose();
@@ -947,29 +1071,62 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
   if (!department) return null;
 
   const dialogContent = (
-    <div className="flex flex-col gap-4">
-      {/* Name */}
-      <div className="flex flex-col gap-2">
-        <Typography variant="subtitle1" className="font-medium">
-          {t('Clinical Department')} *
-        </Typography>
-        <TextField
-          value={formData.name}
-          onChange={(e) => handleChange('name', e.target.value)}
-          fullWidth
-          error={!!errors.name}
-          helperText={errors.name}
-          placeholder={t('Enter department name')}
-          disabled={isLoading}
-        />
-      </div>
+    <div className="flex flex-col gap-4 mt-20">
+      {/* Department Name and Hospital/Facility in same row */}
+      <Grid container spacing={2}>
+        <Grid item xs={6}>
+          <div className="flex flex-col gap-2">
+            <Typography variant="subtitle1" className="font-medium">
+              {t('Clinical Department')} *
+            </Typography>
+            <TextField
+              value={formData.name}
+              onChange={(e) => handleChange('name', e.target.value)}
+              fullWidth
+              error={!!errors.name}
+              helperText={errors.name}
+              placeholder={t('Enter department name')}
+              disabled={isLoading}
+            />
+          </div>
+        </Grid>
+        <Grid item xs={6}>
+          <div className="flex flex-col gap-2">
+            <Typography variant="subtitle1" className="font-medium">
+              {t('Hospital/Facility')} *
+            </Typography>
+            <FormControl fullWidth error={!!errors.medical_center_id}>
+              <Select
+                value={formData.medical_center_id}
+                onChange={(e) => handleChange('medical_center_id', e.target.value)}
+                displayEmpty
+                disabled={isLoading}
+              >
+                <MenuItem value="">
+                  <em>{t('Select hospital/facility')}</em>
+                </MenuItem>
+                {medicalCenters.map((center) => (
+                  <MenuItem key={center.id} value={center.id}>
+                    {center.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.medical_center_id && (
+                <Typography variant="caption" color="error">
+                  {errors.medical_center_id}
+                </Typography>
+              )}
+            </FormControl>
+          </div>
+        </Grid>
+      </Grid>
 
-      {/* API Error Alert - Moved to bottom */}
+      {/* API Error Alert */}
       {apiError && (
         <Alert 
           severity="error" 
           sx={{             
-            px: 0, // Remove horizontal padding
+            px: 0,
           }}
         >
           {apiError}
@@ -1000,7 +1157,7 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
       open={open}
       onClose={handleClose}
       title="Edit Department"
-      maxWidth="sm"
+      maxWidth="md"
       contentPadding={{ px: 4, py: 0 }}
       actions={dialogActions}
       disabled={isLoading}

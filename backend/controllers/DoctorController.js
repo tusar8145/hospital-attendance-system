@@ -4,20 +4,61 @@ import * as response from "../helpers/Response.js";
 
 const prisma = new PrismaClient();
 
+// Helper function to determine medical_center filter based on user role
+async function getMedicalCenterFilter(user) {
+  if (!user) {
+    return null; // No user, no filtering
+  }
+
+  // Admin and superAdmin can see all medical centers
+  if (user.role === 'admin' || user.role === 'superAdmin') {
+    return null; // No filtering for admins
+  }
+
+  // For other roles (hospitalAssistant, staff, operator), get assigned medical centers
+  const adminMedicalCenters = await prisma.admin_medical_center.findMany({
+    where: {
+      admin_id: user.id
+    },
+    select: {
+      medical_center_id: true
+    }
+  });
+
+  const medicalCenterIds = adminMedicalCenters.map(amc => amc.medical_center_id);
+
+  if (medicalCenterIds.length > 0) {
+    return { in: medicalCenterIds };
+  } else {
+    // If no medical centers assigned, return empty result
+    return -1;
+  }
+}
+
 export const doctor_list = async (req, res, next) => {
   try {
     const { page = 1, perPage = 10, sortBy = 'id', sortType = 'asc', filter = {} } = req.body;
     
     const { f_columnFilters = {}, globalFilter = '', f_globalFilters = {}, others = {}, hospital_id } = filter;
 
+    // Get user from request
+    const user = req.user;
+
     // Build where clause
     let where = {
       ...others
     };
 
-    // Apply hospital_id filter if provided
+    // Handle medical_center_id filtering based on user role and permissions
     if (hospital_id) {
+      // If hospital_id is explicitly provided in filter, use it
       where.medical_center_id = parseInt(hospital_id);
+    } else {
+      // Determine medical_center_id filtering based on user role
+      const medicalCenterFilter = await getMedicalCenterFilter(user);
+      if (medicalCenterFilter) {
+        where.medical_center_id = medicalCenterFilter;
+      }
     }
 
     // Apply column filters

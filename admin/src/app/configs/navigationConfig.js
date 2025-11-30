@@ -46,7 +46,7 @@ const navigationConfig = [
 	translate: 'Department',
 	type: 'item',
 	icon: 'work',
-	auth: authRoles.admin,
+	auth: authRoles.admin_hospitalAssistant_staff,
 	url: 'department'
 },
 {

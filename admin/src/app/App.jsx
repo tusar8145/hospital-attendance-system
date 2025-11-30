@@ -12,16 +12,22 @@ import { useAppSelector } from 'app/store/hooks';
 import { useSelector } from 'react-redux';
 import withAppProviders from './withAppProviders';
 import AuthenticationProvider from './auth/AuthenticationProvider';
-
 import CommonTheme from './shared-components/CommonTheme';
 
-// import axios from 'axios';
-/**
- * Axios HTTP Request defaults
- */
-// axios.defaults.baseURL = "";
-// axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
-// axios.defaults.headers.common['Content-Type'] = 'application/x-www-form-urlencoded';
+// Import QueryClientProvider
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
+
 const emotionCacheOptions = {
 	rtl: {
 		key: 'muirtl',
@@ -47,31 +53,34 @@ function App() {
 	 * The main theme from the Redux store.
 	 */
 	const mainTheme = useSelector(selectMainTheme);
+	
 	return (
-		<MockAdapterProvider>
-			<CacheProvider value={createCache(emotionCacheOptions[langDirection])}>
-				<FuseTheme
-					theme={mainTheme}
-					direction={langDirection}
-				>
-					<AuthenticationProvider>
-						<SnackbarProvider
-							maxSnack={5}
-							anchorOrigin={{
-								vertical: 'bottom',
-								horizontal: 'right'
-							}}
-							classes={{
-								containerRoot: 'bottom-0 right-0 mb-52 md:mb-68 mr-8 lg:mr-80 z-99'
-							}}
-						>
-							<FuseLayout layouts={themeLayouts} />
-							<CommonTheme/>
-						</SnackbarProvider>
-					</AuthenticationProvider>
-				</FuseTheme>
-			</CacheProvider>
-		</MockAdapterProvider>
+		<QueryClientProvider client={queryClient}>
+			<MockAdapterProvider>
+				<CacheProvider value={createCache(emotionCacheOptions[langDirection])}>
+					<FuseTheme
+						theme={mainTheme}
+						direction={langDirection}
+					>
+						<AuthenticationProvider>
+							<SnackbarProvider
+								maxSnack={5}
+								anchorOrigin={{
+									vertical: 'bottom',
+									horizontal: 'right'
+								}}
+								classes={{
+									containerRoot: 'bottom-0 right-0 mb-52 md:mb-68 mr-8 lg:mr-80 z-99'
+								}}
+							>
+								<FuseLayout layouts={themeLayouts} />
+								<CommonTheme/>
+							</SnackbarProvider>
+						</AuthenticationProvider>
+					</FuseTheme>
+				</CacheProvider>
+			</MockAdapterProvider>
+		</QueryClientProvider>
 	);
 }
 

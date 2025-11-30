@@ -728,22 +728,7 @@ const StaffTable = (props) => {
 
   return (
     <div className="w-full">
-      {/* Medical Center Filter Checkbox */}
-      {canSeeMedicalCenterFilter && (
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={filterByMedicalCenter}
-                onChange={handleFilterByMedicalCenterChange}
-                color="primary"
-                disabled={!hospital?.id} // Disable if no hospital.id
-              />
-            }
-            label={t('Filter by Hospital/Facility')}
-          />
-        </Box>
-      )}
+
 
       <MaterialReactTable table={table} />
 

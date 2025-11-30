@@ -27,8 +27,6 @@ import {
   Typography,
   Autocomplete,
   Grid,
-  Checkbox,
-  FormControlLabel,
   Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
@@ -160,8 +158,7 @@ const DoctorTable = (props) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
 
-  // New state for medical center filter
-  const [filterByMedicalCenter, setFilterByMedicalCenter] = useState(false);
+  // Get hospital from theme context
   const { hospital } = useTheme();
 
   // Get current user
@@ -185,7 +182,7 @@ const DoctorTable = (props) => {
     },
   });
 
-  // Fetch departments for dropdown - only active ones (status: 1)
+  // Fetch departments for dropdown - only active ones (status: 1) - without hospital filter for initial load
   const { data: departmentsData } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
@@ -413,20 +410,20 @@ const DoctorTable = (props) => {
       }
     }
 
-    // Add hospital_id to the main filter object, not inside others
-    const hospital_id = filterByMedicalCenter && hospital?.id ? hospital.id : null;
+    // Add hospital_id to the main filter object automatically when hospital is selected
+    const hospital_id = hospital?.id || null;
 
     return {
       f_columnFilters,
       globalFilter: globalFilter || "",
       f_globalFilters,
       others: props.filter?.others || null,
-      hospital_id // Add hospital_id at the root level of filter
+      hospital_id // Add hospital_id at the root level of filter automatically
     };
   };
 
   const { data: { data: tableData = [], pagination: serverPagination = {} } = {}, isError, isFetching, isLoading, error, refetch } = useQuery({
-    queryKey: ['doctors', pagination.pageIndex, pagination.pageSize, columnFilters, globalFilter, sorting, props.filter, filterByMedicalCenter, hospital?.id],
+    queryKey: ['doctors', pagination.pageIndex, pagination.pageSize, columnFilters, globalFilter, sorting, props.filter, hospital?.id],
     queryFn: async () => {
       const filterPayload = buildFilterPayload();
       
@@ -556,8 +553,8 @@ const DoctorTable = (props) => {
 
   const handleCreateDoctors = (doctors) => {
     if (Array.isArray(doctors)) {
-      const createPromises = doctors.map(doctor => 
-        createMutation.mutateAsync(doctor)
+      const createPromises = doctors.map(async doctor => 
+        await createMutation.mutateAsync(doctor)
       );
       
       Promise.all(createPromises)
@@ -625,20 +622,6 @@ const DoctorTable = (props) => {
     setSelectedRow(null);
   };
 
-  const handleFilterByMedicalCenterChange = (event) => {
-    setFilterByMedicalCenter(event.target.checked);
-  };
-
-  // Auto-check filter when hospital is selected and hospital_id is present
-  useEffect(() => {
-    if (hospital?.id) {
-      setFilterByMedicalCenter(true);
-    }
-  }, [hospital?.id]);
-
-  // Check if user can see the medical center filter
-  const canSeeMedicalCenterFilter = ['superAdmin', 'admin'].includes(currentUser?.role);
-
   const table = useMaterialReactTable({
     columns,
     data: tableData || [],
@@ -671,23 +654,6 @@ const DoctorTable = (props) => {
 
   return (
     <div className="w-full">
-      {/* Medical Center Filter Checkbox */}
-      {canSeeMedicalCenterFilter && (
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={filterByMedicalCenter}
-                onChange={handleFilterByMedicalCenterChange}
-                color="primary"
-                disabled={!hospital?.id}
-              />
-            }
-            label={t('Filter by Hospital/Facility')}
-          />
-        </Box>
-      )}
-
       <MaterialReactTable table={table} />
 
       {/* Actions Menu */}
@@ -763,7 +729,6 @@ const DoctorTable = (props) => {
         mutationError={createMutation.error}
         medicalCenters={medicalCentersData?.data || []}
         departments={departmentsData?.data || []}
-        filterByMedicalCenter={filterByMedicalCenter}
         hospital={hospital}
         key={props.createModalOpen ? 'create-modal-open' : 'create-modal-closed'}
       />
@@ -777,6 +742,7 @@ const DoctorTable = (props) => {
         isLoading={updateMutation.isLoading}
         mutationError={updateMutation.error}
         medicalCenters={medicalCentersData?.data || []}
+        departments={departmentsData?.data || []}
       />
 
       {/* Assign Departments Modal */}
@@ -794,17 +760,28 @@ const DoctorTable = (props) => {
 };
 
 // Create Doctor Modal Component
-const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, departments, filterByMedicalCenter, hospital }) => {
+const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, departments, hospital }) => {
   const { t } = useTranslation('shared-components');
   const [doctors, setDoctors] = useState([{ name: '', license_no: '', medical_center_id: '', department_ids: [] }]);
   const [errors, setErrors] = useState([]);
   const [apiError, setApiError] = useState('');
   const [lastSelectedHospital, setLastSelectedHospital] = useState('');
+  const [filteredDepartments, setFilteredDepartments] = useState([]);
+
+  // Filter departments based on selected medical center
+  const filterDepartmentsByMedicalCenter = (medicalCenterId) => {
+    if (!medicalCenterId) {
+      setFilteredDepartments(departments);
+      return;
+    }
+    const filtered = departments.filter(dept => dept.medical_center_id === parseInt(medicalCenterId));
+    setFilteredDepartments(filtered);
+  };
 
   useEffect(() => {
     if (open) {
-      // Auto-select hospital if filter is active and hospital exists
-      const initialMedicalCenterId = filterByMedicalCenter && hospital?.id ? hospital.id : '';
+      // Auto-select hospital if hospital exists
+      const initialMedicalCenterId = hospital?.id || '';
       
       setDoctors([{ 
         name: '', 
@@ -815,8 +792,9 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       setErrors([]);
       setApiError('');
       setLastSelectedHospital(initialMedicalCenterId);
+      filterDepartmentsByMedicalCenter(initialMedicalCenterId);
     }
-  }, [open, filterByMedicalCenter, hospital]);
+  }, [open, hospital, departments]);
 
   useEffect(() => {
     if (mutationError) {
@@ -839,13 +817,13 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       const fieldErrors = {};
       if (!doctor.name.trim()) {
         fieldErrors.name = t('This field is Required');
-      } else if (doctor.name.trim().length < 3) {
-        fieldErrors.name = t('Name must be at least 3 characters');
+      } else if (doctor.name.trim().length < 1) {
+        fieldErrors.name = t('Name must be at least 1 characters');
       }
       if (!doctor.license_no.trim()) {
         fieldErrors.license_no = t('This field is Required');
-      } else if (doctor.license_no.trim().length < 3) {
-        fieldErrors.license_no = t('Last name must be at least 3 characters');
+      } else if (doctor.license_no.trim().length < 1) {
+        fieldErrors.license_no = t('Last name must be at least 1 characters');
       }
       if (!doctor.medical_center_id) {
         fieldErrors.medical_center_id = t('This field is Required');
@@ -901,9 +879,15 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     updated[index][field] = value;
     setDoctors(updated);
 
-    // Update last selected hospital when hospital is selected
-    if (field === 'medical_center_id' && value) {
+    // Update last selected hospital when hospital is selected and filter departments
+    if (field === 'medical_center_id') {
       setLastSelectedHospital(value);
+      filterDepartmentsByMedicalCenter(value);
+      
+      // Clear department selections when hospital changes
+      if (value !== updated[index].medical_center_id) {
+        updated[index].department_ids = [];
+      }
     }
 
     if (errors[index]?.[field]) {
@@ -929,6 +913,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     setErrors([]);
     setApiError('');
     setLastSelectedHospital('');
+    setFilteredDepartments([]);
     onClose();
   };
 
@@ -1013,9 +998,9 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                 </Typography>
                 <Autocomplete
                   multiple
-                  options={departments}
+                  options={filteredDepartments}
                   getOptionLabel={(option) => option.name}
-                  value={departments.filter(dept => doctor.department_ids.includes(dept.id))}
+                  value={filteredDepartments.filter(dept => doctor.department_ids.includes(dept.id))}
                   onChange={(event, newValue) => {
                     updateDoctor(index, 'department_ids', newValue.map(dept => dept.id));
                   }}
@@ -1023,7 +1008,12 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      placeholder={t('Select clinical departments')}
+                      placeholder={
+                        doctor.medical_center_id 
+                          ? t('Select clinical departments') 
+                          : t('Select hospital/facility first')
+                      }
+                      disabled={!doctor.medical_center_id || isLoading}
                     />
                   )}
                   renderTags={(value, getTagProps) =>
@@ -1035,8 +1025,13 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                       />
                     ))
                   }
-                  disabled={isLoading}
+                  disabled={!doctor.medical_center_id || isLoading}
                 />
+                {!doctor.medical_center_id && (
+                  <Typography variant="caption" color="text.secondary">
+                    {t('Please select a hospital/facility first')}
+                  </Typography>
+                )}
               </div>
             </Grid>
           </Grid>
@@ -1106,22 +1101,36 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
 };
 
 // Edit Doctor Modal Component
-const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationError, medicalCenters }) => {
+const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationError, medicalCenters, departments }) => {
   const { t } = useTranslation('shared-components');
-  const [formData, setFormData] = useState({ name: '', license_no: '', medical_center_id: '' });
+  const [formData, setFormData] = useState({ name: '', license_no: '', medical_center_id: '', department_ids: [] });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
+  const [filteredDepartments, setFilteredDepartments] = useState([]);
+
+  // Filter departments based on selected medical center
+  const filterDepartmentsByMedicalCenter = (medicalCenterId) => {
+    if (!medicalCenterId) {
+      setFilteredDepartments(departments);
+      return;
+    }
+    const filtered = departments.filter(dept => dept.medical_center_id === parseInt(medicalCenterId));
+    setFilteredDepartments(filtered);
+  };
 
   useEffect(() => {
     if (doctor && open) {
-      setFormData({
+      const initialData = {
         name: doctor.name || '',
         license_no: doctor.license_no || '',
-        medical_center_id: doctor.medical_center_id || ''
-      });
+        medical_center_id: doctor.medical_center_id || '',
+        department_ids: doctor.dept_links?.map(link => link.department_id) || []
+      };
+      setFormData(initialData);
       setApiError('');
+      filterDepartmentsByMedicalCenter(initialData.medical_center_id);
     }
-  }, [doctor, open]);
+  }, [doctor, open, departments]);
 
   useEffect(() => {
     if (mutationError) {
@@ -1143,13 +1152,13 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
     const newErrors = {};
     if (!formData.name.trim()) {
       newErrors.name = t('This field is Required');
-    } else if (formData.name.trim().length < 3) {
-      newErrors.name = t('Name must be at least 3 characters');
+    } else if (formData.name.trim().length < 1) {
+      newErrors.name = t('Name must be at least 1 characters');
     }
     if (!formData.license_no.trim()) {
       newErrors.license_no = t('This field is Required');
-    } else if (formData.license_no.trim().length < 3) {
-      newErrors.license_no = t('Last name must be at least 3 characters');
+    } else if (formData.license_no.trim().length < 1) {
+      newErrors.license_no = t('Last name must be at least 1 characters');
     }
     if (!formData.medical_center_id) {
       newErrors.medical_center_id = t('This field is Required');
@@ -1170,6 +1179,17 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Filter departments when medical center changes
+    if (field === 'medical_center_id') {
+      filterDepartmentsByMedicalCenter(value);
+      
+      // Clear department selections when hospital changes
+      if (value !== formData.medical_center_id) {
+        setFormData(prev => ({ ...prev, department_ids: [] }));
+      }
+    }
+    
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -1179,9 +1199,10 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
   };
 
   const handleClose = () => {
-    setFormData({ name: '', license_no: '', medical_center_id: '' });
+    setFormData({ name: '', license_no: '', medical_center_id: '', department_ids: [] });
     setErrors({});
     setApiError('');
+    setFilteredDepartments([]);
     onClose();
   };
 
@@ -1191,7 +1212,7 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
     <div className="flex flex-col gap-4 mt-20">
       {/* Name and Last Name in same row */}
       <Grid container spacing={2}>
-                <Grid item xs={6}>
+        <Grid item xs={6}>
           <div className="flex flex-col gap-2">
             <Typography variant="subtitle1" className="font-medium">
               {t('Last Name')} *
@@ -1223,7 +1244,6 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
             />
           </div>
         </Grid>
-
       </Grid>
 
       {/* Hospital/Facility */}
@@ -1253,6 +1273,49 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
             </Typography>
           )}
         </FormControl>
+      </div>
+
+      {/* Clinical Department */}
+      <div className="flex flex-col gap-2 mt-20">
+        <Typography variant="subtitle1" className="font-medium">
+          {t('Clinical Department')}
+        </Typography>
+        <Autocomplete
+          multiple
+          options={filteredDepartments}
+          getOptionLabel={(option) => option.name}
+          value={filteredDepartments.filter(dept => formData.department_ids.includes(dept.id))}
+          onChange={(event, newValue) => {
+            handleChange('department_ids', newValue.map(dept => dept.id));
+          }}
+          disableCloseOnSelect
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder={
+                formData.medical_center_id 
+                  ? t('Select clinical departments') 
+                  : t('Select hospital/facility first')
+              }
+              disabled={!formData.medical_center_id || isLoading}
+            />
+          )}
+          renderTags={(value, getTagProps) =>
+            value.map((option, index) => (
+              <Chip
+                label={option.name}
+                {...getTagProps({ index })}
+                size="small"
+              />
+            ))
+          }
+          disabled={!formData.medical_center_id || isLoading}
+        />
+        {!formData.medical_center_id && (
+          <Typography variant="caption" color="text.secondary">
+            {t('Please select a hospital/facility first')}
+          </Typography>
+        )}
       </div>
 
       {apiError && (
@@ -1300,13 +1363,24 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
   const { t } = useTranslation('shared-components');
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [apiError, setApiError] = useState('');
+  const [filteredDepartments, setFilteredDepartments] = useState([]);
 
+  // Filter departments based on doctor's medical center
   useEffect(() => {
     if (doctor && open) {
       // Set currently assigned departments - only active ones
       const currentDepartmentIds = doctor.dept_links?.map(link => link.department_id) || [];
       setSelectedDepartments(departments.filter(dept => currentDepartmentIds.includes(dept.id)));
       setApiError('');
+      
+      // Filter departments by doctor's medical center
+      const doctorMedicalCenterId = doctor.medical_center_id;
+      if (doctorMedicalCenterId) {
+        const filtered = departments.filter(dept => dept.medical_center_id === doctorMedicalCenterId);
+        setFilteredDepartments(filtered);
+      } else {
+        setFilteredDepartments(departments);
+      }
     }
   }, [doctor, open, departments]);
 
@@ -1328,6 +1402,7 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
   const handleClose = () => {
     setSelectedDepartments([]);
     setApiError('');
+    setFilteredDepartments([]);
     onClose();
   };
 
@@ -1345,7 +1420,7 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
         </Typography>
         <Autocomplete
           multiple
-          options={departments}
+          options={filteredDepartments}
           getOptionLabel={(option) => option.name}
           value={selectedDepartments}
           onChange={(event, newValue) => {

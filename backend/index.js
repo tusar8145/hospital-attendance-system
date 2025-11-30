@@ -15,14 +15,13 @@ import { IssueRoute } from "./routes/issueRoute.js";
 import { MedicalCenterRoute  } from "./routes/MedicalCenterRoute.js";
 import { DepartmentRoute  } from "./routes/DepartmentRoute.js";
 import { DoctorRoute } from "./routes/DoctorRoute.js";
+import authRoutes from './routes/auth.js';
 
 const app = express();
 const SYSVERSION = "/api/";
 
 app.use(express.json({limit: '2500mb'}));
  
-
-
 
 const corsOptions ={
    origin:'*', 
@@ -41,6 +40,7 @@ app.use(SYSVERSION, IssueRoute);
 app.use(SYSVERSION, MedicalCenterRoute);
 app.use(SYSVERSION, DepartmentRoute);
 app.use(SYSVERSION, DoctorRoute);
+app.use(SYSVERSION, authRoutes);
 
 app.use((req, res, next) => {
   res.status(404).json({

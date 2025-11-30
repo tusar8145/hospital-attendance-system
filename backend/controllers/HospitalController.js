@@ -147,17 +147,32 @@ export const manage_list = async (req, res, next) => {
       status: 1
     };
 
-    // If user is not admin, only show medical centers assigned to them
+    // If user is not admin/superAdmin, get their assigned medical centers and filter by them
     if (userRole !== 'admin' && userRole !== 'superAdmin') {
-      whereClause = {
-        ...whereClause,
-        admins: {
-          some: {
-            admin_id: userId
-          }
+      // Get medical_center_ids from admin_medical_center table for this user
+      const adminMedicalCenters = await prisma.admin_medical_center.findMany({
+        where: {
+          admin_id: userId
+        },
+        select: {
+          medical_center_id: true
         }
-      };
+      });
+
+      // Extract medical_center_ids from the result
+      const medicalCenterIds = adminMedicalCenters.map(amc => amc.medical_center_id);
+
+      // If user has assigned medical centers, filter by them
+      if (medicalCenterIds.length > 0) {
+        whereClause.id = {
+          in: medicalCenterIds
+        };
+      } else {
+        // If user has no assigned medical centers, return empty result
+        whereClause.id = -1; // This will return no results
+      }
     }
+    // If user is admin/superAdmin, no additional filtering needed
 
     // Get medical centers with optional admin association
     let medicalCenters = await prisma.medical_center.findMany({

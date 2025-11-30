@@ -4,6 +4,7 @@ import jwtDecode from 'jwt-decode';
 import config from './jwtAuthConfig';
 import { changeFuseTheme } from '@fuse/core/FuseSettings/fuseSettingsSlice';
 import { useAppDispatch } from 'app/store/hooks';
+import { useTheme } from '../../../context/ThemeContext'; // Add this import
 
 const defaultAuthContext = {
 	isAuthenticated: false,
@@ -22,12 +23,11 @@ export const JwtAuthContext = createContext(defaultAuthContext);
 function JwtAuthProvider(props) {
 
 	const dispatch = useAppDispatch();
+	const { toggleRefreshHospitalList } = useTheme(); // Add this
 
 	async function setTheme(user){
 
 	}
-
-
 
 	const [user, setUser] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -43,7 +43,10 @@ function JwtAuthProvider(props) {
 		setSession(accessToken);
 		setIsAuthenticated(true);
 		setUser(userData);
-		setTheme(userData)
+		setTheme(userData);
+
+		// Trigger hospital list refresh after successful sign in
+		toggleRefreshHospitalList(true);
 
 		/*let _theme={
 				
@@ -169,7 +172,8 @@ function JwtAuthProvider(props) {
 
 
 
-	}, []);
+	}, [toggleRefreshHospitalList]); // Add toggleRefreshHospitalList to dependencies
+
 	/**
 	 * Handle sign-up success
 	 */
@@ -177,7 +181,10 @@ function JwtAuthProvider(props) {
 		setSession(accessToken);
 		setIsAuthenticated(true);
 		setUser(userData);
-	}, []);
+		// Also trigger refresh for sign up
+		toggleRefreshHospitalList(true);
+	}, [toggleRefreshHospitalList]);
+
 	/**
 	 * Handle sign-in failure
 	 */
@@ -187,6 +194,7 @@ function JwtAuthProvider(props) {
 		setUser(null);
 		handleError(error);
 	}, []);
+
 	/**
 	 * Handle sign-up failure
 	 */
@@ -196,6 +204,7 @@ function JwtAuthProvider(props) {
 		setUser(null);
 		handleError(error);
 	}, []);
+
 	/**
 	 * Handle error
 	 */
@@ -204,6 +213,7 @@ function JwtAuthProvider(props) {
 		setIsAuthenticated(false);
 		setUser(null);
 	}, []);
+
 	// Set session
 	const setSession = useCallback((accessToken) => {
 		if (accessToken) {
@@ -211,15 +221,18 @@ function JwtAuthProvider(props) {
 			axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 		}
 	}, []);
+
 	// Reset session
 	const resetSession = useCallback(() => {
 		localStorage.removeItem(config.tokenStorageKey);
 		delete axios.defaults.headers.common.Authorization;
 	}, []);
+
 	// Get access token from local storage
 	const getAccessToken = useCallback(() => {
 		return localStorage.getItem(config.tokenStorageKey);
 	}, []);
+
 	// Check if the access token is valid
 	const isTokenValid = useCallback((accessToken) => {
 		if (accessToken) {
@@ -234,6 +247,7 @@ function JwtAuthProvider(props) {
 
 		return false;
 	}, []);
+
 	// Check if the access token exist and is valid on mount
 	useEffect(() => {
 		const attemptAutoLogin = async () => {
@@ -275,6 +289,7 @@ function JwtAuthProvider(props) {
 		getAccessToken,
 		isAuthenticated
 	]);
+
 	const handleRequest = async (url, data, handleSuccess, handleFailure) => {
 		try {
 			const response = await axios.post(url, data);
@@ -289,14 +304,17 @@ function JwtAuthProvider(props) {
 			return axiosError;
 		}
 	};
+
 	// Refactor signIn function
 	const signIn = (credentials) => {
 		return handleRequest(config.signInUrl, credentials, handleSignInSuccess, handleSignInFailure);
 	};
+
 	// Refactor signUp function
 	const signUp = useCallback((data) => {
 		return handleRequest(config.signUpUrl, data, handleSignUpSuccess, handleSignUpFailure);
 	}, []);
+
 	/**
 	 * Sign out
 	 */
@@ -305,6 +323,7 @@ function JwtAuthProvider(props) {
 		setIsAuthenticated(false);
 		setUser(null);
 	}, []);
+
 	/**
 	 * Update user
 	 */
@@ -320,6 +339,7 @@ function JwtAuthProvider(props) {
 			return axiosError;
 		}
 	}, []);
+
 	/**
 	 * Refresh access token
 	 */
@@ -341,6 +361,7 @@ function JwtAuthProvider(props) {
 			return axiosError;
 		}
 	};
+
 	/**
 	 * if a successful response contains a new Authorization header,
 	 * updates the access token from it.
@@ -372,6 +393,7 @@ function JwtAuthProvider(props) {
 			);
 		}
 	}, [isAuthenticated]);
+
 	useEffect(() => {
 		if (user) {
 			setAuthStatus('authenticated');
@@ -379,6 +401,7 @@ function JwtAuthProvider(props) {
 			setAuthStatus('unauthenticated');
 		}
 	}, [user]);
+
 	const authContextValue = useMemo(
 		() => ({
 			user,
@@ -394,6 +417,7 @@ function JwtAuthProvider(props) {
 		}),
 		[user, isAuthenticated, isLoading, signIn, signUp, signOut, updateUser, refreshToken, setIsLoading]
 	);
+
 	return <JwtAuthContext.Provider value={authContextValue}>{children}</JwtAuthContext.Provider>;
 }
 

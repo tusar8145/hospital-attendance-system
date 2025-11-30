@@ -84,7 +84,7 @@ function JwtSignInForm() {
 						control={control}
 						render={({ field }) => (
 							<FormControl fullWidth>
-								<label className="mb-8 text-sm font-medium text-gray-700">Email</label>
+								<label className="mb-8 text-lg font-medium text-gray-700">Email</label>
 								<TextField
 									{...field}
 									placeholder="Enter your email"
@@ -104,7 +104,7 @@ function JwtSignInForm() {
 						control={control}
 						render={({ field }) => (
 							<FormControl fullWidth>
-								<label className="mb-8 text-sm font-medium text-gray-700">Password</label>
+								<label className="mb-8 text-lg font-medium text-gray-700">Password</label>
 								<TextField
 									{...field}
 									placeholder="Enter your password"
@@ -139,12 +139,14 @@ function JwtSignInForm() {
 						)}
 					/>
 
-					<Link
-						className="text-sm font-medium text-primary-600 hover:text-primary-500"
-						to="/pages/auth/forgot-password"
-					>
-						Forgot password?
-					</Link>
+<Link
+    style={{ textDecoration: "none" }}
+    className="text-lg font-medium text-primary-600 hover:text-primary-500 transition-colors"
+    to="/forgot-password"
+>
+    Forgot password?
+</Link>
+
 				</div>
 
 				<Button

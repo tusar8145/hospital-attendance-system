@@ -141,10 +141,55 @@ export const medical_center_create = async (req, res, next) => {
   try {
     const medicalCenters = req.body;
 
+    console.log(medicalCenters,'medicalCenters');
+
     if (Array.isArray(medicalCenters)) {
+      // Extract all names for duplicate checking
+      const names = medicalCenters.map(mc => mc.name?.trim()).filter(name => name);
+      
+      // Check for duplicates in the database
+      const existingMedicalCenters = await prisma.medical_center.findMany({
+        where: {
+          name: {
+            in: names
+          }
+        },
+        select: {
+          name: true
+        }
+      });
+
+      // Check for duplicates in the request itself
+      const nameCount = {};
+      const duplicateNamesInRequest = [];
+      
+      names.forEach(name => {
+        nameCount[name] = (nameCount[name] || 0) + 1;
+        if (nameCount[name] > 1 && !duplicateNamesInRequest.includes(name)) {
+          duplicateNamesInRequest.push(name);
+        }
+      });
+
+      if (existingMedicalCenters.length > 0) {
+        const existingNames = existingMedicalCenters.map(mc => mc.name);
+        return res.status(400).json({
+          success: false,
+          errorType: 'EXISTING_MEDICAL_CENTERS',
+          data: { names: existingNames.join(', ') }
+        });
+      }
+
+      if (duplicateNamesInRequest.length > 0) {
+        return res.status(400).json({
+          success: false,
+          errorType: 'DUPLICATE_NAMES_IN_REQUEST', 
+          data: { names: duplicateNamesInRequest.join(', ') }
+        });
+      }
+
       // Bulk create multiple medical centers
       const medicalCenterData = medicalCenters.map(mc => ({
-        name: mc.name,
+        name: mc.name.trim(),
         type: mc.type,
         address: mc.address,
         created_by: user_id,
@@ -164,9 +209,31 @@ export const medical_center_create = async (req, res, next) => {
       // Single medical center creation
       const { name, type, address } = medicalCenters;
 
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          errorType: 'MEDICAL_CENTER_NAME_REQUIRED'
+        });
+      }
+
+      // Check if medical center with same name already exists
+      const existingMedicalCenter = await prisma.medical_center.findFirst({
+        where: {
+          name: name.trim()
+        }
+      });
+
+      if (existingMedicalCenter) {
+        return res.status(400).json({
+          success: false,
+          errorType: 'MEDICAL_CENTER_ALREADY_EXISTS',
+          data: { name: name.trim() }
+        });
+      }
+
       const newMedicalCenter = await prisma.medical_center.create({
         data: {
-          name,
+          name: name.trim(),
           type,
           address,
           created_by: user_id,

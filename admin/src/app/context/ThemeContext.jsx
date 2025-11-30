@@ -9,6 +9,7 @@ export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState('...');
   const [hospital, setHospital] = useState(null);
   const [refreshHospital, setRefreshHospital] = useState(false);
+  const [refreshHospitalList, setRefreshHospitalList] = useState(false); // Add this
 
   const toggleTheme = (data) => {
     setTheme(data);
@@ -22,8 +23,21 @@ export const ThemeProvider = ({ children }) => {
     setRefreshHospital(data);
   };
 
+  const toggleRefreshHospitalList = (data) => { // Add this
+    setRefreshHospitalList(data);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, hospital,  toggleHospital, refreshHospital,toggleRefreshHospital  }}>
+    <ThemeContext.Provider value={{ 
+      theme, 
+      toggleTheme, 
+      hospital,  
+      toggleHospital, 
+      refreshHospital,
+      toggleRefreshHospital,
+      refreshHospitalList, // Add this
+      toggleRefreshHospitalList // Add this
+    }}>
       {children} 
     </ThemeContext.Provider>
   );

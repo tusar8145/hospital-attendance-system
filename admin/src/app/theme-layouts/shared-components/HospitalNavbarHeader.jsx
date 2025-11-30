@@ -17,6 +17,7 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import { Box, Button, TextField, InputAdornment, Divider, ListSubheader, IconButton, Chip, Hidden } from "@mui/material";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const Root = styled('div')(({ theme }) => ({
 	'& .username, & .email': {
@@ -29,14 +30,51 @@ const Root = styled('div')(({ theme }) => ({
 
 function HospitalNavbarHeader() {
 	const { t } = useTranslation('shared-components');
-	const { hospital, toggleHospital, refreshHospital, toggleRefreshHospital } = useTheme();
+	const { 
+		hospital, 
+		toggleHospital, 
+		refreshHospital, 
+		toggleRefreshHospital,
+		refreshHospitalList,
+		toggleRefreshHospitalList
+	} = useTheme();
 	const [hos, setHos] = React.useState('*');
-	const [hospitals, setHospitals] = React.useState([]);
-	const [fetchComplete, setFetchComplete] = React.useState(false);
 	const [anchorEl, setAnchorEl] = React.useState(null);
 	const [searchTerm, setSearchTerm] = React.useState('');
 	const open = Boolean(anchorEl);
 	let this_user = User();
+	const queryClient = useQueryClient();
+
+	// Use React Query for hospital list with automatic refetching
+	const { data: hospitalsData, refetch: refetchHospitals } = useQuery({
+		queryKey: ['hospital-manage-list'],
+		queryFn: async () => {
+			const response = await axios.post(apiConfig.hospitalManageList, {});
+			return response.data;
+		},
+	});
+
+	// Process hospitals data
+	const hospitals = useMemo(() => {
+		if (!hospitalsData?.data) return [];
+		
+		return hospitalsData.data.map(item => {
+			let f1 = item.name.substring(0, 22);
+			if (item.name.length > 22) {
+				f1 = f1 + '..';
+			}
+			
+			return {
+				id: item.id,
+				logo: item.logo,
+				name: item.name,
+				sort_name: f1,
+				address: item.address,
+				full_name: item.name,
+				email: item.admin_email,
+			};
+		});
+	}, [hospitalsData]);
 
 	// Memoized filtered hospitals for better performance
 	const filteredHospitals = useMemo(() => {
@@ -50,47 +88,23 @@ function HospitalNavbarHeader() {
 		);
 	}, [searchTerm, hospitals]);
 
-	async function hospitalFetch() {
-		let hos_present = 0;
-		const response = await axios.post(apiConfig.hospitalManageList, {});
-		let res = response.data.data;
-		let new_obj = [];
-		
-		for (let x = 0; x < res.length; x++) {
-			let f1 = res[x].name.substring(0, 22);
-			if (res[x].name.length > 22) {
-				f1 = f1 + '..';
-			}
-			if (hos == res[x].id) {
-				hos_present = 1;
-			}
-
-			new_obj.push({
-				id: res[x].id,
-				logo: res[x].logo,
-				name: res[x].name,
-				sort_name: f1,
-				address: res[x].address,
-				full_name: res[x].name,
-				email: res[x].admin_email,
-			});
-			console.log(response,new_obj,'ggggggggg')
-		}
-		setHospitals(new_obj);
-
-		if (hos_present == 0) {
-			setHos('*');
-		}
-		setFetchComplete(true);
-	}
-
+	// Handle refresh from ThemeContext
 	useEffect(() => {
-		hospitalFetch();
-	}, []);
+		if (refreshHospitalList) {
+			queryClient.invalidateQueries(['hospital-manage-list']);
+			toggleRefreshHospitalList(false);
+		}
+	}, [refreshHospitalList, toggleRefreshHospitalList, queryClient]);
 
+	// Handle hospital selection from user profile
 	useEffect(() => {
-		hospitalFetch();
-	}, [refreshHospital]);
+		if (this_user.hospital != null && hospitals.length > 0) {
+			selectHospital(this_user.hospital.id);
+		}
+		if (this_user.hospital == null && hospitals.length > 0) {
+			selectHospital(null);
+		}
+	}, [this_user.hospital, hospitals]);
 
 	const handleMenuOpen = (event) => {
 		setAnchorEl(event.currentTarget);
@@ -132,15 +146,6 @@ function HospitalNavbarHeader() {
 			setHos('*');
 		}
 	}
-
-	useEffect(() => {
-		if (this_user.hospital != null && fetchComplete == true) {
-			selectHospital(this_user.hospital.id);
-		}
-		if (this_user.hospital == null && fetchComplete == true) {
-			selectHospital(null);
-		}
-	}, [this_user.hospital, fetchComplete]);
 
 	const user = useAppSelector(selectUser);
 

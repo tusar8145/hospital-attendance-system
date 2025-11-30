@@ -56,7 +56,7 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
 }));
 
 function MedicalCenter() {
-        const [message, setMessage] = useState("Waiting...");
+  const [message, setMessage] = useState("Waiting...");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -77,29 +77,24 @@ function MedicalCenter() {
 function MedicalCenterContent() {
   let user = User();
   let tableName = 'medical_centers';
-  let headingTitle = 'Facility List';
-
   const { t } = useTranslation('shared-components');
+  
+  const headingTitle = t('Facility List');
   const [loading, setLoading] = useState(false);
   const [successAlert, setSuccessAlert] = useState(null);
   const [failAlert, setFailAlert] = useState(null);
   const [filterType, setFilterType] = useState('ALL');
-  const { theme, toggleTheme } = useTheme();
-  const { refreshMedicalCenter, toggleRefreshMedicalCenter } = useTheme();
+  const { theme, toggleTheme, toggleRefreshHospitalList } = useTheme();
 
   const [globalFilter, setGlobalFilter] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   useEffect(() => {
-    toggleTheme(t(headingTitle));
-  }, [t(headingTitle)]);
+    toggleTheme(headingTitle);
+  }, [headingTitle]);
 
   function handleCountDataFromChild(count) {
-    if (refreshMedicalCenter === true) {
-      toggleRefreshMedicalCenter(false);
-    } else {
-      toggleRefreshMedicalCenter(true);
-    }
+    // Handle any count data if needed
   }
 
   const handleFilterType = (type) => {
@@ -126,10 +121,10 @@ function MedicalCenterContent() {
   };
 
   const filterOptions = [
-    { value: 'ALL', label: 'All Hospital/Facility Names' },
-    { value: 'large_hospital', label: 'Hospital: Large' },
-    { value: 'hospital', label: 'Hospital' },
-    { value: 'welfare', label: 'Welfare' }
+    { value: 'ALL', label: t('All Hospital/Facility Names') },
+    { value: 'large_hospital', label: t('Hospital: Large') },
+    { value: 'hospital', label: t('Hospital') },
+    { value: 'welfare', label: t('Welfare') }
   ];
 
   return (
@@ -141,13 +136,13 @@ function MedicalCenterContent() {
           onFilterChange={handleFilterType}
           onCreate={() => setCreateModalOpen(true)}
           filterOptions={filterOptions}
-          createButtonText="Add Hospital/Facility Name"
+          createButtonText={t('Add Hospital/Facility Name')}
         />
       }
       content={
         <div className="flex flex-col items-center p-24 sm:p-40 container">
-          {successAlert != null && <Alert severity="success">{t(successAlert)}.</Alert>}
-          {failAlert != null && <Alert severity="error">{t(failAlert)}..</Alert>}
+          {successAlert != null && <Alert severity="success">{successAlert}</Alert>}
+          {failAlert != null && <Alert severity="error">{failAlert}</Alert>}
 
           <div className="w-full min-w-0 py-24">
             <Table
@@ -157,6 +152,7 @@ function MedicalCenterContent() {
               tableName={tableName}
               createModalOpen={createModalOpen}
               setCreateModalOpen={setCreateModalOpen}
+              toggleRefreshHospitalList={toggleRefreshHospitalList}
             />
           </div>
         </div>
@@ -265,27 +261,38 @@ const Table = (props) => {
   const tableData = responseData?.data || [];
   const serverPagination = responseData?.pagination || {};
 
-  // Auto refetch after mutations
+  // Auto refetch after mutations - UPDATED with hospital list refresh
   const handleMutationSuccess = () => {
     queryClient.invalidateQueries(['medical-centers']);
+    queryClient.invalidateQueries(['hospital-manage-list']); // Invalidate hospital list
     refetch();
+    
+    // Also trigger refresh via ThemeContext for components not using React Query
+    props.toggleRefreshHospitalList(true);
   };
 
-  const createMutation = useMutation({
-    mutationFn: async (data) => {
-      const response = await axios.post(apiConfig.medicalCenterCreate, data);
-      return response.data;
-    },
-    onSuccess: () => {
-      handleMutationSuccess();
-      props.setCreateModalOpen(false);
-      dispatch(showMessage({ message: t('Medical Center created successfully'), variant: 'success' }));
-    },
-    onError: (error) => {
-      // Error handling is now done in the modal component
-      console.error('Error creating medical center:', error);
-    },
-  });
+const createMutation = useMutation({
+  mutationFn: async (data) => {
+    // Send array directly without wrapper
+    const response = await axios.post(apiConfig.medicalCenterCreate, data);
+    return response.data;
+  },
+  onSuccess: () => {
+    handleMutationSuccess();
+    props.setCreateModalOpen(false);
+    dispatch(showMessage({ message: t('Hospital/Facility created successfully'), variant: 'success' }));
+
+    const timer = setTimeout(() => {
+      setMessage("State changed after 2 seconds!");
+    }, 2000);
+
+    // Cleanup to avoid memory leaks
+    return () => clearTimeout(timer);
+  },
+  onError: (error) => {
+    console.error('Error creating hospital/facility:', error);
+  },
+});
 
   const updateMutation = useMutation({
     mutationFn: async (data) => {
@@ -295,11 +302,11 @@ const Table = (props) => {
     onSuccess: () => {
       handleMutationSuccess();
       setEditModalOpen(false);
-      dispatch(showMessage({ message: t('Medical Center updated successfully'), variant: 'success' }));
+      dispatch(showMessage({ message: t('Hospital/Facility updated successfully'), variant: 'success' }));
     },
     onError: (error) => {
       // Error handling is now done in the modal component
-      console.error('Error updating medical center:', error);
+      console.error('Error updating hospital/facility:', error);
     },
   });
 
@@ -311,10 +318,10 @@ const Table = (props) => {
     onSuccess: () => {
       handleMutationSuccess();
       setDeleteConfirmOpen(false);
-      dispatch(showMessage({ message: t('Medical Center deleted successfully'), variant: 'success' }));
+      dispatch(showMessage({ message: t('Hospital/Facility deleted successfully'), variant: 'success' }));
     },
     onError: (error) =>{
-      dispatch(showMessage({ message: t('Error deleting medical center'), variant: 'error' }));
+      dispatch(showMessage({ message: t('Error deleting hospital/facility'), variant: 'error' }));
     },
   });
 
@@ -333,23 +340,9 @@ const Table = (props) => {
     },
   });
 
-  const handleCreateMedicalCenters = (medicalCenters) => {
-    if (Array.isArray(medicalCenters)) {
-      const createPromises = medicalCenters.map(medicalCenter => 
-        createMutation.mutateAsync(medicalCenter)
-      );
-      
-      Promise.all(createPromises)
-        .then(() => {
-          props.setCreateModalOpen(false);
-        })
-        .catch(error => {
-          console.error('Error creating medical centers:', error);
-        });
-    } else {
-      createMutation.mutate(medicalCenters);
-    }
-  };
+const handleCreateMedicalCenters = (medicalCenters) => {
+  createMutation.mutate(medicalCenters);
+};
 
   const handleEditMedicalCenter = (data) => {
     updateMutation.mutate(data);
@@ -505,7 +498,7 @@ const Table = (props) => {
                   />
                 ) : (
                   <Typography variant="body2" color="textSecondary">
-                    No logo
+                    {t('No logo')}
                   </Typography>
                 )}
                 <span>{renderedCellValue}</span>
@@ -563,7 +556,7 @@ const Table = (props) => {
           return (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
               <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '1.2rem' }}>
-                {createdAdmin?.name || 'N/A'}
+                {createdAdmin?.name || t('N/A')}
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '1rem' }}>
                 {toJapaneseDate(createdAt)}
@@ -666,18 +659,21 @@ const Table = (props) => {
         open={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
         onConfirm={handleDeleteConfirm}
-        title="Confirm Delete"
-        message={`Are you sure you want to delete "${selectedMedicalCenter?.name}"? This action cannot be undone.`}
-        confirmText="Delete"
+        title={t('Confirm Delete')}
+        message={t('Are you sure you want to delete "{{name}}"? This action cannot be undone.', { name: selectedMedicalCenter?.name })}
+        confirmText={t('Delete')}
       />
 
       <ConfirmationDialog
         open={statusConfirmOpen}
         onClose={() => setStatusConfirmOpen(false)}
         onConfirm={handleStatusConfirm}
-        title="Confirm Status Change"
-        message={`Are you sure you want to change the status of "${selectedMedicalCenter?.name}" to ${selectedMedicalCenter?.status === 1 ? 'Inactive' : 'Active'}?`}
-        confirmText="Change Status"
+        title={t('Confirm Status Change')}
+        message={t('Are you sure you want to change the status of "{{name}}" to {{status}}?', { 
+          name: selectedMedicalCenter?.name,
+          status: selectedMedicalCenter?.status === 1 ? t('Inactive') : t('Active')
+        })}
+        confirmText={t('Change Status')}
         confirmColor="primary"
       />
 
@@ -704,13 +700,48 @@ const Table = (props) => {
   );
 };
 
-// Create Medical Center Modal Component
+// Add Hospital/Facility Modal Component
 const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutationError }) => {
   const { t } = useTranslation('shared-components');
   const [medicalCenters, setMedicalCenters] = useState([{ name: '', type: 'hospital', address: '' }]);
   const [errors, setErrors] = useState([]);
   const [apiError, setApiError] = useState('');
   const [duplicateErrors, setDuplicateErrors] = useState({});
+
+// Handle mutation errors
+useEffect(() => {
+  if (mutationError) {
+    const errorData = mutationError.response?.data;
+    console.log('Backend error data:', errorData); // Add this for debugging
+    
+    let translatedMessage = t('Error creating Hospital/Facility');
+    
+    if (errorData) {
+      if (errorData.errorType === 'EXISTING_MEDICAL_CENTERS') {
+        translatedMessage = t('The following Hospital/Facility already exist: {{names}}', { 
+          names: errorData.data.names 
+        });
+        console.log('Translated message:', translatedMessage); // Debug log
+      } else if (errorData.errorType === 'DUPLICATE_NAMES_IN_REQUEST') {
+        translatedMessage = t('Duplicate names found in the request: {{names}}', { 
+          names: errorData.data.names 
+        });
+      } else if (errorData.errorType === 'MEDICAL_CENTER_ALREADY_EXISTS') {
+        translatedMessage = t('Hospital/Facility with name "{{name}}" already exists', { 
+          name: errorData.data.name 
+        });
+      } else if (errorData.errorType === 'MEDICAL_CENTER_NAME_REQUIRED') {
+        translatedMessage = t('Hospital/Facility name is required');
+      } else if (errorData.message) {
+        translatedMessage = errorData.message;
+      }
+    }
+    
+    setApiError(translatedMessage);
+  } else {
+    setApiError('');
+  }
+}, [mutationError, t]);
 
   // Clean API errors when modal closes
   useEffect(() => {
@@ -734,30 +765,14 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
     }
   }, [open]);
 
-  // Handle mutation errors
-  useEffect(() => {
-    if (mutationError) {
-      const errorMessage = mutationError.response?.data?.message || t('Error creating medical center');
-      
-      // Handle unique constraint error specifically
-      if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('medical_center_name_key')) {
-        setApiError(t('Hospital/Facility Name already exists'));
-      } else {
-        setApiError(errorMessage);
-      }
-    } else {
-      setApiError('');
-    }
-  }, [mutationError, t]);
+
 
   const validateForm = () => {
     const newErrors = medicalCenters.map((medicalCenter, index) => {
       const fieldErrors = {};
       if (!medicalCenter.name.trim()) {
         fieldErrors.name = t('This field is Required');
-      }/* else if (medicalCenter.name.trim().length < 3) {
-        fieldErrors.name = t('Hospital/Facility Name must be at least 3 characters long');
-      }*/
+      }
       if (!medicalCenter.type) {
         fieldErrors.type = t('This field is Required');
       }
@@ -786,7 +801,7 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
     Object.keys(nameCount).forEach(name => {
       if (nameCount[name].length > 1) {
         nameCount[name].forEach(index => {
-          newDuplicateErrors[index] = t('Duplicate medical center name in this form');
+          newDuplicateErrors[index] = t('Duplicate hospital/facility name in this form');
         });
       }
     });
@@ -819,9 +834,9 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
   const addMedicalCenter = () => {
     // Validate existing medical centers before adding new one
     const hasEmptyNames = medicalCenters.some(mc => !mc.name.trim());
-    const hasShortNames = medicalCenters.some(mc => mc.name.trim().length > 0 && mc.name.trim().length < 3);
     
-    /*if (hasEmptyNames || hasShortNames) {
+    //no need this condition
+    /*if (hasEmptyNames) {
       // Trigger validation to show errors for existing fields
       validateForm();
       // Scroll to the first error
@@ -831,18 +846,18 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
           firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
-      return; // Don't add new medical center if validation fails
+      return; // Don't add new hospital/facility if validation fails
     }*/
 
     setMedicalCenters([...medicalCenters, { name: '', type: 'hospital', address: '' }]);
     setErrors([...errors, {}]);
     
-    // Clear API error when adding new medical center
+    // Clear API error when adding new hospital/facility
     if (apiError) {
       setApiError('');
     }
 
-    // Scroll to the newly added medical center after a short delay
+    // Scroll to the newly added hospital/facility after a short delay
     setTimeout(() => {
       const lastMedicalCenter = document.querySelectorAll('.border-gray-200').length - 1;
       if (lastMedicalCenter >= 0) {
@@ -896,7 +911,7 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
       setDuplicateErrors(updatedDuplicateErrors);
     }
     
-    // Clear API error when removing medical center
+    // Clear API error when removing hospital/facility
     if (apiError) {
       setApiError('');
     }
@@ -944,7 +959,7 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
               fullWidth
               error={!!errors[index]?.name || !!duplicateErrors[index]}
               helperText={errors[index]?.name || duplicateErrors[index]}
-              placeholder={t('Enter medical center name')}
+              placeholder={t('Enter hospital/facility name')}
               disabled={isLoading}
             />
           </div>
@@ -985,7 +1000,7 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
                 updateMedicalCenter(index, 'address', e.target.value)
               }
               fullWidth
-              placeholder={t('Enter medical center address')}
+              placeholder={t('Enter hospital/facility address')}
               disabled={isLoading}
             />
 
@@ -1019,7 +1034,7 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
           variant="outlined"
           disabled={isLoading}
         >
-          {t('Add Another Medical Center')}
+          {t('Add Another Hospital/Facility')}
         </Button>
       </div>
     </div>
@@ -1037,7 +1052,7 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
         size="large"
         disabled={isLoading}
       >
-        {isLoading ? t('Creating...') : `${t('Create Medical Center')}${medicalCenters.length > 1 ? 's' : ''}`}
+        {isLoading ? t('Creating...') : medicalCenters.length > 1 ? t('Add Hospital/Facility') : t('Add Hospital/Facility')}
       </Button>
     </>
   );
@@ -1046,7 +1061,7 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
     <CommonDialog
       open={open}
       onClose={handleClose}
-      title={`Create Medical Center${medicalCenters.length > 1 ? 's' : ''}`}
+      title={medicalCenters.length > 1 ? t('Add Hospital/Facility') : t('Add Hospital/Facility')}
       actions={dialogActions}
       disabled={isLoading}
     >
@@ -1055,7 +1070,7 @@ const CreateMedicalCenterModal = ({ open, onClose, onSubmit, isLoading, mutation
   );
 };
 
-// Edit Medical Center Modal Component
+// EditHospital/Facility Modal Component
 const EditMedicalCenterModal = ({ open, onClose, onSubmit, medicalCenter, isLoading, mutationError }) => {
   const { t } = useTranslation('shared-components');
   const [formData, setFormData] = useState({ name: '', type: 'hospital', address: '' });
@@ -1088,7 +1103,7 @@ const EditMedicalCenterModal = ({ open, onClose, onSubmit, medicalCenter, isLoad
   // Handle mutation errors
   useEffect(() => {
     if (mutationError) {
-      const errorMessage = mutationError.response?.data?.message || t('Error updating medical center');
+      const errorMessage = mutationError.response?.data?.message || t('Error updating Hospital/Facility');
       
       // Handle unique constraint error specifically
       if (errorMessage.includes('Unique constraint failed') || errorMessage.includes('medical_center_name_key')) {
@@ -1170,7 +1185,7 @@ const EditMedicalCenterModal = ({ open, onClose, onSubmit, medicalCenter, isLoad
           fullWidth
           error={!!errors.name}
           helperText={errors.name}
-          placeholder={t('Enter medical center name')}
+          placeholder={t('Enter hospital/facility name')}
           disabled={isLoading}
         />
       </div>
@@ -1210,7 +1225,7 @@ const EditMedicalCenterModal = ({ open, onClose, onSubmit, medicalCenter, isLoad
           fullWidth
           multiline
           rows={3}
-          placeholder={t('Enter medical center address')}
+          placeholder={t('Enter hospital/facility address')}
           disabled={isLoading}
         />
       </div>
@@ -1236,7 +1251,7 @@ const EditMedicalCenterModal = ({ open, onClose, onSubmit, medicalCenter, isLoad
         size="large"
         disabled={isLoading}
       >
-        {isLoading ? t('Updating...') : t('Update Medical Center')}
+        {isLoading ? t('Updating...') : t('Update Hospital/Facility')}
       </Button>
     </>
   );
@@ -1245,7 +1260,7 @@ const EditMedicalCenterModal = ({ open, onClose, onSubmit, medicalCenter, isLoad
     <CommonDialog
       open={open}
       onClose={handleClose}
-      title="Edit Medical Center"
+      title={t('Edit Hospital/Facility')}
       maxWidth="sm"
       contentPadding={{ px: 4, py: 0 }}
       actions={dialogActions}

@@ -12,7 +12,7 @@ const DepartmentConfig = {
 	settings: {
 		layout: {}
 	},
-	auth    : authRoles.admin,
+	auth    : authRoles.admin_hospitalAssistant_staff,
 	routes: [
 		{
 			path: 'department',

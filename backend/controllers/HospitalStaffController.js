@@ -148,22 +148,18 @@ export const manage_list = async (req, res, next) => {
     const currentUserRole = req.user.role;
     let currentUserMedicalCenters = [];
 
-    // If user is hospitalAssistant or staff, get their assigned medical centers
-    if (currentUserRole === 'hospitalAssistant' || currentUserRole === 'staff') {
-      const userWithMedicalCenters = await prisma.admins.findUnique({
-        where: { id: req.user.id },
-        include: {
-          medical_centers: {
-            include: {
-              medical_center: {
-                select: { id: true }
-              }
-            }
-          }
+    // If user is not admin/superAdmin, get their assigned medical centers from admin_medical_center
+    if (currentUserRole !== 'admin' && currentUserRole !== 'superAdmin') {
+      const adminMedicalCenters = await prisma.admin_medical_center.findMany({
+        where: {
+          admin_id: req.user.id
+        },
+        select: {
+          medical_center_id: true
         }
       });
       
-      currentUserMedicalCenters = userWithMedicalCenters?.medical_centers?.map(mc => mc.medical_center.id) || [];
+      currentUserMedicalCenters = adminMedicalCenters.map(amc => amc.medical_center_id) || [];
     }
 
     // Build base where clause
@@ -186,6 +182,22 @@ export const manage_list = async (req, res, next) => {
       };
     }
 
+    // Apply role-based medical center filtering for non-admin users when no hospitalFilter is provided
+    if (!hospitalFilter?.hospital_id && currentUserRole !== 'admin' && currentUserRole !== 'superAdmin') {
+      if (currentUserMedicalCenters.length > 0) {
+        finalWhereClause.medical_centers = {
+          some: {
+            medical_center_id: {
+              in: currentUserMedicalCenters
+            }
+          }
+        };
+      } else {
+        finalWhereClause.id = -1; // Force no results if no medical centers assigned
+      }
+    }
+
+    // Apply existing role-based access control logic
     if (currentUserRole === 'hospitalAssistant') {
       // hospitalAssistant can ONLY view staff & operator with at least 1 common medical center
       // Combine payload role filter with security role filter
@@ -218,16 +230,9 @@ export const manage_list = async (req, res, next) => {
           finalWhereClause.id = -1; // User doesn't have access to this hospital
         }
       } else {
-        // If no hospitalFilter, use user's assigned medical centers
-        if (currentUserMedicalCenters.length > 0) {
-          finalWhereClause.medical_centers = {
-            some: {
-              medical_center_id: {
-                in: currentUserMedicalCenters
-              }
-            }
-          };
-        } else {
+        // If no hospitalFilter, use user's assigned medical centers (already applied above)
+        // Additional check to ensure user has medical centers assigned
+        if (currentUserMedicalCenters.length === 0) {
           finalWhereClause.id = -1; // Force no results
         }
       }
@@ -264,16 +269,9 @@ export const manage_list = async (req, res, next) => {
           finalWhereClause.id = -1; // User doesn't have access to this hospital
         }
       } else {
-        // If no hospitalFilter, use user's assigned medical centers
-        if (currentUserMedicalCenters.length > 0) {
-          finalWhereClause.medical_centers = {
-            some: {
-              medical_center_id: {
-                in: currentUserMedicalCenters
-              }
-            }
-          };
-        } else {
+        // If no hospitalFilter, use user's assigned medical centers (already applied above)
+        // Additional check to ensure user has medical centers assigned
+        if (currentUserMedicalCenters.length === 0) {
           finalWhereClause.id = -1; // Force no results
         }
       }
@@ -285,6 +283,7 @@ export const manage_list = async (req, res, next) => {
       if (hospitalFilter?.hospital_id) {
         finalWhereClause.medical_centers = medicalCenterFilter;
       }
+      // No additional medical center filtering needed for admin/superAdmin
     }
 
     // Get total count for pagination
@@ -483,48 +482,133 @@ export const manage_issue_file = async (req, res, next) => {
 };
 
 export const manage_logo = async (req, res, next) => {
-  const uploadDir = path.join(__dirname.replace("\controllers", "") + '/uploads');
+  const uploadDir = path.join(__dirname.replace(/[\\/]controllers/, ""), 'uploads');
+  
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
 
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, '0777', true);
-  const customOptions = { uploadDir: uploadDir, keepExtensions: true, allowEmptyFiles: false, maxFileSize: 5 * 1024 * 1024 * 1024, multiples: true };
-  const form = new IncomingForm(customOptions);
-  let file_count = req.query.counts
-  let id = parseInt(req.query.id)
+  const form = new IncomingForm();
+  form.uploadDir = uploadDir;
+  form.keepExtensions = true;
+  form.maxFileSize = 5 * 1024 * 1024;
+
+  const id = parseInt(req.query.id);
+
+  if (!id) {
+    return res.status(400).json({ success: false, message: 'Staff ID is required' });
+  }
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      next(err);
-      return;
+      console.error('File upload error:', err);
+      return res.status(500).json({ success: false, message: 'File upload failed: ' + err.message });
     }
-    for (let x = 0; x < file_count; x++) {
-      try {
-        const file = files['file-' + x.toString()]
-        let str = file.toString()
-        const myArray = str.split(",");
 
-        const ssmyArray1 = myArray[1].split(":");
-        var trimmedStr = ssmyArray1[1].trimStart();
-        trimmedStr = trimmedStr.trimEnd();
-        const newFilepath = `${uploadDir}/${trimmedStr}`;
+    console.log('Files received:', Object.keys(files));
 
-        const ssmyArray1_1 = myArray[0].split(":");
-        var trimmedStr_1 = ssmyArray1_1[1].trimStart();
-        trimmedStr_1 = trimmedStr_1.trimEnd();
-        const newFilepath_1 = `${uploadDir}/${'fff' + trimmedStr_1}`;
+    try {
+      // Get current admin
+      const currentAdmin = await prisma.admins.findUnique({
+        where: { id: id },
+        select: { photo: true }
+      });
 
-        fs.rename(newFilepath_1, newFilepath, err => err);
+      let uploadedFilename = null;
 
-        // Update admin photo
-        const updatedAdmin = await prisma.admins.update({
+      // Look for the uploaded file
+      const fileKeys = Object.keys(files);
+      
+      for (const fileKey of fileKeys) {
+        const fileObj = files[fileKey];
+        if (!fileObj) continue;
+
+        // Formidable returns an array of files
+        const file = Array.isArray(fileObj) ? fileObj[0] : fileObj;
+        
+        if (file && file.size > 0) {
+          console.log('Found valid file:', {
+            key: fileKey,
+            originalFilename: file.originalFilename,
+            filepath: file.filepath,
+            newFilename: file.newFilename,
+            size: file.size,
+            mimetype: file.mimetype
+          });
+
+          // Check if the file exists in the upload directory
+          if (file.filepath && fs.existsSync(file.filepath)) {
+            const originalName = file.originalFilename;
+            const fileExtension = path.extname(originalName) || '.png';
+            const finalFileName = `staff_${id}_${Date.now()}${fileExtension}`;
+            const finalFilePath = path.join(uploadDir, finalFileName);
+
+            console.log(`Moving file from ${file.filepath} to ${finalFilePath}`);
+
+            // Rename the uploaded file to our desired name
+            await fs.promises.rename(file.filepath, finalFilePath);
+            uploadedFilename = finalFileName;
+
+            // Delete old image if exists
+            if (currentAdmin?.photo && currentAdmin.photo !== 'default_avatar.png') {
+              const oldFilePath = path.join(uploadDir, currentAdmin.photo);
+              if (fs.existsSync(oldFilePath)) {
+                await fs.promises.unlink(oldFilePath).catch(error => {
+                  console.error('Error deleting old file:', error);
+                });
+              }
+            }
+
+            console.log('File processed successfully:', finalFileName);
+            break;
+          } else {
+            console.error('File path does not exist:', file.filepath);
+            // Try alternative path
+            const altPath = path.join(uploadDir, file.newFilename);
+            if (fs.existsSync(altPath)) {
+              console.log('Found file at alternative path:', altPath);
+              const fileExtension = path.extname(file.originalFilename) || '.png';
+              const finalFileName = `staff_${id}_${Date.now()}${fileExtension}`;
+              const finalFilePath = path.join(uploadDir, finalFileName);
+
+              await fs.promises.rename(altPath, finalFilePath);
+              uploadedFilename = finalFileName;
+
+              // Delete old image
+              if (currentAdmin?.photo && currentAdmin.photo !== 'default_avatar.png') {
+                const oldFilePath = path.join(uploadDir, currentAdmin.photo);
+                if (fs.existsSync(oldFilePath)) {
+                  await fs.promises.unlink(oldFilePath).catch(console.error);
+                }
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      if (uploadedFilename) {
+        // Update database
+        await prisma.admins.update({
           where: { id: id },
-          data: { photo: trimmedStr_1 },
+          data: { photo: uploadedFilename },
         });
 
-      } catch (error) {
-        console.log(error, 'error')
+        console.log('Database updated with new photo:', uploadedFilename);
+
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Profile image updated successfully',
+          filename: uploadedFilename 
+        });
+      } else {
+        return res.status(400).json({ success: false, message: 'No valid file could be processed' });
       }
+
+    } catch (error) {
+      console.error('Profile update error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to update profile image: ' + error.message });
     }
-    res.status(200).json({});
   });
 };
 

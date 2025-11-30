@@ -1,4 +1,5 @@
 import SignInPage from './SignInPage';
+import ForgotPasswordPage from './ForgotPasswordPage';
 import authRoles from '../../auth/authRoles';
 
 const SignInConfig = {
@@ -28,6 +29,10 @@ const SignInConfig = {
 		{
 			path: 'sign-in',
 			element: <SignInPage />
+		},
+		{
+			path: 'forgot-password',
+			element: <ForgotPasswordPage />
 		}
 	]
 };

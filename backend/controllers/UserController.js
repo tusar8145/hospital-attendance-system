@@ -141,44 +141,91 @@ export const update_password = async (req, res, next) => {
 
 export const refresh = async (req, res, next) => {
     try {
-
         let token = req.headers.authorization;
         token = token.split(" ")[1];
         let user = jwt.verify(token, process.env.JWT_SECRET);
-        const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
-        let logo = user.photo || 'brian-hughes.jpg'
-
-
-        console.log(user,'user')
-
-        res.status(200).json(
-            {
-
-                "uid": user.id,
-                "role": user.role,
-                "data": {
-                    "displayName": user.name,
-                    "phone":user.phone,
-                    "photoURL": url.origin+'/api/hospital-manage/image/'+logo,
-                    "email": user.email,
-                    "settings": {
-                        "layout": {},
-                        "theme": {}
-                    },
-                    "shortcuts": [
-                        "apps.calendar",
-                        "apps.mailbox",
-                        "apps.contacts"
-                    ]
-                },
-
-                hospital:user.hospital
+        
+        // Get fresh user data from database
+        const freshUser = await prisma.admins.findUnique({
+            where: {
+                id: user.id,
+            },
+            include: {
+                medical_centers: {
+                    include: {
+                        medical_center: {
+                            select: {
+                                id: true,
+                                name: true,
+                                address: true,
+                                logo: true,
+                                primary_color: true,
+                                sub_color_1: true,
+                                sub_color_2: true
+                            }
+                        }
+                    }
+                }
             }
+        });
+
+        if (!freshUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        // Extract medical centers from the join table
+        const medicalCenters = freshUser.medical_centers.map(item => item.medical_center);
+
+        // Generate new access token with fresh data
+        const newAuthorization = jwt.sign(
+            { 
+                ...freshUser, 
+                medical_centers: medicalCenters 
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_VALIDITY }
         );
 
+        const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
+        let logo = freshUser.photo || 'brian-hughes.jpg'
+
+        res.status(200).json({
+            "uid": freshUser.id,
+            "role": freshUser.role,
+            "data": {
+                "displayName": freshUser.name,
+                "phone": freshUser.phone,
+                "photoURL": url.origin + '/api/hospital-manage/image/' + logo,
+                "email": freshUser.email,
+                "settings": {
+                    "layout": {},
+                    "theme": {}
+                },
+                "shortcuts": [
+                    "apps.calendar",
+                    "apps.mailbox",
+                    "apps.contacts"
+                ]
+            },
+            "medical_centers": medicalCenters,
+            "access_token": newAuthorization // Send new access token
+        });
+
     } catch (error) {
-        //next(error)
-        response.error(error,res,next)
+        console.error('Refresh error:', error);
+        
+        // Handle JWT expiration or invalid token
+        if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid or expired token",
+            });
+        }
+        
+        response.error(error, res, next);
     }
 };
 
