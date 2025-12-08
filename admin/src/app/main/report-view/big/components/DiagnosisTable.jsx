@@ -26,8 +26,8 @@ const DiagnosisTable = () => {
   }));
 
   return (
-    <div className="diagnosis-table w-full h-full">
-      <div className="overflow-hidden h-full">
+    <div className="diagnosis-table w-full h-full rounded-md mt-10 mb-10">
+      <div className="overflow-hidden h-full   ">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <tbody>

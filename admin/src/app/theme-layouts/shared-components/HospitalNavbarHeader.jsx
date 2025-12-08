@@ -62,12 +62,13 @@ function HospitalNavbarHeader() {
 			let f1 = item.name.substring(0, 22);
 			if (item.name.length > 22) {
 				f1 = f1 + '..';
-			}
-			
+			} 
+
 			return {
 				id: item.id,
 				logo: item.logo,
 				name: item.name,
+				type: item.type,
 				sort_name: f1,
 				address: item.address,
 				full_name: item.name,

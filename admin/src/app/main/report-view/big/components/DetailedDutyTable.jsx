@@ -32,7 +32,7 @@ const DetailedDutyTable = () => {
 
   return (
     <div className="detailed-duty-table w-full h-full">
-      <div className="overflow-hidden h-full">
+      <div className="overflow-hidden  rounded-md mt-10 mb-10 h-full">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed">
             {/* Row 1: 当直 header spanning 9 columns */}

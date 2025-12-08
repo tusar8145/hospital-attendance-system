@@ -57,6 +57,9 @@ const FrameScreen = () => {
     secondRow: Array(6).fill("")
   });
 
+  // State for AdministrativeMattersSection
+  const [specialNotes, setSpecialNotes] = useState("abc");
+
   const fieldData = [
     { label: "保安", required: true },
     { label: "医事", required: true },
@@ -106,6 +109,10 @@ const FrameScreen = () => {
       ...prev,
       [row]: prev[row].map((item, i) => i === index ? value : item)
     }));
+  };
+
+  const handleSpecialNotesChange = (e) => {
+    setSpecialNotes(e.target.value);
   };
 
   // Responsive values
@@ -688,6 +695,63 @@ const FrameScreen = () => {
       {/* Consolidated Content Component */}
       <ResponsiveSection>
         <ConsolidatedContentComponent />
+      </ResponsiveSection>
+
+      {/* Administrative Matters Section */}
+      <ResponsiveSection bgcolor="#e8f5e9">
+        <Stack spacing={isMobile ? 2 : 3}>
+          <Box
+            component="header"
+            sx={{
+              bgcolor: "#c8e6c9",
+              opacity: 0.8,
+              p: 1,
+              borderRadius: '4px',
+            }}
+          >
+            <Typography
+              sx={{
+                fontWeight: 600,
+                fontSize: fontSize.medium,
+                color: "#000000",
+              }}
+            >
+              管理事項
+            </Typography>
+          </Box>
+
+          <Stack spacing={1}>
+            <Typography
+              sx={{
+                fontWeight: 600,
+                fontSize: fontSize.small,
+                color: "#36394a",
+              }}
+            >
+              特記事項
+            </Typography>
+
+            <TextField
+              variant="outlined"
+              value={specialNotes}
+              onChange={handleSpecialNotesChange}
+              fullWidth
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: "#ffffff",
+                  borderRadius: "8px",
+                  height: textFieldHeight,
+                  "& fieldset": {
+                    borderColor: "#dfe1e7",
+                  },
+                  "& input": {
+                    fontSize: fontSize.small,
+                  },
+                },
+              }}
+            />
+          </Stack>
+        </Stack>
       </ResponsiveSection>
     </Box>
   );

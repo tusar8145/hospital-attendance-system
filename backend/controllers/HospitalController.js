@@ -218,6 +218,7 @@ export const manage_list = async (req, res, next) => {
         "id": medicalCenter.id,
         "logo": url.origin + '/api/hospital-manage/image/' + logo,
         "name": medicalCenter.name,
+        "type": medicalCenter.type,
         "address": medicalCenter.address || '',
         "created_by": medicalCenter.created_by,
         "created_at": medicalCenter.created_at ? 

@@ -9,7 +9,10 @@ import apiConfig from '../../configs/apiConfig';
 import Alert from '@mui/material/Alert';
 import { lazy } from 'react';
 import { CommonHeader } from '../../shared-components/new/CommonHeader';
-const Report = lazy(() => import('./big/Report'));
+
+const ReportB = lazy(() => import('./big/Report'));
+const ReportM = lazy(() => import('./mid/Report'));
+const ReportS = lazy(() => import('./sm/Report'));
  
 const Root = styled(FusePageSimple)(({ theme }) => ({
 	'& .FusePageSimple-header': {
@@ -50,20 +53,23 @@ function ReportView() {
 	return (
 		<Root
 			header={
-				<CommonHeader
-					title={`レポート - ${getCurrentJapaneseDate()}`}
-					onCreate={handleApproval}
-					createButtonText="承認する"
-					showFilter={false} // Hide filter dropdown
-				/>
+<></>
 			}
 			content={
 				<div className="flex flex-col p-16 sm:p-24 container">
 					{successAlert != null && <Alert severity="success" className="text-sm">{t(successAlert)}.</Alert>}
 					{failAlert != null && <Alert severity="error" className="text-sm">{t(failAlert)}.</Alert>}
-
 					<div className="flex flex-col lg:flex-row gap-6">
-								<Report />					 
+{
+  hospital?.type === 'large_hospital'
+    ? <ReportB />
+    : hospital?.type === 'hospital'
+      ? <ReportM />
+	  : hospital?.type === 'welfare'?
+      <ReportS /> :  <></>
+}
+
+								 				 
 					</div>
 
 				</div>
