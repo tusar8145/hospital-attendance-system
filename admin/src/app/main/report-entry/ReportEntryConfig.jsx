@@ -6,20 +6,20 @@ import {authRoles} from '../../auth';
 
 i18next.addResourceBundle('en', 'shared-components', en);
 i18next.addResourceBundle('ja', 'shared-components', ja);
-const Report = lazy(() => import('./Dashboard'));
+const ReportEntry = lazy(() => import('./ReportEntry'));
 /**
- * The Report page config.
+ * The ReportEntry page config.
  */
-const DashboardConfig = {
+const ReportEntryConfig = {
 	settings: {
 		layout: {}
 	},
 	auth    : authRoles.common,
 	routes: [
 		{
-			path: 'dashboard',
-			element: <Report />
+			path: 'report-entry',
+			element: <ReportEntry />
 		}
 	]
 };
-export default DashboardConfig;
+export default ReportEntryConfig;

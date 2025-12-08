@@ -39,8 +39,7 @@ const locale = {
 	Department : '診療科',
 	Doctor : '医師',
 	UserManagement : 'ユーザー管理',
-
-
+	ReportList : 'レポート一覧',
 
 };
 export default locale;

@@ -35,8 +35,14 @@ import MedicalCenterConfig from '../main/admin/medical-center/MedicalCenterConfi
 import DepartmentConfig from '../main/admin/department/DepartmentConfig';
 import DoctorConfig from '../main/admin/doctor/DoctorConfig';
 
+import ReportEntryConfig from '../main/report-entry/ReportEntryConfig';
+import ReportViewConfig from '../main/report-view/ReportViewConfig';
+import ReportListConfig from '../main/report-list/ReportListConfig';
+import WelfareDeptConfig from '../main/welfare-dept/WelfareDeptConfig';
+
+
 const routeConfigs = [DashboardConfig, InjuryIllnessConfig,MedicalPracticeConfig, MedicineConfig, MedicinalEfficacyConfig, SignOutConfig, SignInConfig, SignUpConfig, ICDtoDPCConfig, AgeBirthWeightConfig, SurgeryConfig, Treatment1Config, Treatment2Config,SecondaryInjuryConfig, StaffConfig, CCPMConfig, DataUploadConfig, DPCAnalysisConfig, SearchConfig, PageConfig , IssueConfig, ProfileConfig, DPCDiseaseConfig, DaysScoreConfig,
-	MedicalCenterConfig,DepartmentConfig, DoctorConfig
+	MedicalCenterConfig,DepartmentConfig, DoctorConfig, ReportEntryConfig, ReportViewConfig, WelfareDeptConfig, ReportListConfig
 ];
 /**
  * The routes of the application.

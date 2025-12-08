@@ -1,11 +1,11 @@
 import Button from '@mui/material/Button';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
 import { styled } from '@mui/material/styles';
 import FusePageSimple from '@fuse/core/FusePageSimple';
 import axios from 'axios';
-import apiConfig from '../../configs/apiConfig';
+import apiConfig from '../../../configs/apiConfig';
 import Alert from '@mui/material/Alert';
 import ManagementLog from './ManagementLog';
 
@@ -16,7 +16,7 @@ import DetailedDutyTable from './components/DetailedDutyTable';
 import VisitTable from './components/VisitTable';
 import DiagnosisTable from './components/DiagnosisTable';
 import PatientCountTable from './components/PatientCountTable';
-import { CommonHeader } from '../../shared-components/new/CommonHeader';
+import { CommonHeader } from '../../../shared-components/new/CommonHeader';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
 	'& .FusePageSimple-header': {
@@ -102,17 +102,7 @@ function Report() {
 	};
 
 	return (
-		<Root
-			header={
-				<CommonHeader
-					title={`レポート - ${getCurrentJapaneseDate()}`}
-					onCreate={handleApproval}
-					createButtonText="承認する"
-					showFilter={false} // Hide filter dropdown
-				/>
-			}
-			content={
-				<div className="flex flex-col p-16 sm:p-24 container">
+				<div className="flex flex-col container">
 					{successAlert != null && <Alert severity="success" className="text-sm">{t(successAlert)}.</Alert>}
 					{failAlert != null && <Alert severity="error" className="text-sm">{t(failAlert)}.</Alert>}
 
@@ -286,8 +276,7 @@ function Report() {
 
 
 				</div>
-			}
-		/>
+
 	);
 }
 

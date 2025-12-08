@@ -22,6 +22,15 @@ const navigationConfig = [
 		auth: authRoles.common,
 		url: 'dashboard'
 	},
+	{
+	id: '91',
+	title: 'Report List',
+	translate: 'ReportList',
+	type: 'item',
+	icon: 'assignment',
+	auth: authRoles.common,
+	url: 'report-list'
+	},
 	/*{
 		id: '7',
 		title: 'Contact form',
