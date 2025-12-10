@@ -237,3 +237,152 @@ model password_reset_otps {
   @@index([email])
   @@index([token])
 }
+
+
+
+// Add to your existing schema
+
+/////////////////////////////
+// Report (Parent Table)
+/////////////////////////////
+model report {
+  id                      Int         @id @default(autoincrement())
+  report_no               String      @unique // 通番 (generated)
+  report_date             DateTime    @db.Date // 報告日
+  medical_center_id       Int         // 病院、施設名
+  status                  Int         @default(0) // 0: Draft, 1: Submitted, 2: Approved
+  special_notes           String?     @db.Text // 特記事項
+  
+  // Stats from form
+  admission_count         Int?        @default(0) // 入院数
+  discharge_count         Int?        @default(0) // 退院数
+  external_morning        Int?        @default(0) // 外来-午前診
+  external_afternoon      Int?        @default(0) // 外来-午後診
+  external_duty           Int?        @default(0) // 外来-当直
+  emergency_transport     Int?        @default(0) // 緊急搬入数
+  post_transport_admission Int?      @default(0) // 搬入後入院件数
+  visit_count             Int?        @default(0) // 訪問
+  
+  // Foreign keys
+  medical_center          medical_center @relation(fields: [medical_center_id], references: [id])
+  
+  // Creator info
+  created_by              Int
+  created_by_admin        admins?     @relation("ReportCreatedBy", fields: [created_by], references: [id])
+  created_at              DateTime?   @default(now())
+  
+  // Updater info
+  updated_by              Int?
+  updated_by_admin        admins?     @relation("ReportUpdatedBy", fields: [updated_by], references: [id])
+  updated_at              DateTime?   @default(now())
+  
+  // Approver info
+  approved_by             Int?
+  approved_by_admin       admins?     @relation("ReportApprovedBy", fields: [approved_by], references: [id])
+  approved_at             DateTime?
+  
+  // Relations
+  report_details          report_detail[]  // Child records
+  report_comments         report_comment[] // Comments
+  
+  @@index([medical_center_id])
+  @@index([report_date])
+  @@index([status])
+  @@index([report_no])
+}
+
+/////////////////////////////
+// Report Detail (Child Table for Big Hospital)
+/////////////////////////////
+model report_detail {
+  id                      Int         @id @default(autoincrement())
+  report_id               Int         // Parent report
+  sequence_no             Int         // 通番 within report (01, 02, etc.)
+  department_id           Int         // 診療区 (内科, 外科, etc.)
+  
+  // Consultation types
+  consultation_type       Int         // 0: 午前診, 1: 午後診, 2: 夜診
+  
+  // Doctors (can have up to 3 doctors per consultation)
+  doctor_id_1             Int?        // 診療担当医 1
+  doctor_id_2             Int?        // 診療担当医 2
+  doctor_id_3             Int?        // 診療担当医 3
+  
+  patient_count           Int         @default(0) // 患者数
+  
+  // Relations
+  report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  department              department  @relation(fields: [department_id], references: [id])
+  doctor1                 doctor?     @relation("ReportDoctor1", fields: [doctor_id_1], references: [id])
+  doctor2                 doctor?     @relation("ReportDoctor2", fields: [doctor_id_2], references: [id])
+  doctor3                 doctor?     @relation("ReportDoctor3", fields: [doctor_id_3], references: [id])
+  
+  created_at              DateTime?   @default(now())
+  updated_at              DateTime?   @default(now())
+  
+  @@unique([report_id, sequence_no, consultation_type])
+  @@index([report_id])
+  @@index([department_id])
+  @@index([doctor_id_1])
+  @@index([doctor_id_2])
+  @@index([doctor_id_3])
+}
+
+/////////////////////////////
+// Report Comment
+/////////////////////////////
+model report_comment {
+  id                      Int         @id @default(autoincrement())
+  report_id               Int
+  admin_id                Int
+  comment                 String      @db.Text
+  is_internal             Boolean     @default(false) // Internal note vs public comment
+  
+  // Relations
+  report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  admin                   admins      @relation(fields: [admin_id], references: [id])
+  
+  created_at              DateTime?   @default(now())
+  updated_at              DateTime?   @default(now())
+  
+  @@index([report_id])
+  @@index([admin_id])
+}
+
+/////////////////////////////
+// Shift Nurses (for 外来看護師 section)
+/////////////////////////////
+model report_shift_nurse {
+  id                      Int         @id @default(autoincrement())
+  report_id               Int
+  shift_type              Int         // 0: 準夜 (early night), 1: 深夜 (late night)
+  nurse_name              String      // Nurse name
+  
+  // Relations
+  report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  
+  created_at              DateTime?   @default(now())
+  
+  @@index([report_id])
+  @@index([shift_type])
+}
+
+/////////////////////////////
+// Duty Staff (for 当直 section)
+/////////////////////////////
+model report_duty_staff {
+  id                      Int         @id @default(autoincrement())
+  report_id               Int
+  position                String      // Position name (保安, 医事, etc.)
+  staff_name_1            String?     // First staff name
+  staff_name_2            String?     // Second staff name
+  
+  // Relations
+  report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  
+  created_at              DateTime?   @default(now())
+  updated_at              DateTime?   @default(now())
+  
+  @@unique([report_id, position])
+  @@index([report_id])
+}
