@@ -389,14 +389,15 @@ const ConsolidatedContentComponent = ({
     );
   };
 
-  // Responsive values
+  // Responsive values - INCREASED FONT SIZES
   const cellPadding = isMobile ? '4px 6px' : isTablet ? '8px 10px' : '12px 14px';
   const fontSize = {
-    small: isMobile ? '0.7rem' : isTablet ? '0.75rem' : '0.8125rem',
-    medium: isMobile ? '0.75rem' : isTablet ? '0.8125rem' : '0.875rem',
-    large: isMobile ? '0.875rem' : isTablet ? '0.9375rem' : '1rem'
+    small: isMobile ? '0.75rem' : isTablet ? '0.8125rem' : '0.875rem',
+    medium: isMobile ? '0.875rem' : isTablet ? '0.9375rem' : '1rem', // Increased
+    large: isMobile ? '1rem' : isTablet ? '1.125rem' : '1.25rem', // Increased
+    xlarge: isMobile ? '1.125rem' : isTablet ? '1.25rem' : '1.5rem', // Increased
   };
-  const selectHeight = isMobile ? 32 : isTablet ? 36 : 40;
+  const selectHeight = isMobile ? 36 : isTablet ? 40 : 44; // Increased height
 
   if (externalLoading || loading) {
     return (
@@ -429,14 +430,14 @@ const ConsolidatedContentComponent = ({
       }}>
         <InfoOutlinedIcon sx={{ fontSize: 48, color: '#bdc3c7' }} />
         <Typography sx={{ 
-          fontSize: fontSize.large, 
+          fontSize: fontSize.xlarge, // Increased
           color: '#7f8c8d',
           fontWeight: 600
         }}>
           病院が選択されていません
         </Typography>
         <Typography sx={{ 
-          fontSize: fontSize.medium, 
+          fontSize: fontSize.medium, // Increased
           color: '#95a5a6'
         }}>
           診療区データを表示するには病院を選択してください
@@ -471,7 +472,7 @@ const ConsolidatedContentComponent = ({
           <Box>
             <Typography sx={{ 
               fontWeight: 700, 
-              fontSize: fontSize.large,
+              fontSize: fontSize.xlarge, // Increased
               color: "#2c3e50",
               display: 'flex',
               alignItems: 'center',
@@ -486,7 +487,7 @@ const ConsolidatedContentComponent = ({
               診療部門別集計
             </Typography>
             <Typography sx={{ 
-              fontSize: fontSize.small, 
+              fontSize: fontSize.medium, // Increased
               color: "#666",
               mt: 0.5
             }}>
@@ -510,7 +511,7 @@ const ConsolidatedContentComponent = ({
                   総合計:
                 </Typography>
                 <Typography sx={{ 
-                  fontSize: fontSize.large, 
+                  fontSize: fontSize.large, // Increased
                   fontWeight: 700,
                   minWidth: '40px',
                   textAlign: 'center'
@@ -547,7 +548,7 @@ const ConsolidatedContentComponent = ({
             flexWrap: 'wrap'
           }}>
             <Typography sx={{ 
-              fontSize: fontSize.small, 
+              fontSize: fontSize.medium, // Increased
               color: "#666",
               display: 'flex',
               alignItems: 'center',
@@ -579,7 +580,7 @@ const ConsolidatedContentComponent = ({
                       }}
                     >
                       <Typography sx={{ 
-                        fontSize: fontSize.small,
+                        fontSize: fontSize.medium, // Increased
                         color: isSelected ? '#0A6AE3' : '#666',
                         fontWeight: isSelected ? 600 : 400
                       }}>
@@ -651,7 +652,7 @@ const ConsolidatedContentComponent = ({
                 padding: cellPadding,
                 textAlign: 'center',
                 fontWeight: 700,
-                fontSize: fontSize.medium,
+                fontSize: fontSize.medium, // Increased
                 color: "#2c3e50",
                 minWidth: '60px',
                 position: 'sticky',
@@ -667,7 +668,7 @@ const ConsolidatedContentComponent = ({
                 padding: cellPadding,
                 textAlign: 'center',
                 fontWeight: 700,
-                fontSize: fontSize.medium,
+                fontSize: fontSize.medium, // Increased
                 color: "#2c3e50",
                 minWidth: '140px',
                 position: 'sticky',
@@ -683,7 +684,7 @@ const ConsolidatedContentComponent = ({
                 padding: cellPadding,
                 textAlign: 'center',
                 fontWeight: 700,
-                fontSize: fontSize.medium,
+                fontSize: fontSize.medium, // Increased
                 color: "#2c3e50",
                 minWidth: '90px'
               }}>
@@ -695,7 +696,7 @@ const ConsolidatedContentComponent = ({
                 padding: cellPadding,
                 textAlign: 'center',
                 fontWeight: 700,
-                fontSize: fontSize.medium,
+                fontSize: fontSize.medium, // Increased
                 color: "#2c3e50",
                 minWidth: '320px'
               }}>
@@ -715,7 +716,7 @@ const ConsolidatedContentComponent = ({
                 padding: cellPadding,
                 textAlign: 'center',
                 fontWeight: 700,
-                fontSize: fontSize.medium,
+                fontSize: fontSize.medium, // Increased
                 color: "#2c3e50",
                 minWidth: '100px'
               }}>
@@ -727,7 +728,7 @@ const ConsolidatedContentComponent = ({
                 padding: cellPadding,
                 textAlign: 'center',
                 fontWeight: 700,
-                fontSize: fontSize.medium,
+                fontSize: fontSize.medium, // Increased
                 color: "#2c3e50",
                 minWidth: '100px'
               }}>
@@ -739,7 +740,7 @@ const ConsolidatedContentComponent = ({
                 padding: cellPadding,
                 textAlign: 'center',
                 fontWeight: 700,
-                fontSize: fontSize.medium,
+                fontSize: fontSize.medium, // Increased
                 color: "#2c3e50",
                 minWidth: '120px'
               }}>
@@ -778,7 +779,7 @@ const ConsolidatedContentComponent = ({
                             textAlign: 'center',
                             verticalAlign: 'middle',
                             fontWeight: 700,
-                            fontSize: fontSize.large,
+                            fontSize: fontSize.large, // Increased
                             color: "#0A6AE3",
                             backgroundColor: '#ffffff',
                             position: 'sticky',
@@ -814,7 +815,7 @@ const ConsolidatedContentComponent = ({
                               displayEmpty
                               sx={{
                                 height: selectHeight,
-                                fontSize: fontSize.medium,
+                                fontSize: fontSize.medium, // Increased
                                 '& .MuiSelect-select': {
                                   padding: isMobile ? '6px 8px' : '8px 12px',
                                   display: 'flex',
@@ -839,7 +840,7 @@ const ConsolidatedContentComponent = ({
                                     <Typography sx={{ 
                                       fontWeight: 600,
                                       color: isDeptAlreadyUsed ? '#ff9800' : rowError ? '#df1c41' : '#2c3e50',
-                                      fontSize: fontSize.small
+                                      fontSize: fontSize.medium // Increased
                                     }}>
                                       {selectedDept?.name || 'Unknown'}
                                       {isDeptAlreadyUsed && ' (重複)'}
@@ -858,13 +859,13 @@ const ConsolidatedContentComponent = ({
                                 PaperProps: {
                                   sx: {
                                     maxHeight: 300,
-                                    fontSize: fontSize.medium
+                                    fontSize: fontSize.medium // Increased
                                   }
                                 }
                               }}
                             >
                               <MenuItem value="" disabled>
-                                <Typography sx={{ color: '#999', fontSize: fontSize.small }}>
+                                <Typography sx={{ color: '#999', fontSize: fontSize.medium }}> {/* Increased */}
                                   診療区を選択してください
                                 </Typography>
                               </MenuItem>
@@ -878,7 +879,7 @@ const ConsolidatedContentComponent = ({
                                     value={dept.id}
                                     disabled={isUsed}
                                     sx={{ 
-                                      fontSize: fontSize.medium,
+                                      fontSize: fontSize.medium, // Increased
                                       '&.Mui-selected': {
                                         backgroundColor: '#e3f2fd'
                                       },
@@ -925,7 +926,7 @@ const ConsolidatedContentComponent = ({
                             {(rowError || isDeptAlreadyUsed) && (
                               <Typography sx={{ 
                                 color: isDeptAlreadyUsed ? '#ff9800' : '#df1c41', 
-                                fontSize: fontSize.small,
+                                fontSize: fontSize.medium, // Increased
                                 mt: 0.5
                               }}>
                                 {isDeptAlreadyUsed ? 'この診療区は既に使用されています' : rowError}
@@ -957,7 +958,7 @@ const ConsolidatedContentComponent = ({
                           }} />
                           <Typography sx={{ 
                             fontWeight: 600,
-                            fontSize: fontSize.medium,
+                            fontSize: fontSize.medium, // Increased
                             color: typeConfig.color
                           }}>
                             {typeConfig.label}
@@ -990,7 +991,7 @@ const ConsolidatedContentComponent = ({
                             width: '100%',
                             height: selectHeight,
                             backgroundColor: consultation.doctor_id_1 ? '#EFF6FF' : '#F9FAFB',
-                            fontSize: fontSize.medium,
+                            fontSize: fontSize.medium, // Increased
                             '& .MuiOutlinedInput-notchedOutline': {
                               borderColor: consultation.doctor_id_1 ? '#0A6AE3' : '#dfe1e7',
                             },
@@ -1022,13 +1023,13 @@ const ConsolidatedContentComponent = ({
                             PaperProps: {
                               sx: {
                                 maxHeight: 300,
-                                fontSize: fontSize.medium
+                                fontSize: fontSize.medium // Increased
                               }
                             }
                           }}
                         >
                           <MenuItem value="">
-                            <Typography sx={{ color: '#999', fontSize: fontSize.small }}>
+                            <Typography sx={{ color: '#999', fontSize: fontSize.medium }}> {/* Increased */}
                               医師を選択
                             </Typography>
                           </MenuItem>
@@ -1037,7 +1038,7 @@ const ConsolidatedContentComponent = ({
                               key={doctor.id} 
                               value={doctor.id}
                               sx={{ 
-                                fontSize: fontSize.medium,
+                                fontSize: fontSize.medium, // Increased
                                 '&.Mui-selected': {
                                   backgroundColor: '#e3f2fd'
                                 }
@@ -1085,7 +1086,7 @@ const ConsolidatedContentComponent = ({
                             width: '100%',
                             height: selectHeight,
                             backgroundColor: consultation.doctor_id_2 ? '#EFF6FF' : '#F9FAFB',
-                            fontSize: fontSize.medium,
+                            fontSize: fontSize.medium, // Increased
                             '& .MuiOutlinedInput-notchedOutline': {
                               borderColor: consultation.doctor_id_2 ? '#0A6AE3' : '#dfe1e7',
                             },
@@ -1116,7 +1117,7 @@ const ConsolidatedContentComponent = ({
                             <MenuItem 
                               key={doctor.id} 
                               value={doctor.id}
-                              sx={{ fontSize: fontSize.medium }}
+                              sx={{ fontSize: fontSize.medium }} // Increased
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Typography sx={{ fontWeight: 500 }}>
@@ -1154,7 +1155,7 @@ const ConsolidatedContentComponent = ({
                             width: '100%',
                             height: selectHeight,
                             backgroundColor: consultation.doctor_id_3 ? '#EFF6FF' : '#F9FAFB',
-                            fontSize: fontSize.medium,
+                            fontSize: fontSize.medium, // Increased
                             '& .MuiOutlinedInput-notchedOutline': {
                               borderColor: consultation.doctor_id_3 ? '#0A6AE3' : '#dfe1e7',
                             },
@@ -1185,7 +1186,7 @@ const ConsolidatedContentComponent = ({
                             <MenuItem 
                               key={doctor.id} 
                               value={doctor.id}
-                              sx={{ fontSize: fontSize.medium }}
+                              sx={{ fontSize: fontSize.medium }} // Increased
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Typography sx={{ fontWeight: 500 }}>
@@ -1225,7 +1226,7 @@ const ConsolidatedContentComponent = ({
                             min: 0,
                             style: {
                               textAlign: 'center',
-                              fontSize: fontSize.medium,
+                              fontSize: fontSize.medium, // Increased
                               padding: isMobile ? '6px 8px' : '8px 12px',
                               height: selectHeight - 8,
                               fontWeight: 600,
@@ -1236,7 +1237,7 @@ const ConsolidatedContentComponent = ({
                             endAdornment: (
                               <InputAdornment position="end">
                                 <Typography sx={{ 
-                                  fontSize: fontSize.small,
+                                  fontSize: fontSize.medium, // Increased
                                   color: '#666'
                                 }}>
                                   名
@@ -1277,7 +1278,7 @@ const ConsolidatedContentComponent = ({
                             <Typography
                               sx={{
                                 fontWeight: 800,
-                                fontSize: fontSize.large,
+                                fontSize: fontSize.large, // Increased
                                 color: "#0A6AE3",
                               }}
                             >
@@ -1285,7 +1286,7 @@ const ConsolidatedContentComponent = ({
                             </Typography>
                             <Typography
                               sx={{
-                                fontSize: fontSize.small,
+                                fontSize: fontSize.medium, // Increased
                                 color: "#666",
                                 mt: 0.5
                               }}
@@ -1314,76 +1315,70 @@ const ConsolidatedContentComponent = ({
                             gap: 1
                           }}>
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
-<Tooltip title="上に移動">
-  <span> {/* Add span wrapper */}
-    <IconButton
-      size="small"
-      onClick={() => handleMoveRow(row.id, 'up')}
-      disabled={rowIndex === 0}
-      sx={{
-        border: '1px solid #e0e0e0',
-        borderRadius: '4px',
-        width: 32,
-        height: 32
-      }}
-    >
-      <Typography sx={{ 
-        color: rowIndex === 0 ? '#ccc' : '#3498db',
-        fontSize: fontSize.medium,
-        fontWeight: 600
-      }}>
-        ↑
-      </Typography>
-    </IconButton>
-  </span>
-</Tooltip>
+                              <Tooltip title="上に移動">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleMoveRow(row.id, 'up')}
+                                  disabled={rowIndex === 0}
+                                  sx={{
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '4px',
+                                    width: 32,
+                                    height: 32
+                                  }}
+                                >
+                                  <Typography sx={{ 
+                                    color: rowIndex === 0 ? '#ccc' : '#3498db',
+                                    fontSize: fontSize.medium, // Increased
+                                    fontWeight: 600
+                                  }}>
+                                    ↑
+                                  </Typography>
+                                </IconButton>
+                              </Tooltip>
                               
-<Tooltip title="下に移動">
-  <span> {/* Add span wrapper */}
-    <IconButton
-      size="small"
-      onClick={() => handleMoveRow(row.id, 'down')}
-      disabled={rowIndex === rows.length - 1}
-      sx={{
-        border: '1px solid #e0e0e0',
-        borderRadius: '4px',
-        width: 32,
-        height: 32
-      }}
-    >
-      <Typography sx={{ 
-        color: rowIndex === rows.length - 1 ? '#ccc' : '#3498db',
-        fontSize: fontSize.medium,
-        fontWeight: 600
-      }}>
-        ↓
-      </Typography>
-    </IconButton>
-  </span>
-</Tooltip>
+                              <Tooltip title="下に移動">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleMoveRow(row.id, 'down')}
+                                  disabled={rowIndex === rows.length - 1}
+                                  sx={{
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '4px',
+                                    width: 32,
+                                    height: 32
+                                  }}
+                                >
+                                  <Typography sx={{ 
+                                    color: rowIndex === rows.length - 1 ? '#ccc' : '#3498db',
+                                    fontSize: fontSize.medium, // Increased
+                                    fontWeight: 600
+                                  }}>
+                                    ↓
+                                  </Typography>
+                                </IconButton>
+                              </Tooltip>
                             </Box>
                             
                             {rows.length > 1 && (
-<Tooltip title="この診療区を削除">
-  <span> {/* Add span wrapper */}
-    <IconButton
-      size="small"
-      onClick={() => handleRemoveRow(row.id)}
-      color="error"
-      sx={{
-        border: '1px solid #ffcdd2',
-        borderRadius: '6px',
-        width: 36,
-        height: 36,
-        '&:hover': {
-          backgroundColor: '#ffebee'
-        }
-      }}
-    >
-      <DeleteIcon fontSize="small" />
-    </IconButton>
-  </span>
-</Tooltip>
+                              <Tooltip title="この診療区を削除">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleRemoveRow(row.id)}
+                                  color="error"
+                                  sx={{
+                                    border: '1px solid #ffcdd2',
+                                    borderRadius: '6px',
+                                    width: 36,
+                                    height: 36,
+                                    '&:hover': {
+                                      backgroundColor: '#ffebee'
+                                    }
+                                  }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                             )}
                           </Box>
                         </TableCell>
@@ -1413,14 +1408,14 @@ const ConsolidatedContentComponent = ({
                       color: '#bdc3c7' 
                     }} />
                     <Typography sx={{ 
-                      fontSize: fontSize.large, 
+                      fontSize: fontSize.large, // Increased
                       color: '#7f8c8d',
                       fontWeight: 600
                     }}>
                       診療区が追加されていません
                     </Typography>
                     <Typography sx={{ 
-                      fontSize: fontSize.medium, 
+                      fontSize: fontSize.medium, // Increased
                       color: '#95a5a6',
                       maxWidth: '400px',
                       textAlign: 'center'
@@ -1434,6 +1429,7 @@ const ConsolidatedContentComponent = ({
                       sx={{
                         mt: 2,
                         backgroundColor: '#27ae60',
+                        fontSize: fontSize.medium, // Increased
                         '&:hover': {
                           backgroundColor: '#219955'
                         }
@@ -1456,7 +1452,7 @@ const ConsolidatedContentComponent = ({
                     padding: cellPadding,
                     textAlign: 'right',
                     fontWeight: 700,
-                    fontSize: fontSize.large,
+                    fontSize: fontSize.large, // Increased
                     color: "#2c3e50",
                     backgroundColor: '#f8f9fa'
                   }}
@@ -1480,7 +1476,7 @@ const ConsolidatedContentComponent = ({
                   <Typography
                     sx={{
                       fontWeight: 800,
-                      fontSize: fontSize.large,
+                      fontSize: fontSize.large, // Increased
                       color: "#FFFFFF",
                     }}
                   >
@@ -1500,13 +1496,13 @@ const ConsolidatedContentComponent = ({
                       gap: 1
                     }}>
                       <Typography sx={{ 
-                        fontSize: fontSize.small,
+                        fontSize: fontSize.medium, // Increased
                         color: '#666'
                       }}>
                         部門数:
                       </Typography>
                       <Typography sx={{ 
-                        fontSize: fontSize.medium,
+                        fontSize: fontSize.medium, // Increased
                         fontWeight: 600,
                         color: '#2c3e50'
                       }}>
@@ -1536,14 +1532,14 @@ const ConsolidatedContentComponent = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
             <Box>
               <Typography sx={{ 
-                fontSize: fontSize.small, 
+                fontSize: fontSize.medium, // Increased
                 color: "#666",
                 mb: 0.5
               }}>
                 総患者数
               </Typography>
               <Typography sx={{ 
-                fontSize: fontSize.large, 
+                fontSize: fontSize.large, // Increased
                 fontWeight: 700,
                 color: "#0A6AE3"
               }}>
@@ -1553,14 +1549,14 @@ const ConsolidatedContentComponent = ({
             
             <Box>
               <Typography sx={{ 
-                fontSize: fontSize.small, 
+                fontSize: fontSize.medium, // Increased
                 color: "#666",
                 mb: 0.5
               }}>
                 診療部門数
               </Typography>
               <Typography sx={{ 
-                fontSize: fontSize.large, 
+                fontSize: fontSize.large, // Increased
                 fontWeight: 700,
                 color: "#27ae60"
               }}>
@@ -1570,14 +1566,14 @@ const ConsolidatedContentComponent = ({
             
             <Box>
               <Typography sx={{ 
-                fontSize: fontSize.small, 
+                fontSize: fontSize.medium, // Increased
                 color: "#666",
                 mb: 0.5
               }}>
                 総診療時間帯
               </Typography>
               <Typography sx={{ 
-                fontSize: fontSize.large, 
+                fontSize: fontSize.large, // Increased
                 fontWeight: 700,
                 color: "#e74c3c"
               }}>
@@ -1587,14 +1583,14 @@ const ConsolidatedContentComponent = ({
             
             <Box>
               <Typography sx={{ 
-                fontSize: fontSize.small, 
+                fontSize: fontSize.medium, // Increased
                 color: "#666",
                 mb: 0.5
               }}>
                 利用可能な診療区
               </Typography>
               <Typography sx={{ 
-                fontSize: fontSize.large, 
+                fontSize: fontSize.large, // Increased
                 fontWeight: 700,
                 color: "#9b59b6"
               }}>

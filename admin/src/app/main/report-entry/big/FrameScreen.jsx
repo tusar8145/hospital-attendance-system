@@ -1,4 +1,4 @@
-import React, { useState, useEffect , useCallback} from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Button, 
@@ -27,7 +27,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
 import ConsolidatedContentComponent from './ConsolidatedContentComponent';
-import CircleIcon from '@mui/icons-material/Circle';
+import ShiftNursesSection from './ShiftNursesSection';
+
 const FrameScreen = React.memo(({
   formData = null,
   departments = [],
@@ -63,15 +64,10 @@ const FrameScreen = React.memo(({
     visit: "0"
   });
 
-const [shiftNurses, setShiftNurses] = useState({
-  earlyNight: [{ id: Date.now() + 1, name: "" }],
-  lateNight: [{ id: Date.now() + 2, name: "" }]
-});
-
-const generateNurseId = () => {
-  return Date.now() + Math.floor(Math.random() * 1000);
-};
-
+  const [shiftNurses, setShiftNurses] = useState({
+    earlyNight: [{ id: Date.now() + 1, name: "" }],
+    lateNight: [{ id: Date.now() + 2, name: "" }]
+  });
 
   const [currentStatus, setCurrentStatus] = useState({
     firstRow: Array(6).fill(""),
@@ -131,98 +127,98 @@ const generateNurseId = () => {
   }, [formData]);
 
   // Load form data from existing report
-const loadFormData = (data) => {
-  // Basic stats
-  setAdmissionCount(data.admission_count?.toString() || "0");
-  setDischargeCount(data.discharge_count?.toString() || "0");
-  
-  // External doctors
-  setExternalDoctors({
-    morning: data.external_morning?.toString() || "0",
-    afternoon: data.external_afternoon?.toString() || "0",
-    duty: data.external_duty?.toString() || "0"
-  });
-  
-  // External consultation
-  setExternalConsultation({
-    emergencyTransport: data.emergency_transport?.toString() || "0",
-    postTransportAdmission: data.post_transport_admission?.toString() || "0",
-    visit: data.visit_count?.toString() || "0"
-  });
-  
-  // Shift nurses - handle both array format and our state format
-  let earlyNight = [];
-  let lateNight = [];
-  
-  if (data.shift_nurses && Array.isArray(data.shift_nurses)) {
-    // Use proper IDs from data or generate new ones
-    earlyNight = data.shift_nurses
-      .filter(nurse => nurse.shift_type === 0 || nurse.shift_type === "0")
-      .map((nurse, index) => ({ 
-        id: nurse.id || generateNurseId(),
-        name: nurse.nurse_name || "" 
-      }));
+  const loadFormData = (data) => {
+    // Basic stats
+    setAdmissionCount(data.admission_count?.toString() || "0");
+    setDischargeCount(data.discharge_count?.toString() || "0");
     
-    lateNight = data.shift_nurses
-      .filter(nurse => nurse.shift_type === 1 || nurse.shift_type === "1")
-      .map((nurse, index) => ({ 
-        id: nurse.id || generateNurseId(),
-        name: nurse.nurse_name || "" 
-      }));
-  }
-  
-  // Ensure at least one field exists
-  if (earlyNight.length === 0) {
-    earlyNight = [{ id: generateNurseId(), name: "" }];
-  }
-  
-  if (lateNight.length === 0) {
-    lateNight = [{ id: generateNurseId(), name: "" }];
-  }
-  
-  setShiftNurses({ 
-    earlyNight,
-    lateNight
-  });
-  
-  // Duty staff - map to fieldData positions
-  if (data.duty_staff && Array.isArray(data.duty_staff)) {
-    const firstRow = [];
-    const secondRow = [];
-    
-    fieldData.forEach((field, index) => {
-      const staff = data.duty_staff.find(s => s.position === field.position);
-      firstRow[index] = staff?.staff_name_1 || "";
-      secondRow[index] = staff?.staff_name_2 || "";
+    // External doctors
+    setExternalDoctors({
+      morning: data.external_morning?.toString() || "0",
+      afternoon: data.external_afternoon?.toString() || "0",
+      duty: data.external_duty?.toString() || "0"
     });
     
-    setCurrentStatus({ firstRow, secondRow });
-  }
-  
-  // Special notes
-  setSpecialNotes(data.special_notes || "");
-  
-  // Consolidated data from report_details
-  if (data.report_details && Array.isArray(data.report_details)) {
-    const consolidated = [];
-    data.report_details.forEach(detail => {
-      consolidated.push({
-        sequence_no: detail.sequence_no,
-        department_id: detail.department_id,
-        department_name: detail.department?.name,
-        consultation_type: detail.consultation_type,
-        doctor_id_1: detail.doctor_id_1,
-        doctor_id_2: detail.doctor_id_2,
-        doctor_id_3: detail.doctor_id_3,
-        patient_count: detail.patient_count
+    // External consultation
+    setExternalConsultation({
+      emergencyTransport: data.emergency_transport?.toString() || "0",
+      postTransportAdmission: data.post_transport_admission?.toString() || "0",
+      visit: data.visit_count?.toString() || "0"
+    });
+    
+    // Shift nurses - handle both array format and our state format
+    let earlyNight = [];
+    let lateNight = [];
+    
+    if (data.shift_nurses && Array.isArray(data.shift_nurses)) {
+      // Use proper IDs from data or generate new ones
+      earlyNight = data.shift_nurses
+        .filter(nurse => nurse.shift_type === 0 || nurse.shift_type === "0")
+        .map((nurse, index) => ({ 
+          id: nurse.id || Date.now() + Math.random(),
+          name: nurse.nurse_name || "" 
+        }));
+      
+      lateNight = data.shift_nurses
+        .filter(nurse => nurse.shift_type === 1 || nurse.shift_type === "1")
+        .map((nurse, index) => ({ 
+          id: nurse.id || Date.now() + Math.random(),
+          name: nurse.nurse_name || "" 
+        }));
+    }
+    
+    // Ensure at least one field exists
+    if (earlyNight.length === 0) {
+      earlyNight = [{ id: Date.now() + Math.random(), name: "" }];
+    }
+    
+    if (lateNight.length === 0) {
+      lateNight = [{ id: Date.now() + Math.random(), name: "" }];
+    }
+    
+    setShiftNurses({ 
+      earlyNight,
+      lateNight
+    });
+    
+    // Duty staff - map to fieldData positions
+    if (data.duty_staff && Array.isArray(data.duty_staff)) {
+      const firstRow = [];
+      const secondRow = [];
+      
+      fieldData.forEach((field, index) => {
+        const staff = data.duty_staff.find(s => s.position === field.position);
+        firstRow[index] = staff?.staff_name_1 || "";
+        secondRow[index] = staff?.staff_name_2 || "";
       });
-    });
-    setConsolidatedData(consolidated);
-  }
-  
-  // Clear validation errors when loading data
-  setValidationErrors({});
-};
+      
+      setCurrentStatus({ firstRow, secondRow });
+    }
+    
+    // Special notes
+    setSpecialNotes(data.special_notes || "");
+    
+    // Consolidated data from report_details
+    if (data.report_details && Array.isArray(data.report_details)) {
+      const consolidated = [];
+      data.report_details.forEach(detail => {
+        consolidated.push({
+          sequence_no: detail.sequence_no,
+          department_id: detail.department_id,
+          department_name: detail.department?.name,
+          consultation_type: detail.consultation_type,
+          doctor_id_1: detail.doctor_id_1,
+          doctor_id_2: detail.doctor_id_2,
+          doctor_id_3: detail.doctor_id_3,
+          patient_count: detail.patient_count
+        });
+      });
+      setConsolidatedData(consolidated);
+    }
+    
+    // Clear validation errors when loading data
+    setValidationErrors({});
+  };
 
   // Reset form to initial state
   const resetForm = () => {
@@ -231,16 +227,14 @@ const loadFormData = (data) => {
     setExternalDoctors({ morning: "0", afternoon: "0", duty: "0" });
     setExternalConsultation({ emergencyTransport: "0", postTransportAdmission: "0", visit: "0" });
     setShiftNurses({ 
-      earlyNight: [{ id: `new-${Date.now()}`, name: "" }],
-      lateNight: [{ id: `new-${Date.now()}`, name: "" }]
+      earlyNight: [{ id: Date.now() + Math.random(), name: "" }],
+      lateNight: [{ id: Date.now() + Math.random(), name: "" }]
     });
     setCurrentStatus({ firstRow: Array(6).fill(""), secondRow: Array(6).fill("") });
     setSpecialNotes("");
     setConsolidatedData([]);
     setValidationErrors({});
   };
-
-
 
   // Format date for display
   const formatJapaneseDate = (date) => {
@@ -338,50 +332,50 @@ const loadFormData = (data) => {
     return Object.keys(errors).length === 0;
   };
 
-const prepareFormData = () => {
-  // Prepare shift nurses
-  const shiftNursesData = [
-    ...shiftNurses.earlyNight
-      .filter(nurse => nurse.name.trim() !== "")
-      .map(nurse => ({
-        shift_type: 0,
-        nurse_name: nurse.name.trim()
-      })),
-    ...shiftNurses.lateNight
-      .filter(nurse => nurse.name.trim() !== "")
-      .map(nurse => ({
-        shift_type: 1,
-        nurse_name: nurse.name.trim()
-      }))
-  ];
+  const prepareFormData = () => {
+    // Prepare shift nurses
+    const shiftNursesData = [
+      ...shiftNurses.earlyNight
+        .filter(nurse => nurse.name.trim() !== "")
+        .map(nurse => ({
+          shift_type: 0,
+          nurse_name: nurse.name.trim()
+        })),
+      ...shiftNurses.lateNight
+        .filter(nurse => nurse.name.trim() !== "")
+        .map(nurse => ({
+          shift_type: 1,
+          nurse_name: nurse.name.trim()
+        }))
+    ];
 
-  // Prepare duty staff
-  const dutyStaffData = fieldData.map((field, index) => ({
-    position: field.position,
-    staff_name_1: (currentStatus.firstRow[index] || "").trim(),
-    staff_name_2: (currentStatus.secondRow[index] || "").trim()
-  }));
+    // Prepare duty staff
+    const dutyStaffData = fieldData.map((field, index) => ({
+      position: field.position,
+      staff_name_1: (currentStatus.firstRow[index] || "").trim(),
+      staff_name_2: (currentStatus.secondRow[index] || "").trim()
+    }));
 
-  // Filter out empty consolidated data
-  const filteredConsolidatedData = consolidatedData.filter(item => 
-    item.department_id && item.patient_count !== undefined
-  );
+    // Filter out empty consolidated data
+    const filteredConsolidatedData = consolidatedData.filter(item => 
+      item.department_id && item.patient_count !== undefined
+    );
 
-  return {
-    admission_count: parseInt(admissionCount) || 0,
-    discharge_count: parseInt(dischargeCount) || 0,
-    external_morning: parseInt(externalDoctors.morning) || 0,
-    external_afternoon: parseInt(externalDoctors.afternoon) || 0,
-    external_duty: parseInt(externalDoctors.duty) || 0,
-    emergency_transport: parseInt(externalConsultation.emergencyTransport) || 0,
-    post_transport_admission: parseInt(externalConsultation.postTransportAdmission) || 0,
-    visit_count: parseInt(externalConsultation.visit) || 0,
-    special_notes: specialNotes.trim(),
-    shift_nurses: shiftNursesData,
-    duty_staff: dutyStaffData,
-    report_details: filteredConsolidatedData
+    return {
+      admission_count: parseInt(admissionCount) || 0,
+      discharge_count: parseInt(dischargeCount) || 0,
+      external_morning: parseInt(externalDoctors.morning) || 0,
+      external_afternoon: parseInt(externalDoctors.afternoon) || 0,
+      external_duty: parseInt(externalDoctors.duty) || 0,
+      emergency_transport: parseInt(externalConsultation.emergencyTransport) || 0,
+      post_transport_admission: parseInt(externalConsultation.postTransportAdmission) || 0,
+      visit_count: parseInt(externalConsultation.visit) || 0,
+      special_notes: specialNotes.trim(),
+      shift_nurses: shiftNursesData,
+      duty_staff: dutyStaffData,
+      report_details: filteredConsolidatedData
+    };
   };
-};
 
   // Handle save draft
   const handleSaveDraftClick = () => {
@@ -465,66 +459,24 @@ const prepareFormData = () => {
     }
   };
 
-const handleShiftNurseChange = useCallback((shift, id, value) => {
-  console.log(shift, id, '<<<<<<<<<<<<>>>>>>>>>>>>>>>', value);
-  
- setShiftNurses(prev => ({
-    ...prev,
-    [shift]: prev[shift].map(item => 
-      item.id === id ? { ...item, name: value } : item
-    )
-  }));
-  
-  // Clear error if fixed
-  if (validationErrors[shift] && value.trim() !== "") {
-    setValidationErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[shift];
-      return newErrors;
-    });
-  }
-}, []); // Add validationErrors as dependency
-
-
-const handleAddShiftNurse = useCallback((shift) => {
-  setShiftNurses(prev => ({
-    ...prev,
-    [shift]: [...prev[shift], { id: generateNurseId(), name: "" }]
-  }));
-}, []);
-
-const handleRemoveShiftNurse = useCallback((shift, id) => {
-  setShiftNurses(prev => ({
-    ...prev,
-    [shift]: prev[shift].filter(item => item.id !== id)
-  }));
-}, []);
-
-
-
-const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
-  return (e) => {
-    const value = e.target.value;
-    console.log(shift, id, '<<<<<<<<<<<<>>>>>>>>>>>>>>>', value);
+  // Handle shift nurses change from the child component
+  const handleShiftNursesChange = (newShiftNurses) => {
+    setShiftNurses(newShiftNurses);
     
- setShiftNurses(prev => ({
-    ...prev,
-    [shift]: prev[shift].map(item => 
-      item.id === id ? { ...item, name: value } : item
-    )
-  }));
+    // Clear errors if fixed
+    const newErrors = { ...validationErrors };
+    const hasEarlyNight = newShiftNurses.earlyNight.some(nurse => nurse.name.trim() !== "");
+    const hasLateNight = newShiftNurses.lateNight.some(nurse => nurse.name.trim() !== "");
     
-    // Clear error if fixed
-  if (validationErrors[shift] && value.trim() !== "") {
-    setValidationErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[shift];
-      return newErrors;
-    });
-  }
+    if (hasEarlyNight && newErrors.earlyNight) {
+      delete newErrors.earlyNight;
+    }
+    if (hasLateNight && newErrors.lateNight) {
+      delete newErrors.lateNight;
+    }
+    
+    setValidationErrors(newErrors);
   };
-}, []); 
-
 
   const handleCurrentStatusChange = (row, index, value) => {
     const field = fieldData[index];
@@ -578,13 +530,13 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
     consolidatedData
   ]);
 
-  // Responsive values
+  // Responsive values - INCREASED FONT SIZES
   const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;
-  const textFieldHeight = isMobile ? 36 : isTablet ? 40 : 44;
+  const textFieldHeight = isMobile ? 44 : isTablet ? 48 : 52;
   const fontSize = {
-    small: isMobile ? '0.75rem' : isTablet ? '0.8125rem' : '0.875rem',
-    medium: isMobile ? '0.875rem' : isTablet ? '0.9375rem' : '1rem',
-    large: isMobile ? '1rem' : isTablet ? '1.125rem' : '1.25rem',
+    small: isMobile ? '0.875rem' : isTablet ? '0.9375rem' : '1rem',
+    medium: isMobile ? '1rem' : isTablet ? '1.125rem' : '1.25rem',
+    large: isMobile ? '1.125rem' : isTablet ? '1.25rem' : '1.5rem',
   };
 
   // Status badge component
@@ -723,6 +675,9 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                       width: isMobile ? '160px' : '200px',
                       '& .MuiOutlinedInput-root': {
                         height: textFieldHeight,
+                      },
+                      '& input': {
+                        fontSize: fontSize.small,
                       }
                     }}
                     size="small"
@@ -784,7 +739,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
               }
             }}
           >
-            <Typography sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography sx={{ fontWeight: 600, mb: 1, fontSize: fontSize.medium }}>
               以下のエラーを修正してください:
             </Typography>
             <ul style={{ margin: 0, paddingLeft: 20 }}>
@@ -844,7 +799,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                 <Stack spacing={1}>
                   <Typography sx={{ 
                     fontWeight: 600, 
-                    fontSize: fontSize.small,
+                    fontSize: fontSize.medium,
                     color: "#36394a",
                     display: 'flex',
                     alignItems: 'center',
@@ -872,9 +827,10 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                           borderColor: validationErrors.admissionCount ? "#df1c41" : "#dfe1e7",
                         },
                         "& input": {
-                          fontSize: fontSize.small,
+                          fontSize: fontSize.medium,
                           textAlign: 'right',
-                          paddingRight: 2
+                          paddingRight: 2,
+                          fontWeight: 500
                         },
                       },
                     }}
@@ -887,7 +843,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                 <Stack spacing={1}>
                   <Typography sx={{ 
                     fontWeight: 600, 
-                    fontSize: fontSize.small,
+                    fontSize: fontSize.medium,
                     color: "#36394a",
                     display: 'flex',
                     alignItems: 'center',
@@ -915,9 +871,10 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                           borderColor: validationErrors.dischargeCount ? "#df1c41" : "#dfe1e7",
                         },
                         "& input": {
-                          fontSize: fontSize.small,
+                          fontSize: fontSize.medium,
                           textAlign: 'right',
-                          paddingRight: 2
+                          paddingRight: 2,
+                          fontWeight: 500
                         },
                       },
                     }}
@@ -977,7 +934,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                   <Stack spacing={1}>
                     <Typography sx={{ 
                       fontWeight: 600, 
-                      fontSize: fontSize.small, 
+                      fontSize: fontSize.medium,
                       color: "#6b7280",
                       display: 'flex',
                       alignItems: 'center',
@@ -1006,7 +963,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                             borderColor: "#dfe1e7",
                           },
                           "& input": {
-                            fontSize: fontSize.small,
+                            fontSize: fontSize.medium,
                             textAlign: 'right',
                             paddingRight: 2,
                             fontWeight: 600,
@@ -1066,7 +1023,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
               <Grid item xs={12} sm={6} md={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
-                    fontSize: fontSize.small, 
+                    fontSize: fontSize.medium,
                     fontWeight: 600, 
                     color: "#36394a",
                     display: 'flex',
@@ -1095,9 +1052,10 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                           borderColor: validationErrors.emergencyTransport ? "#df1c41" : "#dfe1e7" 
                         },
                         "& input": {
-                          fontSize: fontSize.small,
+                          fontSize: fontSize.medium,
                           textAlign: 'right',
-                          paddingRight: 2
+                          paddingRight: 2,
+                          fontWeight: 500
                         },
                       },
                     }}
@@ -1109,7 +1067,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
               <Grid item xs={12} sm={6} md={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
-                    fontSize: fontSize.small, 
+                    fontSize: fontSize.medium,
                     fontWeight: 600, 
                     color: "#36394a",
                     display: 'flex',
@@ -1138,9 +1096,10 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                           borderColor: validationErrors.postTransportAdmission ? "#df1c41" : "#dfe1e7" 
                         },
                         "& input": {
-                          fontSize: fontSize.small,
+                          fontSize: fontSize.medium,
                           textAlign: 'right',
-                          paddingRight: 2
+                          paddingRight: 2,
+                          fontWeight: 500
                         },
                       },
                     }}
@@ -1152,7 +1111,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
               <Grid item xs={12} sm={12} md={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
-                    fontSize: fontSize.small, 
+                    fontSize: fontSize.medium,
                     fontWeight: 600, 
                     color: "#6b6f82"
                   }}>
@@ -1171,9 +1130,10 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                         height: textFieldHeight,
                         "& fieldset": { borderColor: "#dfe1e7" },
                         "& input": {
-                          fontSize: fontSize.small,
+                          fontSize: fontSize.medium,
                           textAlign: 'right',
-                          paddingRight: 2
+                          paddingRight: 2,
+                          fontWeight: 500
                         },
                       },
                     }}
@@ -1184,212 +1144,17 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
           </Stack>
         </Paper>
 
-{/* Simplified Shift Nurses Section */}
-{/* Simplified Shift Nurses Section */}
-{/* Shift Nurses Section */}
-<Paper
-  elevation={0}
-  sx={{
-    p: sectionPadding,
-    borderRadius: '12px',
-    border: '1px solid #e0e0e0',
-    backgroundColor: '#ffffff',
-  }}
->
-  <Stack spacing={3}>
-    {/* Section Header */}
-    <Box sx={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'space-between',
-      mb: 2
-    }}>
-      <Typography sx={{ 
-        fontWeight: 700, 
-        fontSize: fontSize.large,
-        color: "#2c3e50",
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1
-      }}>
-        <Box component="span" sx={{ 
-          width: 4, 
-          height: 20, 
-          backgroundColor: '#f39c12',
-          borderRadius: '2px'
-        }} />
-        外来看護師
-      </Typography>
-      <Tooltip title="シフト別の看護師配置">
-        <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-      </Tooltip>
-    </Box>
-
-    <Grid container spacing={isMobile ? 3 : 4}>
-      {[
-        { shift: 'earlyNight', label: '準夜勤', color: '#f39c12', required: true },
-        { shift: 'lateNight', label: '深夜勤', color: '#8e44ad', required: true }
-      ].map(({ shift, label, color, required }) => (
-        <Grid item xs={12} sm={6} key={shift}>
-          <Stack spacing={2}>
-            <Typography sx={{ 
-              fontSize: fontSize.medium, 
-              fontWeight: 600, 
-              color: "#36394a",
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1
-            }}>
-              <Box sx={{ 
-                width: 12, 
-                height: 12, 
-                borderRadius: '50%',
-                backgroundColor: color
-              }} />
-              {label}
-              {required && (
-                <Typography component="span" sx={{ color: "#df1c41", fontSize: fontSize.small, fontWeight: 600 }}>
-                  *
-                </Typography>
-              )}
-              {validationErrors[shift] && (
-                <Typography component="span" sx={{ 
-                  color: "#df1c41", 
-                  fontSize: fontSize.small, 
-                  fontWeight: 400,
-                  ml: 1
-                }}>
-                  {validationErrors[shift]}
-                </Typography>
-              )}
-            </Typography>
-            
-            <Stack spacing={1.5}>
-              {shiftNurses[shift].map((nurse) => {
-                const hasError = validationErrors[shift] && nurse.name.trim() === "";
-                const showRemoveButton = shiftNurses[shift].length > 1;
-                
-                return (
-                  <Box key={nurse.id} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-{/* Alternative: Use ref to maintain focus */}
-{/* Alternative: Use ref to maintain focus */}
-<TextField
-  placeholder="看護師名を入力"
-  value={nurse.name}
-  onChange={(e) => {
-    const value = e.target.value;
-    // Use a ref to track if we should prevent focus loss
-    const inputRef = e.target;
-    
-    // Update state immediately
-    setShiftNurses(prev => ({
-      ...prev,
-      [shift]: prev[shift].map(item => 
-        item.id === nurse.id ? { ...item, name: value } : item
-      )
-    }));
-    
-    // Force focus back to input (hacky but works)
-    setTimeout(() => {
-      if (inputRef && document.activeElement !== inputRef) {
-        inputRef.focus();
-      }
-    }, 0);
-  }}
-  onFocus={(e) => {
-    // Store the focused element
-    e.target.dataset.hasFocus = 'true';
-  }}
-  onBlur={(e) => {
-    // Delay blur to allow state update
-    setTimeout(() => {
-      if (e.target.dataset.hasFocus === 'true') {
-        e.target.focus();
-        delete e.target.dataset.hasFocus;
-      }
-    }, 100);
-  }}
-  variant="outlined"
-  size="small"
-  fullWidth
-  error={validationErrors[shift] && nurse.name.trim() === ""}
-  sx={{
-    "& .MuiOutlinedInput-root": {
-      height: textFieldHeight,
-      borderRadius: "8px",
-      bgcolor: "#ffffff",
-      "& fieldset": { 
-        borderColor: validationErrors[shift] && nurse.name.trim() === "" 
-          ? "#df1c41" 
-          : "#dfe1e7" 
-      },
-      "& input": {
-        fontSize: fontSize.small,
-        color: "#2c3e50",
-        fontWeight: 500,
-      },
-    },
-  }}
-/>
-                    {showRemoveButton && (
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setShiftNurses(prev => ({
-                            ...prev,
-                            [shift]: prev[shift].filter(item => item.id !== nurse.id)
-                          }));
-                        }}
-                        sx={{
-                          border: '1px solid #e0e0e0',
-                          borderRadius: '6px',
-                          width: textFieldHeight,
-                          height: textFieldHeight,
-                          '&:hover': {
-                            borderColor: '#e74c3c',
-                            backgroundColor: '#ffebee'
-                          }
-                        }}
-                      >
-                        <Typography sx={{ color: '#e74c3c', fontSize: fontSize.medium }}>
-                          ×
-                        </Typography>
-                      </IconButton>
-                    )}
-                  </Box>
-                );
-              })}
-              
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setShiftNurses(prev => ({
-                    ...prev,
-                    [shift]: [...prev[shift], { id: generateNurseId(), name: "" }]
-                  }));
-                }}
-                sx={{
-                  width: 'fit-content',
-                  borderStyle: 'dashed',
-                  borderColor: '#3498db',
-                  color: '#3498db',
-                  '&:hover': {
-                    borderColor: '#2980b9',
-                    backgroundColor: '#ebf5fb'
-                  }
-                }}
-              >
-                <Typography sx={{ fontSize: fontSize.small, fontWeight: 500 }}>
-                  ＋ 看護師を追加
-                </Typography>
-              </Button>
-            </Stack>
-          </Stack>
-        </Grid>
-      ))}
-    </Grid>
-  </Stack>
-</Paper>
+        {/* Shift Nurses Section - Using New Component */}
+        <ShiftNursesSection
+          shiftNurses={shiftNurses}
+          onShiftNursesChange={handleShiftNursesChange}
+          validationErrors={validationErrors}
+          textFieldHeight={textFieldHeight}
+          fontSize={fontSize}
+          isMobile={isMobile}
+          isTablet={isTablet}
+          sectionPadding={sectionPadding}
+        />
 
         {/* Duty Staff Section */}
         <Paper
@@ -1454,7 +1219,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                           height: '100%'
                         }}>
                           <Typography sx={{ 
-                            fontSize: fontSize.small, 
+                            fontSize: fontSize.medium,
                             fontWeight: 600, 
                             color: "#36394a",
                             mb: 1.5,
@@ -1498,7 +1263,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                                       borderColor: validationErrors[errorKey1] ? "#df1c41" : "#dfe1e7" 
                                     },
                                     "& input": {
-                                      fontSize: fontSize.small,
+                                      fontSize: fontSize.medium,
                                       fontWeight: 500,
                                       color: "#2c3e50",
                                       textAlign: 'center'
@@ -1527,7 +1292,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                                       borderColor: validationErrors[errorKey2] ? "#df1c41" : "#dfe1e7" 
                                     },
                                     "& input": {
-                                      fontSize: fontSize.small,
+                                      fontSize: fontSize.medium,
                                       fontWeight: 500,
                                       color: "#2c3e50",
                                       textAlign: 'center'
@@ -1633,7 +1398,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                       borderColor: "#dfe1e7",
                     },
                     "& textarea": {
-                      fontSize: fontSize.small,
+                      fontSize: fontSize.medium,
                       lineHeight: 1.5,
                     },
                   },
@@ -1675,7 +1440,8 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                 py: 1.5,
                 borderRadius: '8px',
                 borderWidth: '2px',
-                fontWeight: 600
+                fontWeight: 600,
+                fontSize: fontSize.medium
               }}
             >
               {isSavingDraft ? '保存中...' : '下書き保存'}
@@ -1694,6 +1460,7 @@ const getShiftNurseChangeHandler = useCallback((shift, id, value) => {
                 borderRadius: '8px',
                 fontWeight: 600,
                 backgroundColor: '#0A6AE3',
+                fontSize: fontSize.medium,
                 '&:hover': {
                   backgroundColor: '#0856b8'
                 }
