@@ -1,7 +1,7 @@
 generator client {
   provider        = "prisma-client-js"
   binaryTargets   = ["native", "debian-openssl-1.1.x"]
-  previewFeatures = "clientExtensions"
+  previewFeatures = ["clientExtensions"]
 }
 
 datasource db {
@@ -24,6 +24,26 @@ enum medical_center_type {
   large_hospital
   hospital
   welfare
+}
+
+/////////////////////////////
+// Enum for Consultation Types
+/////////////////////////////
+enum ConsultationType {
+  morning
+  afternoon
+  night
+}
+
+/////////////////////////////
+// Enum for Report Status
+/////////////////////////////
+// Add to existing enums
+enum ReportStatus {
+  draft
+  submitted
+  approved
+  rejected
 }
 
 model admins {
@@ -68,6 +88,14 @@ model admins {
   // Doctor departments created/updated by this admin
   created_doctor_departments   doctor_department[] @relation("DoctorDepartmentCreatedBy")
   updated_doctor_departments   doctor_department[] @relation("DoctorDepartmentUpdatedBy")
+  
+  // Reports relations
+  created_reports              report[]            @relation("ReportCreatedBy")
+  updated_reports              report[]            @relation("ReportUpdatedBy")
+  approved_reports             report[]            @relation("ReportApprovedBy")
+  
+  // Comments relations
+  report_comments              report_comment[]
 }
 
 /////////////////////////////
@@ -94,6 +122,9 @@ model medical_center {
 
   // Many-to-many relation with admins
   admins       admin_medical_center[]
+
+  // Reports for this medical center
+  reports      report[]
 
   // Relations
   created_admin admins? @relation("MedicalCenterCreatedBy", fields: [created_by], references: [id])
@@ -123,6 +154,7 @@ model department {
   status       Int        @default(1)
   
   doctor_links doctor_department[]
+  report_details report_detail[]
   
   created_by   Int
   created_at   DateTime?  @default(now())
@@ -154,6 +186,11 @@ model doctor {
   created_at   DateTime?           @default(now())
   updated_by   Int?
   updated_at   DateTime?           @default(now())
+
+  // Report relations
+  report_details_as_doctor1 report_detail[] @relation("ReportDoctor1")
+  report_details_as_doctor2 report_detail[] @relation("ReportDoctor2")
+  report_details_as_doctor3 report_detail[] @relation("ReportDoctor3")
 
   // Relations
   created_admin admins? @relation("DoctorCreatedBy", fields: [created_by], references: [id])
@@ -223,8 +260,6 @@ model services_clients_issues_reply {
   user_   admins?  @relation ("issue_user_", fields:[user_id], references:[id]) 
 }
 
-// Add to your existing Prisma schema
-
 model password_reset_otps {
   id        Int      @id @default(autoincrement())
   email     String   @db.VarChar(255)
@@ -238,20 +273,22 @@ model password_reset_otps {
   @@index([token])
 }
 
-
-
-// Add to your existing schema
-
 /////////////////////////////
 // Report (Parent Table)
 /////////////////////////////
 model report {
   id                      Int         @id @default(autoincrement())
-  report_no               String      @unique // 通番 (generated)
-  report_date             DateTime    @db.Date // 報告日
-  medical_center_id       Int         // 病院、施設名
-  status                  Int         @default(0) // 0: Draft, 1: Submitted, 2: Approved
-  special_notes           String?     @db.Text // 特記事項
+  report_no               String      @unique
+  report_date             DateTime    @db.Date
+  medical_center_id       Int
+  status                  ReportStatus @default(draft)
+  special_notes           String?     @db.Text
+  
+  // Add these fields for better tracking
+  submitted_at            DateTime?
+  approved_at             DateTime?
+  rejected_at             DateTime?
+  rejection_reason        String?     @db.Text
   
   // Stats from form
   admission_count         Int?        @default(0) // 入院数
@@ -279,16 +316,21 @@ model report {
   // Approver info
   approved_by             Int?
   approved_by_admin       admins?     @relation("ReportApprovedBy", fields: [approved_by], references: [id])
-  approved_at             DateTime?
   
   // Relations
   report_details          report_detail[]  // Child records
   report_comments         report_comment[] // Comments
+  shift_nurses            report_shift_nurse[] // Shift nurses
+  duty_staff              report_duty_staff[] // Duty staff
   
   @@index([medical_center_id])
   @@index([report_date])
   @@index([status])
   @@index([report_no])
+
+  @@unique([medical_center_id, report_date])
+  @@index([medical_center_id, report_date])
+  @@index([status, report_date])
 }
 
 /////////////////////////////
@@ -300,8 +342,8 @@ model report_detail {
   sequence_no             Int         // 通番 within report (01, 02, etc.)
   department_id           Int         // 診療区 (内科, 外科, etc.)
   
-  // Consultation types
-  consultation_type       Int         // 0: 午前診, 1: 午後診, 2: 夜診
+  // Consultation types - using enum ConsultationType
+  consultation_type       ConsultationType // 0: 午前診, 1: 午後診, 2: 夜診
   
   // Doctors (can have up to 3 doctors per consultation)
   doctor_id_1             Int?        // 診療担当医 1

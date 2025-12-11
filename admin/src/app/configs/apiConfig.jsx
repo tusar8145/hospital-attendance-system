@@ -61,5 +61,10 @@ const apiConfig = {
 
     hospitalStaffManageAssignMedicalCenters:base_url +  `hospital-staff-manage/assign-medical-centers`,
 
+  reportGetByDate: base_url +'/report/get-by-date',
+  reportSubmit:  base_url +'/report/submit',
+  reportDepartmentsWithDoctors: base_url +'/report/departments-with-doctors',
+  reportStatus: base_url +'/report/status',
+
 }
 export default apiConfig;

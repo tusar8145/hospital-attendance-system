@@ -17,6 +17,18 @@ export const create = (result,res) => {
      }
 };
 
+export const success = (result, res, statusCode = 200) => {
+  const response = {
+    success: true,
+    message: result.message || 'Operation successful',
+    data: result.data || result,
+    ...(result.pagination && { pagination: result.pagination }),
+    ...(result.meta && { meta: result.meta })
+  };
+
+  return res.status(statusCode).json(response);
+};
+
 export const update = (result,res) => {
   try {   
       let success='true'
