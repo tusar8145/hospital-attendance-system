@@ -14,5 +14,6 @@ router.post("/report/export", auth, ReportController.exportReports);
 router.post("/report/view", auth, ReportController.getReportView);
 router.post("/report/update-status", auth, ReportController.updateReportStatus);
 router.post("/report/statistics", auth, ReportController.getReportStatistics);
+router.post("/report/get-by-id", auth, ReportController.getReportById);
 
 export { router as ReportRoute };

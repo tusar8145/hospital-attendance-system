@@ -43,7 +43,8 @@ const FrameScreen = React.memo(({
   onValidate,
   isSubmitting = false,
   isSavingDraft = false,
-  reportStatus = null
+  reportStatus = null,
+  readOnly = false
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -818,6 +819,7 @@ const FrameScreen = React.memo(({
                     size="small"
                     error={!!validationErrors.admissionCount}
                     helperText={validationErrors.admissionCount}
+                    disabled={readOnly} 
                     InputProps={{
                       sx: {
                         borderRadius: "8px",
@@ -1421,7 +1423,7 @@ const FrameScreen = React.memo(({
             mt: 'auto',
             zIndex: 10
           }}
-        >
+        >{!readOnly && (
           <Box sx={{ 
             display: 'flex', 
             gap: 2, 
@@ -1468,7 +1470,7 @@ const FrameScreen = React.memo(({
             >
               {isSubmitting ? '提出中...' : 'レポート提出'}
             </Button>
-          </Box>
+          </Box>)}
         </Paper>
       </Box>
     </LocalizationProvider>

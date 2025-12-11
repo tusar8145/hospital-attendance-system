@@ -31,17 +31,17 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-sidebarContent': {}
 }));
 
-function Report() {
+function Report({ reportId, initialData, hospitalType }) {
   const { t } = useTranslation('shared-components');
   const [loading, setLoading] = useState(false);
-  const [reportLoading, setReportLoading] = useState(true);
+  const [reportLoading, setReportLoading] = useState(!initialData);
   const [successAlert, setSuccessAlert] = useState(null);
   const [failAlert, setFailAlert] = useState(null);
   const { theme, toggleTheme } = useTheme();
   const { hospital, toggleHospital } = useTheme();
 
   // Report data state
-  const [reportData, setReportData] = useState({
+  const [reportData, setReportData] = useState(initialData || {
     hospitalData: {
       inpatient: {
         admission: 0,
@@ -74,7 +74,7 @@ function Report() {
     doctors: []
   });
 
-  // Status confirmation data
+  // Status confirmation data - this could be fetched from API if available
   const [statusData, setStatusData] = useState([
     { 
       id: 1, 
@@ -166,52 +166,39 @@ function Report() {
     }
   ]);
 
-  // Management comments data
-  const [managementComments, setManagementComments] = useState([
-    {
-      id: 1,
-      text: "本日の診療は全診療科において予定通りに進行しました。特に午前診では新型インフルエンザの予防接種希望者が多く、順調に対応できました。",
-      time: "09:00",
-      author: "医師長 山田花子",
-      date: "2025-07-15"
-    },
-    {
-      id: 2,
-      text: "医療機器の定期点検を実施し、すべての機器が正常に動作していることを確認しました。MRI装置については来週月曜日に詳細なメンテナンスを予定しています。",
-      time: "12:30",
-      author: "技術部 田中太郎",
-      date: "2025-07-15"
-    },
-    {
-      id: 3,
-      text: "スタッフの健康管理を徹底し、体調不良者は2名（午前診1名、夜診1名）が休暇を取得しました。代わりのスタッフを手配し、診療に支障はありませんでした。",
-      time: "15:45",
-      author: "人事部 佐藤健太",
-      date: "2025-07-15"
-    },
-    {
-      id: 4,
-      text: "緊急患者の受け入れ体制についてレビューを実施し、改善点を3点特定しました。今週中に関係部署と調整の上、改善案を実施する予定です。",
-      time: "18:20",
-      author: "管理部 高橋美咲",
-      date: "2025-07-15"
-    }
-  ]);
+  // Management comments data - initialize with report's special_notes
+  const [managementComments, setManagementComments] = useState([]);
 
-  // Fetch report data
+  // Fetch report data if not provided via props
   useEffect(() => {
-    fetchReportData();
-  }, []);
+    if (!initialData && reportId) {
+      fetchReportData();
+    } else if (initialData) {
+      // Initialize management comments with report's special_notes
+      if (initialData.report?.special_notes) {
+        setManagementComments([
+          {
+            id: 1,
+            text: initialData.report.special_notes,
+            time: initialData.report.updated_at 
+              ? new Date(initialData.report.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+              : '00:00',
+            author: initialData.report.created_by_admin?.name || '作成者',
+            date: initialData.report.report_date 
+              ? new Date(initialData.report.report_date).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0]
+          }
+        ]);
+      }
+    }
+  }, [reportId, initialData]);
 
   const fetchReportData = async () => {
     try {
       setReportLoading(true);
-      const today = new Date();
-      const dateStr = today.toISOString().split('T')[0];
       
-      const response = await axios.post(`${apiConfig.baseURL}report/get-by-date-table`, {
-        date: dateStr,
-        hospital_id: 10 // Replace with actual hospital ID from context/store
+      const response = await axios.post(`${apiConfig.baseURL}/report/get-by-id`, {
+        report_id: reportId
       });
       
       if (response.data.success) {
@@ -235,6 +222,23 @@ function Report() {
           departments: data.departments || [],
           doctors: data.doctors || []
         });
+
+        // Initialize management comments with report's special_notes
+        if (data.report?.special_notes) {
+          setManagementComments([
+            {
+              id: 1,
+              text: data.report.special_notes,
+              time: data.report.updated_at 
+                ? new Date(data.report.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+                : '00:00',
+              author: data.report.created_by_admin?.name || '作成者',
+              date: data.report.report_date 
+                ? new Date(data.report.report_date).toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0]
+            }
+          ]);
+        }
       }
     } catch (error) {
       console.error('Error fetching report data:', error);
@@ -245,15 +249,18 @@ function Report() {
     }
   };
 
-  // Get current date in Japanese format
-  const getCurrentJapaneseDate = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const date = now.getDate();
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    const day = days[now.getDay()];
-    return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日（${day}）`;
+  // Get report date in Japanese format
+  const getReportJapaneseDate = () => {
+    if (reportData.report?.report_date) {
+      const date = new Date(reportData.report.report_date);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      const dayOfWeek = days[date.getDay()];
+      return `${year}年${month.toString().padStart(2, '0')}月${day.toString().padStart(2, '0')}日（${dayOfWeek}）`;
+    }
+    return '日付不明';
   };
 
   // Get hospital info from report data
@@ -265,9 +272,16 @@ function Report() {
         address: mc.address || '住所情報なし'
       };
     }
+    // Fallback to context if available
+    if (hospital?.name) {
+      return {
+        name: hospital.name,
+        address: hospital.address || '住所情報なし'
+      };
+    }
     return {
-      name: 'メディカルセンター東京',
-      address: '〒100-0001 東京都千代田区大手町1-1-1'
+      name: '医療機関名',
+      address: '住所情報なし'
     };
   };
 
@@ -287,9 +301,9 @@ function Report() {
   const handleAddComment = () => {
     const newComment = {
       id: managementComments.length + 1,
-      text: "新しい管理事項が追加されました。詳細は追って報告します。",
+      text: "新しい管理事項が追加されました。",
       time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-      author: "システム管理者",
+      author: reportData.report?.created_by_admin?.name || 'システム管理者',
       date: new Date().toISOString().split('T')[0]
     };
     setManagementComments(prev => [...prev, newComment]);
@@ -329,7 +343,7 @@ function Report() {
       setLoading(true);
       // Call API to approve report
       if (reportData.report?.id) {
-        const response = await axios.post(`${apiConfig.baseURL}report/update-status`, {
+        const response = await axios.post(`${apiConfig.baseURL}/api/report/update-status`, {
           report_id: reportData.report.id,
           status: 'approved'
         });
@@ -337,7 +351,20 @@ function Report() {
         if (response.data.success) {
           setSuccessAlert('レポートが承認されました');
           // Refresh report data
-          fetchReportData();
+          if (!initialData) {
+            fetchReportData();
+          } else {
+            // Update local state if we have initialData
+            setReportData(prev => ({
+              ...prev,
+              report: {
+                ...prev.report,
+                status: 'approved',
+                approved_at: new Date().toISOString(),
+                approved_by_admin: { name: '現在のユーザー' }
+              }
+            }));
+          }
         }
       }
     } catch (error) {
@@ -352,14 +379,14 @@ function Report() {
     }
   };
 
-  // Handle save as draft
+  // Handle save as draft (only for new reports, not viewing existing ones)
   const handleSaveDraft = async () => {
     try {
       setLoading(true);
       // Prepare report data for submission
       const reportDataToSubmit = {
-        hospital_id: 10,
-        report_date: new Date().toISOString().split('T')[0],
+        hospital_id: reportData.report?.medical_center_id || hospital?.id || 10,
+        report_date: reportData.report?.report_date || new Date().toISOString().split('T')[0],
         admission_count: reportData.hospitalData.inpatient.admission,
         discharge_count: reportData.hospitalData.inpatient.discharge,
         external_morning: reportData.hospitalData.outpatient.morning,
@@ -368,14 +395,17 @@ function Report() {
         emergency_transport: reportData.emergencyData.current,
         post_transport_admission: reportData.emergencyData.hospitalization,
         visit_count: reportData.visitCount,
+        special_notes: managementComments[0]?.text || '',
         is_draft: true
       };
       
-      const response = await axios.post(`${apiConfig.baseURL}report/submit`, reportDataToSubmit);
+      const response = await axios.post(`${apiConfig.baseURL}/api/report/submit`, reportDataToSubmit);
       
       if (response.data.success) {
         setSuccessAlert('下書きとして保存しました');
-        fetchReportData();
+        if (!initialData) {
+          fetchReportData();
+        }
       }
     } catch (error) {
       console.error('Error saving draft:', error);
@@ -394,7 +424,7 @@ function Report() {
     if (reportData.report?.created_by_admin?.name) {
       return reportData.report.created_by_admin.name;
     }
-    return '管理部 田中太郎';
+    return '作成者不明';
   };
 
   // Get approver info
@@ -402,7 +432,10 @@ function Report() {
     if (reportData.report?.approved_by_admin?.name) {
       return reportData.report.approved_by_admin.name;
     }
-    return '理事長 鈴木一郎';
+    if (reportData.report?.status === 'approved') {
+      return '承認済み';
+    }
+    return '未承認';
   };
 
   // Get report status
@@ -416,16 +449,48 @@ function Report() {
       };
       return statusMap[reportData.report.status] || reportData.report.status;
     }
-    return '未作成';
+    return '不明';
+  };
+
+  // Get hospital type label
+  const getHospitalTypeLabel = () => {
+    if (reportData.report?.medical_center?.type) {
+      const typeMap = {
+        'large_hospital': '総合病院',
+        'hospital': '病院',
+        'welfare': '福祉施設'
+      };
+      return typeMap[reportData.report.medical_center.type] || '病院';
+    }
+    // Fallback to hospitalType prop
+    if (hospitalType === '1') return '総合病院';
+    if (hospitalType === '2') return '病院';
+    if (hospitalType === '3') return '福祉施設';
+    return '病院';
   };
 
   const hospitalInfo = getHospitalInfo();
+  const reportDate = getReportJapaneseDate();
 
   if (reportLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <CircularProgress />
         <Typography className="ml-4">レポートデータを読み込み中...</Typography>
+      </div>
+    );
+  }
+
+  // Check if report exists
+  if (!reportData.report) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          レポートが見つかりません
+        </Alert>
+        <Button variant="contained" onClick={() => window.history.back()}>
+          戻る
+        </Button>
       </div>
     );
   }
@@ -445,21 +510,21 @@ function Report() {
 
       {/* Header Section */}
       <HeaderSection
-        title={`管理日誌レポート - ${getCurrentJapaneseDate()}`}
+        title={`管理日誌レポート - ${reportDate}`}
         subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
-        primaryButtonText="承認する"
-        secondaryButtonText="下書き保存"
-        tertiaryButtonText="コメント追加"
+        primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}
+        secondaryButtonText="コメント追加"
+        tertiaryButtonText="編集"
         showSecondaryButton={true}
-        showTertiaryButton={true}
-        primaryButtonColor="success"
+        showTertiaryButton={!initialData} // Show edit only for new reports
+        primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
         secondaryButtonColor="primary"
         tertiaryButtonColor="info"
-        onPrimaryButtonClick={handleApproval}
-        onSecondaryButtonClick={handleSaveDraft}
-        onTertiaryButtonClick={handleAddComment}
+        onPrimaryButtonClick={reportData.report?.status === 'approved' ? null : handleApproval}
+        onSecondaryButtonClick={handleAddComment}
+        onTertiaryButtonClick={handleSaveDraft}
         showDate={true}
-        customDate={getCurrentJapaneseDate()}
+        customDate={reportDate}
         variant="gradient"
         loading={loading}
         showReportStatus={true}
@@ -469,10 +534,10 @@ function Report() {
         {/* Additional info */}
         <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
           <Typography variant="caption" color="text.secondary">
-            🏥 {reportData.report?.medical_center?.type === 'large_hospital' ? '総合病院' : '病院'}レポート
+            🏥 {getHospitalTypeLabel()}レポート
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            📅 月次集計データ
+            📅 レポート詳細
           </Typography>
           <Typography variant="caption" color={reportData.report?.status === 'approved' ? 'success.main' : 'warning.main'}>
             {reportData.report?.status === 'approved' ? '✓ 承認済み' : '⚠ 承認待ち'}
@@ -504,7 +569,9 @@ function Report() {
               <div className="p-0 bg-transparent flex-1">
                 <div className="h-full flex justify-center">
                   <div className="text-center w-full">
-                    <HospitalDataTable data={reportData.hospitalData} />
+                    <HospitalDataTable 
+                      data={reportData.tableData?.hospitalData || reportData.hospitalData} 
+                    />
                   </div>
                 </div>
               </div>
@@ -518,8 +585,8 @@ function Report() {
             <div className="h-full flex justify-center">
               <div className="text-center w-full">
                 <MedicalManagementTable 
-                  emergencyData={reportData.emergencyData}
-                  nurseData={reportData.nurseData}
+                  emergencyData={reportData.tableData?.emergencyData || reportData.emergencyData}
+                  nurseData={reportData.tableData?.nurseData || reportData.nurseData}
                 />
               </div>
             </div>
@@ -552,7 +619,9 @@ function Report() {
                 <div className="w-1/6 p-0 bg-transparent">
                   <div className="h-full flex justify-end">
                     <div className="text-center w-full">
-                      <VisitTable visitCount={reportData.visitCount} />
+                      <VisitTable 
+                        visitCount={reportData.tableData?.visitCount || reportData.visitCount} 
+                      />
                     </div>
                   </div>
                 </div>
@@ -570,7 +639,9 @@ function Report() {
               <div className="p-0 bg-transparent flex-1">
                 <div className="h-full flex justify-center">
                   <div className="text-center w-full">
-                    <DiagnosisTable diagnosisData={reportData.diagnosisData} />
+                    <DiagnosisTable 
+                      diagnosisData={reportData.tableData?.diagnosisData || reportData.diagnosisData} 
+                    />
                   </div>
                 </div>
               </div>
@@ -587,7 +658,9 @@ function Report() {
               <div className="p-0 bg-transparent flex-1">
                 <div className="h-full flex justify-center">
                   <div className="text-center w-full">
-                    <PatientCountTable patientData={reportData.patientCountData} />
+                    <PatientCountTable 
+                      patientData={reportData.tableData?.patientCountData || reportData.patientCountData} 
+                    />
                   </div>
                 </div>
               </div>
@@ -602,7 +675,7 @@ function Report() {
           comments={managementComments}
           title="管理事項"
           showSummary={true}
-          summaryMessage={reportData.report?.special_notes || "本日の管理事項はすべて正常に処理されました。特段の問題は発生していません。"}
+          summaryMessage={managementComments.length > 0 ? managementComments[0].text : "管理事項はありません。"}
           showActionButtons={true}
           onAddComment={handleAddComment}
           onDeleteLastComment={handleDeleteLastComment}
@@ -633,7 +706,7 @@ function Report() {
             最終更新: {reportData.report?.updated_at ? 
               new Date(reportData.report.updated_at).toLocaleDateString('ja-JP') + ' ' + 
               new Date(reportData.report.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-              : getCurrentJapaneseDate() + ' 19:30'}
+              : reportDate + ' 00:00'}
           </div>
         </div>
       </Paper>

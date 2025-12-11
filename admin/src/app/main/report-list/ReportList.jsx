@@ -81,6 +81,13 @@ function ReportList() {
     severity: 'success'
   });
 
+  // Hospital type mapping to numeric values
+  const hospitalTypeMap = {
+    'large_hospital': 1,
+    'hospital': 2,
+    'welfare': 3
+  };
+
   // Months for dropdown
   const months = [
     { value: 1, label: '1月' },
@@ -250,13 +257,23 @@ function ReportList() {
   };
 
   // Handle report action (view)
-  const handleReportAction = (reportId) => {
-    navigate(`/report-view/${reportId}`);
+  const handleReportAction = (report) => {
+    // Get hospital type from report data or current hospital context
+    const reportHospitalType = report.medical_center_type || (hospital?.type || 'hospital');
+    const typeValue = hospitalTypeMap[reportHospitalType] || 2; // Default to 2 (hospital)
+    
+    navigate(`/report-view?id=${report.id}&type=${typeValue}`);
   };
 
   // Handle add new report
   const handleAddReport = () => {
-    navigate('/report-entry');
+    // Pass hospital type when navigating to report entry
+    if (hospital?.type) {
+      const typeValue = hospitalTypeMap[hospital.type] || 2;
+      navigate(`/report-entry?type=${typeValue}`);
+    } else {
+      navigate('/report-entry');
+    }
   };
 
   // Snackbar helper
@@ -277,6 +294,16 @@ function ReportList() {
       case 'rejected': return '拒否済み';
       case 'pending': return '未確認';
       default: return 'すべて';
+    }
+  };
+
+  // Get hospital type label
+  const getHospitalTypeLabel = (type) => {
+    switch(type) {
+      case 'large_hospital': return '大病院';
+      case 'hospital': return '病院';
+      case 'welfare': return '福祉施設';
+      default: return '病院';
     }
   };
 
@@ -320,6 +347,20 @@ function ReportList() {
     const date = now.getDate();
     return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日`;
   };
+
+  // Get hospital display info
+  const getHospitalDisplayInfo = () => {
+    if (hospital?.id) {
+      return {
+        name: hospital.name || '医療機関名なし',
+        type: getHospitalTypeLabel(hospital.type),
+        typeValue: hospitalTypeMap[hospital.type] || 2
+      };
+    }
+    return null;
+  };
+
+  const hospitalInfo = getHospitalDisplayInfo();
 
   return (
     <Root
@@ -385,17 +426,17 @@ function ReportList() {
             {/* Current Hospital and Status Filter */}
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* Hospital Info */}
-              {hospital?.id ? (
+              {hospitalInfo ? (
                 <Box sx={{ 
                   display: 'flex', 
                   flexDirection: 'column',
                   alignItems: 'flex-end'
                 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {hospital.name} 
-                  </Typography>
                   <Typography variant="body1" fontWeight={600}>
-                   選択中の医療機関
+                    {hospitalInfo.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {hospitalInfo.type} 
                   </Typography>
                 </Box>
               ) : (
@@ -404,6 +445,16 @@ function ReportList() {
                 </Typography>
               )}
 
+              {/* Status Filter Chip */}
+              {filters.status !== 'all' && (
+                <Chip
+                  label={`ステータス: ${getStatusLabel(filters.status)}`}
+                  onDelete={clearStatusFilter}
+                  deleteIcon={<CloseIcon />}
+                  color="primary"
+                  variant="outlined"
+                />
+              )}
             </Box>
           </Box>
 

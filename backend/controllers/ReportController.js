@@ -264,6 +264,153 @@ export const getReportByDateTable = async (req, res, next) => {
   }
 };
 
+// Add this function to your report controller
+export const getReportById = async (req, res, next) => {
+  try {
+    const { report_id } = req.body;
+    
+    if (!report_id) {
+      return response.error("Report ID is required", res, next);
+    }
+
+    // Get report by ID
+    const report = await prisma.report.findUnique({
+      where: {
+        id: parseInt(report_id)
+      },
+      include: {
+        report_details: {
+          include: {
+            department: true,
+            doctor1: true,
+            doctor2: true,
+            doctor3: true
+          },
+          orderBy: [
+            { sequence_no: 'asc' },
+            { consultation_type: 'asc' }
+          ]
+        },
+        shift_nurses: true,
+        duty_staff: true,
+        medical_center: true,
+        created_by_admin: {
+          select: { name: true }
+        },
+        updated_by_admin: {
+          select: { name: true }
+        },
+        approved_by_admin: {
+          select: { name: true }
+        }
+      }
+    });
+
+    if (!report) {
+      return response.error("Report not found", res, next);
+    }
+
+    // Calculate monthly statistics for emergency transport
+    const startOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth(), 1);
+    const endOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth() + 1, 0);
+    
+    const monthlyReports = await prisma.report.findMany({
+      where: {
+        medical_center_id: report.medical_center_id,
+        report_date: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        }
+      },
+      select: {
+        emergency_transport: true,
+        post_transport_admission: true,
+        admission_count: true,
+        discharge_count: true
+      }
+    });
+
+    // Calculate monthly totals
+    const monthlyStats = monthlyReports.reduce((acc, monthlyReport) => {
+      acc.emergency_transport += monthlyReport.emergency_transport || 0;
+      acc.post_transport_admission += monthlyReport.post_transport_admission || 0;
+      acc.admission_count += monthlyReport.admission_count || 0;
+      acc.discharge_count += monthlyReport.discharge_count || 0;
+      return acc;
+    }, { 
+      emergency_transport: 0, 
+      post_transport_admission: 0,
+      admission_count: 0,
+      discharge_count: 0 
+    });
+
+    // Organize data for frontend tables
+    const organizedData = {
+      patientCountData: organizePatientCountData(report.report_details || []),
+      diagnosisData: organizeDiagnosisData(report.report_details || []),
+      emergencyData: {
+        current: report.emergency_transport || 0,
+        hospitalization: report.post_transport_admission || 0,
+        monthly: monthlyStats.emergency_transport,
+        cumulative: monthlyStats.post_transport_admission
+      },
+      nurseData: organizeNurseData(report.shift_nurses || []),
+      hospitalData: {
+        inpatient: {
+          admission: report.admission_count || 0,
+          discharge: report.discharge_count || 0,
+          current: (report.admission_count || 0) - (report.discharge_count || 0)
+        },
+        outpatient: {
+          morning: report.external_morning || 0,
+          afternoon: report.external_afternoon || 0,
+          night: report.external_duty || 0,
+          total: (report.external_morning || 0) + 
+                 (report.external_afternoon || 0) + 
+                 (report.external_duty || 0)
+        }
+      },
+      visitCount: report.visit_count || 0
+    };
+
+    // Get departments and doctors for this medical center
+    const departments = await prisma.department.findMany({
+      where: {
+        medical_center_id: report.medical_center_id,
+        status: 1
+      }
+    });
+
+    const doctors = await prisma.doctor.findMany({
+      where: {
+        medical_center_id: report.medical_center_id,
+        status: 1
+      },
+      include: {
+        dept_links: {
+          where: { status: 1 },
+          include: {
+            department: true
+          }
+        }
+      }
+    });
+
+    response.success({
+      report,
+      departments,
+      doctors,
+      exists: true,
+      tableData: organizedData,
+      monthlyStats
+    }, res);
+
+  } catch (error) {
+    console.error('Error in getReportById:', error);
+    response.error(error.message, res, next);
+  }
+};
+
 // Helper function to organize patient count data
 function organizePatientCountData(reportDetails) {
   const organized = {};

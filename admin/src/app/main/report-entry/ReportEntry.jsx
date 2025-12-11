@@ -82,7 +82,8 @@ const ReportEntryHeader = ({
   hasUnsavedChanges,
   isSubmitting,
   isSavingDraft,
-  hospitalName
+  hospitalName,
+  readOnly = false
 }) => {
   const navigate = useNavigate();
   const theme = useMuiTheme();
@@ -159,9 +160,7 @@ const ReportEntryHeader = ({
   const handleBack = () => {
     if (hasUnsavedChanges) {
       // Show confirmation dialog if there are unsaved changes
-     // if (window.confirm('保存されていない変更があります。レポート一覧に戻りますか？')) {
         onBack();
-    //  }
     } else {
       onBack();
     }
@@ -225,7 +224,7 @@ const ReportEntryHeader = ({
                 textOverflow: 'ellipsis'
               }}
             >
-            {'レポート一覧'} 
+              {title}
             </Typography>
             {hospitalName && (
               <Typography 
@@ -239,13 +238,13 @@ const ReportEntryHeader = ({
                   textOverflow: 'ellipsis'
                 }}
               >
-                {hospitalName} 
+                {hospitalName}
               </Typography>
             )}
           </Box>
         </Box>
         
- 
+     
         
         {/* Right Section: Actions */}
         <Box sx={{ 
@@ -273,60 +272,76 @@ const ReportEntryHeader = ({
           </Tooltip>
           
           {/* Mobile Date and Status (collapsed) */}
- 
+          {isMobile && (
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              px: 1,
+              py: 0.5,
+              borderRadius: '6px',
+              backgroundColor: '#f8f9fa',
+              border: '1px solid #e0e0e0'
+            }}>
+              <CalendarTodayIcon fontSize="small" sx={{ color: '#666' }} />
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                {formatJapaneseDate(reportDate).split('年')[1]}
+              </Typography>
+              <StatusBadge status={reportStatus} />
+            </Box>
+          )}
           
           <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
           
-          {/* Action Buttons */}
-{/* Action Buttons */}
-<Box sx={{ display: 'flex', gap: 1 }}>
-  <Button
-    variant="outlined"
-    size="small"
-    onClick={onSaveDraft}
-    disabled={isSavingDraft || isSubmitting}
-    startIcon={isSavingDraft ? <CircularProgress size={16} /> : <SaveIcon />}
-    sx={{
-      borderColor: '#ff9800',
-      color: '#ff9800',
-      minWidth: isMobile ? 40 : 'auto', // optional: make it more compact
-      '&:hover': {
-        borderColor: '#f57c00',
-        backgroundColor: '#fff3e0'
-      },
-      px: isMobile ? 0.5 : 1.5
-    }}
-  >
-    {!isMobile && (isSavingDraft ? '保存中...' : '下書き保存')}
-  </Button>
+          {/* Action Buttons - Only show for draft status or new report */}
+          {!readOnly && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={onSaveDraft}
+                disabled={isSavingDraft || isSubmitting || loadingReport}
+                startIcon={isSavingDraft ? <CircularProgress size={16} /> : <SaveIcon />}
+                sx={{
+                  borderColor: '#ff9800',
+                  color: '#ff9800',
+                  minWidth: isMobile ? 40 : 'auto',
+                  '&:hover': {
+                    borderColor: '#f57c00',
+                    backgroundColor: '#fff3e0'
+                  },
+                  px: isMobile ? 0.5 : 1.5
+                }}
+              >
+                {!isMobile && (isSavingDraft ? '保存中...' : '下書き保存')}
+              </Button>
 
-  <Button
-    variant="contained"
-    size="small"
-    onClick={onSubmit}
-    disabled={isSubmitting || isSavingDraft}
-    startIcon={isSubmitting ? <CircularProgress size={16} /> : <SendIcon />}
-    sx={{
-      backgroundColor: '#0A6AE3',
-      minWidth: isMobile ? 40 : 'auto',
-      '&:hover': {
-        backgroundColor: '#0958c5'
-      },
-      px: isMobile ? 0.5 : 1.5
-    }}
-  >
-    {!isMobile && (isSubmitting ? '提出中...' : '提出する')}
-  </Button>
-</Box>
-
+              <Button
+                variant="contained"
+                size="small"
+                onClick={onSubmit}
+                disabled={isSubmitting || isSavingDraft || loadingReport}
+                startIcon={isSubmitting ? <CircularProgress size={16} /> : <SendIcon />}
+                sx={{
+                  backgroundColor: '#0A6AE3',
+                  minWidth: isMobile ? 40 : 'auto',
+                  '&:hover': {
+                    backgroundColor: '#0958c5'
+                  },
+                  px: isMobile ? 0.5 : 1.5
+                }}
+              >
+                {!isMobile && (isSubmitting ? '提出中...' : '提出する')}
+              </Button>
+            </Box>
+          )}
         </Box>
       </Toolbar>
-
     </AppBar>
   );
 };
 
-// Validation helper function (keep as is)
+// Validation helper function
 const validateReportData = (formData) => {
   const errors = {};
   
@@ -552,31 +567,31 @@ function ReportEntry() {
             showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
           }
         } else {
-          // Only reset form if we don't have unsaved changes
-          if (!hasUnsavedChanges || forceReload) {
-            const emptyForm = {
-              admission_count: 0,
-              discharge_count: 0,
-              external_morning: 0,
-              external_afternoon: 0,
-              external_duty: 0,
-              emergency_transport: 0,
-              post_transport_admission: 0,
-              visit_count: 0,
-              special_notes: '',
-              shift_nurses: [],
-              duty_staff: [],
-              report_details: []
-            };
-            setFormData(emptyForm);
-            setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
-            setReportStatus(null);
-            setReportId(null);
-            setHasUnsavedChanges(false);
-            
-            if (!forceReload) {
-              showSnackbar('新しいレポートを作成できます', 'info');
-            }
+          // Reset form for new entry when report is null
+          const emptyForm = {
+            admission_count: 0,
+            discharge_count: 0,
+            external_morning: 0,
+            external_afternoon: 0,
+            external_duty: 0,
+            emergency_transport: 0,
+            post_transport_admission: 0,
+            visit_count: 0,
+            special_notes: '',
+            shift_nurses: [],
+            duty_staff: [],
+            report_details: []
+          };
+          
+          setFormData(emptyForm);
+          setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
+          setReportStatus(null);
+          setReportId(null);
+          setReportExists(false);
+          setHasUnsavedChanges(false);
+          
+          if (!forceReload) {
+            showSnackbar('新しいレポートを作成できます', 'info');
           }
         }
         
@@ -586,30 +601,27 @@ function ReportEntry() {
       console.error('Error loading report:', error);
       const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
       
-      // Only show error if we're not already in error state
-      if (!formData || forceReload) {
-        showSnackbar(errorMessage, 'error');
-        
-        // Initialize empty form on error
-        const emptyForm = {
-          admission_count: 0,
-          discharge_count: 0,
-          external_morning: 0,
-          external_afternoon: 0,
-          external_duty: 0,
-          emergency_transport: 0,
-          post_transport_admission: 0,
-          visit_count: 0,
-          special_notes: '',
-          shift_nurses: [],
-          duty_staff: [],
-          report_details: []
-        };
-        setFormData(emptyForm);
-        setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
-        setReportStatus(null);
-        setReportId(null);
-      }
+      // Initialize empty form on error
+      const emptyForm = {
+        admission_count: 0,
+        discharge_count: 0,
+        external_morning: 0,
+        external_afternoon: 0,
+        external_duty: 0,
+        emergency_transport: 0,
+        post_transport_admission: 0,
+        visit_count: 0,
+        special_notes: '',
+        shift_nurses: [],
+        duty_staff: [],
+        report_details: []
+      };
+      setFormData(emptyForm);
+      setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
+      setReportStatus(null);
+      setReportId(null);
+      setReportExists(false);
+      showSnackbar(errorMessage, 'error');
     } finally {
       setLoadingReport(false);
       setLoading(false);
@@ -871,6 +883,9 @@ function ReportEntry() {
     return `${diffDays}日前`;
   };
 
+  // Check if form is read-only (not draft status)
+  const isReadOnly = reportStatus && reportStatus !== 'draft';
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
       <Root
@@ -892,6 +907,7 @@ function ReportEntry() {
             isSubmitting={submitting}
             isSavingDraft={savingDraft}
             hospitalName={hospital?.name}
+            readOnly={isReadOnly}
           />
         }
         content={
@@ -905,8 +921,8 @@ function ReportEntry() {
               position: 'relative'
             }}
           >
-            {/* Loading Overlay */}
-            {(loading || loadingReport) && (
+            {/* Loading Overlay - only show during initial load */}
+            {loading && (
               <Box sx={{
                 position: 'absolute',
                 top: 0,
@@ -927,14 +943,28 @@ function ReportEntry() {
               </Box>
             )}
             
-    
+            {/* Offline Status */}
+            {isOffline && (
+              <Alert 
+                severity="warning" 
+                sx={{ 
+                  m: 2, 
+                  borderRadius: '8px',
+                  alignItems: 'center'
+                }}
+              >
+                オフラインモードです。接続回復後に変更が同期されます。
+              </Alert>
+            )}
             
             {/* Main Content */}
             <Box sx={{ 
               flex: 1,
               overflow: 'auto',
               p: isMobile ? 1 : 3,
-              position: 'relative'
+              position: 'relative',
+              opacity: loading ? 0.5 : 1,
+              pointerEvents: loading ? 'none' : 'auto'
             }}>
               {!hospital?.id ? (
                 // No hospital selected state
@@ -980,7 +1010,7 @@ function ReportEntry() {
                   </Typography>
                 </Box>
               ) : (
-                // Main form
+                // Main form - No overlay for read-only status
                 <React.Suspense fallback={
                   <Box sx={{ 
                     display: 'flex', 
@@ -1011,6 +1041,7 @@ function ReportEntry() {
                     isSubmitting={submitting}
                     isSavingDraft={savingDraft}
                     reportStatus={reportStatus}
+                    readOnly={isReadOnly}
                   />
                 </React.Suspense>
               )}

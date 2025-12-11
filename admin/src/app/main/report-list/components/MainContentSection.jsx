@@ -139,6 +139,16 @@ export const MainContentSection = ({
     }
   };
 
+  // Map hospital type to numeric value for URL
+  const getHospitalTypeValue = (type) => {
+    switch(type) {
+      case 'large_hospital': return 1;
+      case 'hospital': return 2;
+      case 'welfare': return 3;
+      default: return 2; // Default to hospital
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -601,7 +611,7 @@ export const MainContentSection = ({
                     >
                       <Link
                         component="button"
-                        onClick={() => onReportAction(row.id)}
+                        onClick={() => onReportAction(row)} // Changed: pass full row object
                         underline="always"
                         sx={{
                           color: "#0A6AE3",
