@@ -14,7 +14,12 @@ import {
   Paper,
   Tooltip,
   IconButton,
-  LinearProgress
+  LinearProgress,
+  AppBar,
+  Toolbar,
+  Divider,
+  TextField,
+  Chip
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
@@ -22,9 +27,9 @@ import { styled } from '@mui/material/styles';
 import FusePageSimple from '@fuse/core/FusePageSimple';
 import axios from 'axios';
 import apiConfig from '../../configs/apiConfig';
-import { CommonHeader } from '../../shared-components/new/CommonHeader';
 import { useMediaQuery } from '@mui/material';
 import { useTheme as useMuiTheme } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -35,6 +40,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import TodayIcon from '@mui/icons-material/Today';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import HomeIcon from '@mui/icons-material/Home';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -58,7 +65,268 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-sidebarContent': {}
 }));
 
-// Validation helper function
+// Custom Header Component
+const ReportEntryHeader = ({ 
+  title, 
+  reportDate, 
+  reportStatus, 
+  loadingReport,
+  onDateChange,
+  onPreviousDay,
+  onNextDay,
+  onToday,
+  onRefresh,
+  onBack,
+  onSaveDraft,
+  onSubmit,
+  hasUnsavedChanges,
+  isSubmitting,
+  isSavingDraft,
+  hospitalName
+}) => {
+  const navigate = useNavigate();
+  const theme = useMuiTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Format date for display
+  const formatJapaneseDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}年${month}月${day}日`;
+  };
+  
+  // Status badge component
+  const StatusBadge = ({ status }) => {
+    const statusConfig = {
+      draft: { 
+        color: '#ff9800', 
+        label: '下書き', 
+        bgColor: '#fff3e0',
+        icon: <SaveIcon fontSize="small" />
+      },
+      submitted: { 
+        color: '#2196f3', 
+        label: '提出済み', 
+        bgColor: '#e3f2fd',
+        icon: <SendIcon fontSize="small" />
+      },
+      approved: { 
+        color: '#4caf50', 
+        label: '承認済み', 
+        bgColor: '#e8f5e9',
+        icon: <CheckCircleOutlineIcon fontSize="small" />
+      },
+      rejected: { 
+        color: '#f44336', 
+        label: '拒否済み', 
+        bgColor: '#ffebee',
+        icon: <ErrorOutlineIcon fontSize="small" />
+      }
+    };
+    
+    const config = statusConfig[status] || { 
+      color: '#9e9e9e', 
+      label: '未作成', 
+      bgColor: '#f5f5f5',
+      icon: <InfoOutlinedIcon fontSize="small" />
+    };
+    
+    return (
+      <Chip
+        icon={React.cloneElement(config.icon, { 
+          sx: { 
+            fontSize: 14,
+            color: config.color 
+          } 
+        })}
+        label={config.label}
+        size="small"
+        sx={{
+          backgroundColor: config.bgColor,
+          color: config.color,
+          border: `1px solid ${config.color}33`,
+          '& .MuiChip-icon': {
+            marginLeft: 0.5
+          }
+        }}
+      />
+    );
+  };
+
+  // Handle back to report list
+  const handleBack = () => {
+    if (hasUnsavedChanges) {
+      // Show confirmation dialog if there are unsaved changes
+      if (window.confirm('保存されていない変更があります。レポート一覧に戻りますか？')) {
+        onBack();
+      }
+    } else {
+      onBack();
+    }
+  };
+
+  return (
+    <AppBar 
+      position="static" 
+      elevation={0}
+      sx={{
+        backgroundColor: 'white',
+        borderBottom: '1px solid #e0e0e0',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      }}
+    >
+      <Toolbar sx={{ 
+        minHeight: { xs: 56, sm: 64 },
+        px: { xs: 1, sm: 2 },
+        py: 1
+      }}>
+        {/* Left Section: Back button and Title */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 2,
+          flex: 1,
+          minWidth: 0
+        }}>
+          {/* Back Button */}
+          <Tooltip title="レポート一覧に戻る">
+            <IconButton 
+              size="medium"
+              onClick={handleBack}
+              sx={{
+                color: '#0A6AE3',
+                '&:hover': {
+                  backgroundColor: '#e8f0fe'
+                }
+              }}
+            >
+              <ArrowBackIosNewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          
+          {/* Title and Hospital Info */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            minWidth: 0,
+            flex: 1
+          }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 600,
+                color: '#2c3e50',
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
+            >
+            {'レポート一覧'} 
+            </Typography>
+            {hospitalName && (
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: '#666',
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {hospitalName} 
+              </Typography>
+            )}
+          </Box>
+        </Box>
+        
+ 
+        
+        {/* Right Section: Actions */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: { xs: 1, sm: 2 },
+          flex: 1,
+          justifyContent: 'flex-end'
+        }}>
+          {/* Refresh Button */}
+          <Tooltip title="更新">
+            <IconButton 
+              size="small" 
+              onClick={onRefresh}
+              disabled={loadingReport}
+              sx={{ 
+                color: '#666',
+                '&:hover': {
+                  backgroundColor: '#f5f5f5'
+                }
+              }}
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          
+          {/* Mobile Date and Status (collapsed) */}
+ 
+          
+          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+          
+          {/* Action Buttons */}
+{/* Action Buttons */}
+<Box sx={{ display: 'flex', gap: 1 }}>
+  <Button
+    variant="outlined"
+    size="small"
+    onClick={onSaveDraft}
+    disabled={isSavingDraft || isSubmitting}
+    startIcon={isSavingDraft ? <CircularProgress size={16} /> : <SaveIcon />}
+    sx={{
+      borderColor: '#ff9800',
+      color: '#ff9800',
+      minWidth: isMobile ? 40 : 'auto', // optional: make it more compact
+      '&:hover': {
+        borderColor: '#f57c00',
+        backgroundColor: '#fff3e0'
+      },
+      px: isMobile ? 0.5 : 1.5
+    }}
+  >
+    {!isMobile && (isSavingDraft ? '保存中...' : '下書き保存')}
+  </Button>
+
+  <Button
+    variant="contained"
+    size="small"
+    onClick={onSubmit}
+    disabled={isSubmitting || isSavingDraft}
+    startIcon={isSubmitting ? <CircularProgress size={16} /> : <SendIcon />}
+    sx={{
+      backgroundColor: '#0A6AE3',
+      minWidth: isMobile ? 40 : 'auto',
+      '&:hover': {
+        backgroundColor: '#0958c5'
+      },
+      px: isMobile ? 0.5 : 1.5
+    }}
+  >
+    {!isMobile && (isSubmitting ? '提出中...' : '提出する')}
+  </Button>
+</Box>
+
+        </Box>
+      </Toolbar>
+
+    </AppBar>
+  );
+};
+
+// Validation helper function (keep as is)
 const validateReportData = (formData) => {
   const errors = {};
   
@@ -159,7 +427,7 @@ function ReportEntry() {
   const { hospital } = useTheme();
   const muiTheme = useMuiTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(muiTheme.breakpoints.down('md'));
+  const navigate = useNavigate();
 
   // State management
   const [loading, setLoading] = useState(true);
@@ -189,7 +457,6 @@ function ReportEntry() {
     actionType: ''
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [autoSaveTimer, setAutoSaveTimer] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncStatus, setSyncStatus] = useState('idle');
@@ -218,35 +485,6 @@ function ReportEntry() {
     };
   }, []);
 
-  // Auto-save functionality future uncomment
-  /*useEffect(() => {
-    if (hasUnsavedChanges && formData && !isOffline) {
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer);
-      }
-
-      const timer = setTimeout(() => {
-        handleAutoSave();
-      }, 30000);
-
-      setAutoSaveTimer(timer);
-
-      return () => {
-        if (autoSaveTimer) {
-          clearTimeout(autoSaveTimer);
-        }
-      };
-    }
-  }, [formData, hasUnsavedChanges, isOffline]);*/
-
-  useEffect(() => {
-  return () => {
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-    }
-  };
-}, [autoSaveTimer]);
-
   // Format date for display
   const formatJapaneseDate = (date) => {
     const year = date.getFullYear();
@@ -261,162 +499,146 @@ function ReportEntry() {
   };
 
   // Load report data for selected date
-const loadReportData = useCallback(async (date, forceReload = false) => {
-  if (!hospital?.id) {
-    showSnackbar('病院が選択されていません', 'warning');
-    return;
-  }
+  const loadReportData = useCallback(async (date, forceReload = false) => {
+    if (!hospital?.id) {
+      showSnackbar('病院が選択されていません', 'warning');
+      return;
+    }
 
-  setLoadingReport(true);
-  try {
-    const response = await axios.post(apiConfig.reportGetByDate, {
-      date: date.toISOString().split('T')[0],
-      hospital_id: hospital.id
-    });
+    setLoadingReport(true);
+    try {
+      const response = await axios.post(apiConfig.reportGetByDate, {
+        date: date.toISOString().split('T')[0],
+        hospital_id: hospital.id
+      });
 
-    const { data } = response.data;
-    
-    if (data && data.success !== false) {
-      const { report, departments: depts, doctors: docs, exists } = data;
+      const { data } = response.data;
       
-      // Always update departments and doctors
-      setDepartments(depts || []);
-      setDoctors(docs || []);
-      setReportExists(exists);
-      
-      if (exists && report) {
-        // Format the report data for the form
-        const formattedReport = {
-          id: report.id,
-          report_no: report.report_no,
-          status: report.status,
-          special_notes: report.special_notes || '',
-          admission_count: report.admission_count || 0,
-          discharge_count: report.discharge_count || 0,
-          external_morning: report.external_morning || 0,
-          external_afternoon: report.external_afternoon || 0,
-          external_duty: report.external_duty || 0,
-          emergency_transport: report.emergency_transport || 0,
-          post_transport_admission: report.post_transport_admission || 0,
-          visit_count: report.visit_count || 0,
-          shift_nurses: report.shift_nurses || [],
-          duty_staff: report.duty_staff || [],
-          report_details: report.report_details || []
-        };
+      if (data && data.success !== false) {
+        const { report, departments: depts, doctors: docs, exists } = data;
         
-        setFormData(formattedReport);
-        setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
-        setReportStatus(report.status);
-        setReportId(report.id);
-        setHasUnsavedChanges(false);
+        // Always update departments and doctors
+        setDepartments(depts || []);
+        setDoctors(docs || []);
+        setReportExists(exists);
         
-        if (!forceReload) {
-          showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
-        }
-      } else {
-        // Only reset form if we don't have unsaved changes
-        if (!hasUnsavedChanges || forceReload) {
-          const emptyForm = {
-            admission_count: 0,
-            discharge_count: 0,
-            external_morning: 0,
-            external_afternoon: 0,
-            external_duty: 0,
-            emergency_transport: 0,
-            post_transport_admission: 0,
-            visit_count: 0,
-            special_notes: '',
-            shift_nurses: [],
-            duty_staff: [],
-            report_details: []
+        if (exists && report) {
+          // Format the report data for the form
+          const formattedReport = {
+            id: report.id,
+            report_no: report.report_no,
+            status: report.status,
+            special_notes: report.special_notes || '',
+            admission_count: report.admission_count || 0,
+            discharge_count: report.discharge_count || 0,
+            external_morning: report.external_morning || 0,
+            external_afternoon: report.external_afternoon || 0,
+            external_duty: report.external_duty || 0,
+            emergency_transport: report.emergency_transport || 0,
+            post_transport_admission: report.post_transport_admission || 0,
+            visit_count: report.visit_count || 0,
+            shift_nurses: report.shift_nurses || [],
+            duty_staff: report.duty_staff || [],
+            report_details: report.report_details || []
           };
-          setFormData(emptyForm);
-          setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
-          setReportStatus(null);
-          setReportId(null);
+          
+          setFormData(formattedReport);
+          setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
+          setReportStatus(report.status);
+          setReportId(report.id);
           setHasUnsavedChanges(false);
           
           if (!forceReload) {
-            showSnackbar('新しいレポートを作成できます', 'info');
+            showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
+          }
+        } else {
+          // Only reset form if we don't have unsaved changes
+          if (!hasUnsavedChanges || forceReload) {
+            const emptyForm = {
+              admission_count: 0,
+              discharge_count: 0,
+              external_morning: 0,
+              external_afternoon: 0,
+              external_duty: 0,
+              emergency_transport: 0,
+              post_transport_admission: 0,
+              visit_count: 0,
+              special_notes: '',
+              shift_nurses: [],
+              duty_staff: [],
+              report_details: []
+            };
+            setFormData(emptyForm);
+            setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
+            setReportStatus(null);
+            setReportId(null);
+            setHasUnsavedChanges(false);
+            
+            if (!forceReload) {
+              showSnackbar('新しいレポートを作成できます', 'info');
+            }
           }
         }
+        
+        setValidationErrors({});
       }
+    } catch (error) {
+      console.error('Error loading report:', error);
+      const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
       
-      setValidationErrors({});
+      // Only show error if we're not already in error state
+      if (!formData || forceReload) {
+        showSnackbar(errorMessage, 'error');
+        
+        // Initialize empty form on error
+        const emptyForm = {
+          admission_count: 0,
+          discharge_count: 0,
+          external_morning: 0,
+          external_afternoon: 0,
+          external_duty: 0,
+          emergency_transport: 0,
+          post_transport_admission: 0,
+          visit_count: 0,
+          special_notes: '',
+          shift_nurses: [],
+          duty_staff: [],
+          report_details: []
+        };
+        setFormData(emptyForm);
+        setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
+        setReportStatus(null);
+        setReportId(null);
+      }
+    } finally {
+      setLoadingReport(false);
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error loading report:', error);
-    const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
-    
-    // Only show error if we're not already in error state
-    if (!formData || forceReload) {
-      showSnackbar(errorMessage, 'error');
-      
-      // Initialize empty form on error
-      const emptyForm = {
-        admission_count: 0,
-        discharge_count: 0,
-        external_morning: 0,
-        external_afternoon: 0,
-        external_duty: 0,
-        emergency_transport: 0,
-        post_transport_admission: 0,
-        visit_count: 0,
-        special_notes: '',
-        shift_nurses: [],
-        duty_staff: [],
-        report_details: []
-      };
-      setFormData(emptyForm);
-      setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
-      setReportStatus(null);
-      setReportId(null);
-    }
-  } finally {
-    setLoadingReport(false);
-    setLoading(false);
-  }
-}, [hospital?.id]); // Only depend on hospital.id
-
-// Update the useEffect that calls loadReportData
-useEffect(() => {
-  if (hospital?.id) {
-    // Add a check to prevent unnecessary calls
-    const currentDateStr = reportDate.toISOString().split('T')[0];
-    const shouldLoad = !formData || 
-                      (reportDate.getTime() !== new Date(formData.report_date).getTime());
-
-    if (shouldLoad) {
-      loadReportData(reportDate);
-    }
-  } else {
-    setLoading(false);
-  }
-}, [hospital?.id, reportDate, loadReportData]); 
+  }, [hospital?.id]);
 
   // Handle date change
-const handleDateChange = async (newDate) => {
-  // Check if date is actually changing
-  if (newDate.getTime() === reportDate.getTime()) {
-    return;
-  }
+  const handleDateChange = async (newDate) => {
+    // Check if date is actually changing
+    if (newDate.getTime() === reportDate.getTime()) {
+      return;
+    }
 
-  if (hasUnsavedChanges) {
-    setConfirmDialog({
-      open: true,
-      title: '未保存の変更があります',
-      message: '日付を変更すると現在の変更が失われます。続行しますか？',
-      action: () => {
-        setReportDate(newDate);
-        loadReportData(newDate, true);
-      },
-      actionType: 'dateChange'
-    });
-  } else {
-    setReportDate(newDate);
-    loadReportData(newDate, true);
-  }
-};
+    if (hasUnsavedChanges) {
+      setConfirmDialog({
+        open: true,
+        title: '未保存の変更があります',
+        message: '日付を変更すると現在の変更が失われます。続行しますか？',
+        action: () => {
+          setReportDate(newDate);
+          loadReportData(newDate, true);
+        },
+        actionType: 'dateChange'
+      });
+    } else {
+      setReportDate(newDate);
+      loadReportData(newDate, true);
+    }
+  };
 
   // Navigate to previous day
   const handlePreviousDay = () => {
@@ -437,47 +659,22 @@ const handleDateChange = async (newDate) => {
     handleDateChange(new Date());
   };
 
-  // Auto-save draft
-  const handleAutoSave = async () => {
-    if (!formDataRef.current || !hospital?.id || isOffline) return;
-
-    try {
-      const response = await axios.post(apiConfig.reportSubmit, {
-        ...formDataRef.current,
-        hospital_id: hospital.id,
-        report_date: reportDateRef.current.toISOString().split('T')[0],
-        is_draft: true
-      });
-
-      if (response.data.success) {
-        setLastSaved(new Date());
-        setHasUnsavedChanges(false);
-        if (response.data.is_new) {
-          setReportExists(true);
-          setReportId(response.data.report?.id);
-        }
-        setReportStatus('draft');
-        
-        if (process.env.NODE_ENV === 'development') {
-          showSnackbar('下書きを自動保存しました', 'info');
-        }
-      }
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-    }
-  };
-
   // Save as draft
-  const handleSaveDraft = async (data) => {
+  const handleSaveDraft = async () => {
     if (!hospital?.id) {
       showSnackbar('病院が選択されていません', 'error');
+      return;
+    }
+
+    if (!formData) {
+      showSnackbar('保存するデータがありません', 'error');
       return;
     }
 
     setSavingDraft(true);
     try {
       const response = await axios.post(apiConfig.reportSubmit, {
-        ...data,
+        ...formData,
         hospital_id: hospital.id,
         report_date: reportDate.toISOString().split('T')[0],
         is_draft: true
@@ -487,7 +684,7 @@ const handleDateChange = async (newDate) => {
         setReportStatus('draft');
         setReportExists(true);
         setReportId(response.data.report?.id);
-        setInitialFormData(JSON.parse(JSON.stringify(data)));
+        setInitialFormData(JSON.parse(JSON.stringify(formData)));
         setHasUnsavedChanges(false);
         setLastSaved(new Date());
         
@@ -505,14 +702,19 @@ const handleDateChange = async (newDate) => {
   };
 
   // Submit report
-  const handleSubmit = async (data) => {
+  const handleSubmit = async () => {
     if (!hospital?.id) {
       showSnackbar('病院が選択されていません', 'error');
       return;
     }
 
+    if (!formData) {
+      showSnackbar('提出するデータがありません', 'error');
+      return;
+    }
+
     // Validate form data
-    const validation = validateReportData(data);
+    const validation = validateReportData(formData);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       showSnackbar('フォームにエラーがあります。確認してください。', 'error');
@@ -526,7 +728,7 @@ const handleDateChange = async (newDate) => {
         ? '既存のレポートを更新して提出します。この操作は取り消せません。'
         : '新しいレポートを提出します。この操作は取り消せません。',
       action: async () => {
-        await performSubmit(data);
+        await performSubmit(formData);
       },
       actionType: 'submit'
     });
@@ -568,26 +770,23 @@ const handleDateChange = async (newDate) => {
   };
 
   // Handle form data change
-const handleFormDataChange = useCallback((newData) => {
-  // Add a deep comparison to prevent unnecessary updates
-  const currentData = formDataRef.current;
-  const hasChanges = currentData ? JSON.stringify(newData) !== JSON.stringify(currentData) : true;
-  
-  if (hasChanges) {
-    setFormData(newData);
+  const handleFormDataChange = useCallback((newData) => {
+    const currentData = formDataRef.current;
+    const hasChanges = currentData ? JSON.stringify(newData) !== JSON.stringify(currentData) : true;
     
-    // Update ref immediately
-    formDataRef.current = newData;
-    setFormData(newData);
-    // Check if there are changes from initial data
-    if (initialFormData) {
-      const changesFromInitial = JSON.stringify(newData) !== JSON.stringify(initialFormData);
-      setHasUnsavedChanges(changesFromInitial);
-    } else {
-      setHasUnsavedChanges(true);
+    if (hasChanges) {
+      setFormData(newData);
+      formDataRef.current = newData;
+      
+      // Check if there are changes from initial data
+      if (initialFormData) {
+        const changesFromInitial = JSON.stringify(newData) !== JSON.stringify(initialFormData);
+        setHasUnsavedChanges(changesFromInitial);
+      } else {
+        setHasUnsavedChanges(true);
+      }
     }
-  }
-}, [initialFormData]);
+  }, [initialFormData]);
 
   // Handle form validation request
   const handleValidate = () => {
@@ -626,38 +825,23 @@ const handleFormDataChange = useCallback((newData) => {
   };
 
   // Refresh current report
-const handleRefresh = () => {
-  if (hasUnsavedChanges) {
-    setConfirmDialog({
-      open: true,
-      title: '未保存の変更があります',
-      message: '更新すると現在の変更が失われます。続行しますか？',
-      action: () => loadReportData(reportDate, true),
-      actionType: 'refresh'
-    });
-  } else {
-    loadReportData(reportDate, true);
-  }
-};
-
-  // Sync offline data
-  const handleSync = async () => {
-    if (isOffline) {
-      showSnackbar('オフライン状態です。ネットワーク接続を確認してください。', 'warning');
-      return;
+  const handleRefresh = () => {
+    if (hasUnsavedChanges) {
+      setConfirmDialog({
+        open: true,
+        title: '未保存の変更があります',
+        message: '更新すると現在の変更が失われます。続行しますか？',
+        action: () => loadReportData(reportDate, true),
+        actionType: 'refresh'
+      });
+    } else {
+      loadReportData(reportDate, true);
     }
+  };
 
-    setSyncStatus('syncing');
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setSyncStatus('success');
-      showSnackbar('データの同期が完了しました', 'success');
-    } catch (error) {
-      setSyncStatus('error');
-      showSnackbar('データの同期に失敗しました', 'error');
-    } finally {
-      setTimeout(() => setSyncStatus('idle'), 3000);
-    }
+  // Handle back to report list
+  const handleBack = () => {
+    navigate('/report-list');
   };
 
   // Load initial data
@@ -687,202 +871,27 @@ const handleRefresh = () => {
     return `${diffDays}日前`;
   };
 
-  // Status badge component
-  const StatusBadge = ({ status }) => {
-    const statusConfig = {
-      draft: { 
-        color: '#ff9800', 
-        label: '下書き', 
-        bgColor: '#fff3e0',
-        icon: <SaveIcon fontSize="small" />
-      },
-      submitted: { 
-        color: '#2196f3', 
-        label: '提出済み', 
-        bgColor: '#e3f2fd',
-        icon: <SendIcon fontSize="small" />
-      },
-      approved: { 
-        color: '#4caf50', 
-        label: '承認済み', 
-        bgColor: '#e8f5e9',
-        icon: <CheckCircleOutlineIcon fontSize="small" />
-      },
-      rejected: { 
-        color: '#f44336', 
-        label: '拒否済み', 
-        bgColor: '#ffebee',
-        icon: <ErrorOutlineIcon fontSize="small" />
-      }
-    };
-    
-    const config = statusConfig[status] || { 
-      color: '#9e9e9e', 
-      label: '未作成', 
-      bgColor: '#f5f5f5',
-      icon: <InfoOutlinedIcon fontSize="small" />
-    };
-    
-    return (
-      <Box
-        sx={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          px: 1.5,
-          py: 0.5,
-          borderRadius: '16px',
-          backgroundColor: config.bgColor,
-          border: `1px solid ${config.color}33`,
-          gap: 1
-        }}
-      >
-        {React.cloneElement(config.icon, { 
-          sx: { 
-            fontSize: 14,
-            color: config.color 
-          } 
-        })}
-        <Typography
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            color: config.color
-          }}
-        >
-          {config.label}
-        </Typography>
-      </Box>
-    );
-  };
-
-  // Approval button handler (placeholder)
-  const handleApproval = () => {
-    showSnackbar('承認機能は近日実装予定です', 'info');
-  };
-
-  // Additional header buttons
-  const additionalButtons = (
-    <Box sx={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: 1,
-      flexWrap: 'wrap'
-    }}>
-      {/* Date Navigation */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center',
-        gap: 0.5,
-        mr: 2
-      }}>
-<Tooltip title="前日">
-  <span> {/* Add span wrapper */}
-    <IconButton 
-      size="small" 
-      onClick={handlePreviousDay}
-      disabled={loadingReport}
-    >
-      <ArrowBackIcon fontSize="small" />
-    </IconButton>
-  </span>
-</Tooltip>
-        
-        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
-          <DatePicker
-            value={reportDate}
-            onChange={handleDateChange}
-            renderInput={(params) => (
-              <Box sx={{ width: isMobile ? 140 : 160 }}>
-                <TextField
-                  {...params}
-                  size="small"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      height: 32,
-                      fontSize: '0.875rem'
-                    }
-                  }}
-                />
-              </Box>
-            )}
-            components={{
-              OpenPickerIcon: CalendarTodayIcon
-            }}
-          />
-        </LocalizationProvider>
-        
-<Tooltip title="翌日">
-  <span> {/* Add span wrapper */}
-    <IconButton 
-      size="small" 
-      onClick={handleNextDay}
-      disabled={loadingReport}
-    >
-      <ArrowForwardIcon fontSize="small" />
-    </IconButton>
-  </span>
-</Tooltip>
-        
-<Tooltip title="今日">
-  <span> {/* Add span wrapper */}
-    <IconButton 
-      size="small" 
-      onClick={handleToday}
-      disabled={loadingReport}
-      sx={{ ml: 0.5 }}
-    >
-      <TodayIcon fontSize="small" />
-    </IconButton>
-  </span>
-</Tooltip>
-      </Box>
-      
-      {/* Status and Actions */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 2,
-        borderLeft: '1px solid #e0e0e0',
-        pl: 2
-      }}>
-        {reportStatus && (
-          <>
-            <Typography variant="body2" sx={{ color: '#666', whiteSpace: 'nowrap' }}>
-              ステータス:
-            </Typography>
-            <StatusBadge status={reportStatus} />
-          </>
-        )}
-        
-<Tooltip title="更新">
-  <span> {/* Add span wrapper */}
-    <IconButton 
-      size="small" 
-      onClick={handleRefresh}
-      disabled={loadingReport}
-    >
-      <RefreshIcon fontSize="small" />
-    </IconButton>
-  </span>
-</Tooltip>
-      </Box>
-    </Box>
-  );
-
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
       <Root
         header={
-          <CommonHeader
+          <ReportEntryHeader
             title={`レポート - ${formatJapaneseDate(reportDate)}`}
-            onCreate={handleApproval}
-            createButtonText="承認する"
-            showFilter={false}
-            additionalButtons={additionalButtons}
-            sx={{
-              px: isMobile ? 2 : 3,
-              py: 2
-            }}
+            reportDate={reportDate}
+            reportStatus={reportStatus}
+            loadingReport={loadingReport}
+            onDateChange={handleDateChange}
+            onPreviousDay={handlePreviousDay}
+            onNextDay={handleNextDay}
+            onToday={handleToday}
+            onRefresh={handleRefresh}
+            onBack={handleBack}
+            onSaveDraft={handleSaveDraft}
+            onSubmit={handleSubmit}
+            hasUnsavedChanges={hasUnsavedChanges}
+            isSubmitting={submitting}
+            isSavingDraft={savingDraft}
+            hospitalName={hospital?.name}
           />
         }
         content={
@@ -918,96 +927,13 @@ const handleRefresh = () => {
               </Box>
             )}
             
-            {/* Status Bar */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: 1.5,
-                borderRadius: 0,
-                borderBottom: '1px solid #e0e0e0',
-                backgroundColor: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 1
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                {/* Hospital Info */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
-                    病院:
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#0A6AE3' }}>
-                    {hospital?.name || '選択されていません'}
-                  </Typography>
-                </Box>
-                
-                {/* Report Info */}
-                {reportExists && reportId && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
-                      レポートID:
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#2c3e50' }}>
-                      #{reportId}
-                    </Typography>
-                  </Box>
-                )}
-                
-                {/* Last Saved */}
-                {lastSaved && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
-                      最終保存:
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500, color: hasUnsavedChanges ? '#ff9800' : '#4caf50' }}>
-                      {formatLastSavedTime()}
-                      {hasUnsavedChanges && ' (未保存の変更あり)'}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-              
-              {/* Sync Status */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {isOffline && (
-                  <Tooltip title="オフライン状態です">
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 0.5,
-                      px: 1,
-                      py: 0.5,
-                      borderRadius: '12px',
-                      backgroundColor: '#fff3e0',
-                      border: '1px solid #ff9800'
-                    }}>
-                      <ErrorOutlineIcon sx={{ fontSize: 14, color: '#ff9800' }} />
-                      <Typography variant="caption" sx={{ color: '#ff9800', fontWeight: 500 }}>
-                        オフライン
-                      </Typography>
-                    </Box>
-                  </Tooltip>
-                )}
-                
-                {syncStatus === 'syncing' && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CircularProgress size={16} />
-                    <Typography variant="caption" sx={{ color: '#666' }}>
-                      同期中...
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </Paper>
+    
             
             {/* Main Content */}
             <Box sx={{ 
               flex: 1,
               overflow: 'auto',
-              p: isMobile ? 1 : isTablet ? 2 : 3,
+              p: isMobile ? 1 : 3,
               position: 'relative'
             }}>
               {!hospital?.id ? (
@@ -1029,6 +955,14 @@ const handleRefresh = () => {
                   <Typography sx={{ color: '#666', maxWidth: '400px' }}>
                     レポートを作成するには、サイドバーまたは上部のメニューから病院を選択してください。
                   </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={handleBack}
+                    sx={{ mt: 2 }}
+                  >
+                    レポート一覧に戻る
+                  </Button>
                 </Box>
               ) : loading ? (
                 // Initial loading state

@@ -21,6 +21,7 @@ import Header from './components/Header';
 import Overview from './components/Overview';
 import ContentScreen from './components/ContentScreen';
 import { CommonHeader } from '../../shared-components/new/CommonHeader';
+import { useNavigate } from 'react-router-dom';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
@@ -37,6 +38,7 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
 }));
 
 function ReportList() {
+	 const navigate = useNavigate();
   const { t } = useTranslation('shared-components');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -172,13 +174,16 @@ function ReportList() {
   // Handle report action (view/submit)
   const handleReportAction = (reportId, action, reportData) => {
     if (action === 'view') {
-      // Navigate to view report page
-      window.location.href = `/main/report-entry?reportId=${reportId}`;
+      navigate(`/report-entry?reportId=${reportId}`);
     } else if (action === 'submit') {
-      // Navigate to submit report page for that date
       const reportDate = reportData.report_date;
-      window.location.href = `/main/report-entry?date=${reportDate}`;
+      navigate(`/report-entry?date=${reportDate}`);
     }
+  };
+
+  // Handle add new report - navigates to report entry page
+  const handleAddReport = () => {
+    navigate('/report-entry');
   };
 
   // Snackbar helper
@@ -231,11 +236,6 @@ function ReportList() {
     return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日`;
   };
 
-  // Empty function for approval button
-  const handleApproval = () => {
-    showSnackbar('承認機能は近日実装予定です', 'info');
-  };
-
   if (!hospital?.id) {
     return (
       <Box sx={{ 
@@ -260,8 +260,8 @@ function ReportList() {
       header={
         <CommonHeader
           title={`レポート - ${getCurrentJapaneseDate()}`}
-          onCreate={handleApproval}
-          createButtonText="承認する"
+          onCreate={handleAddReport}
+          createButtonText="レポート追加"
           showFilter={false}
         />
       }
@@ -275,7 +275,7 @@ function ReportList() {
             flexDirection: 'column',
             gap: 3
           }}
-        >
+        >  
           {/* Stats Overview */}
           <Overview 
             cards={overviewCards}
@@ -302,6 +302,7 @@ function ReportList() {
               onReportAction={handleReportAction}
             />
           </Box>
+		
 
           {/* Snackbar for notifications */}
           <Snackbar
