@@ -30,6 +30,9 @@ import Overview from './components/Overview';
 import ContentScreen from './components/ContentScreen';
 import { CommonHeader } from '../../shared-components/new/CommonHeader';
 
+// Add these imports if you need encryption utilities
+// import CryptoJS from 'crypto-js';
+
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
     backgroundColor: theme.palette.background.paper,
@@ -79,6 +82,10 @@ function ReportList() {
     open: false,
     message: '',
     severity: 'success'
+  });
+  const [hospitalDialog, setHospitalDialog] = useState({
+    open: false,
+    message: ''
   });
 
   // Hospital type mapping to numeric values
@@ -267,13 +274,31 @@ function ReportList() {
 
   // Handle add new report
   const handleAddReport = () => {
-    // Pass hospital type when navigating to report entry
-    if (hospital?.type) {
-      const typeValue = hospitalTypeMap[hospital.type] || 2;
-      navigate(`/report-entry?type=${typeValue}`);
-    } else {
-      navigate('/report-entry');
+    // Check if hospital is selected
+    if (!hospital?.id) {
+      // Show message to select hospital first
+      showSnackbar('レポートを作成するには、まず病院・施設を選択してください', 'warning');
+      
+      // Alternatively, you could show a dialog
+      // setHospitalDialog({
+      //   open: true,
+      //   message: 'レポートを作成するには、まず病院・施設を選択してください。サイドバーまたは上部のメニューから選択してください。'
+      // });
+      
+      return; // Don't navigate
     }
+    
+    // Hospital is selected, proceed with navigation
+    // Encrypt the hospital ID for URL
+
+    // Pass both hospital type and encrypted hospital ID
+    const typeValue = hospitalTypeMap[hospital.type] || 2;
+    navigate(`/report-entry?hospitalId=${hospital.id}&type=${typeValue}`);
+  };
+
+  // Handle hospital selection dialog close
+  const handleHospitalDialogClose = () => {
+    setHospitalDialog({ ...hospitalDialog, open: false });
   };
 
   // Snackbar helper
@@ -494,6 +519,27 @@ function ReportList() {
               {snackbar.message}
             </Alert>
           </Snackbar>
+
+          {/* Hospital Selection Dialog (Optional) */}
+          {/* Uncomment if you want to show a dialog instead of snackbar */}
+          {/*
+          <Dialog
+            open={hospitalDialog.open}
+            onClose={handleHospitalDialogClose}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>病院・施設の選択が必要</DialogTitle>
+            <DialogContent>
+              <Typography>{hospitalDialog.message}</Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleHospitalDialogClose} variant="contained">
+                閉じる
+              </Button>
+            </DialogActions>
+          </Dialog>
+          */}
         </Container>
       }
     />

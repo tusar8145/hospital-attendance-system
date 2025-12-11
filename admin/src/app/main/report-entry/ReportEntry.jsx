@@ -29,7 +29,7 @@ import axios from 'axios';
 import apiConfig from '../../configs/apiConfig';
 import { useMediaQuery } from '@mui/material';
 import { useTheme as useMuiTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -244,8 +244,6 @@ const ReportEntryHeader = ({
           </Box>
         </Box>
         
-     
-        
         {/* Right Section: Actions */}
         <Box sx={{ 
           display: 'flex', 
@@ -437,12 +435,64 @@ const validateReportData = (formData) => {
   };
 };
 
+// Helper function to parse URL parameters
+const getUrlParams = () => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const params = {};
+  for (const [key, value] of searchParams.entries()) {
+    params[key] = value;
+  }
+  return params;
+};
+
+// Helper function to determine hospital priority
+// Phase 1: URL parameter (when landing on the page)
+// Phase 2: Context (after user changes hospital)
+const getCurrentHospital = (hospitalFromContext, urlParams, hasHospitalChangedFromContext) => {
+  // If user has changed hospital from context, use context
+  if (hasHospitalChangedFromContext && hospitalFromContext?.id) {
+    return {
+      id: hospitalFromContext.id,
+      name: hospitalFromContext.name,
+      type: hospitalFromContext.type
+    };
+  }
+  
+  // Otherwise, use URL parameter (initial load)
+  if (urlParams.hospitalId) {
+    return {
+      id: urlParams.hospitalId,
+      name: hospitalFromContext?.name || `Hospital ID: ${urlParams.hospitalId}`,
+      type: hospitalFromContext?.type || urlParams.type
+    };
+  }
+  
+  // Fallback to context
+  return hospitalFromContext ? {
+    id: hospitalFromContext.id,
+    name: hospitalFromContext.name,
+    type: hospitalFromContext.type
+  } : null;
+};
+
 function ReportEntry() {
   const { t } = useTranslation('shared-components');
-  const { hospital } = useTheme();
+  const { hospital: hospitalFromContext } = useTheme();
   const muiTheme = useMuiTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get initial URL parameters
+  const [urlParams, setUrlParams] = useState(() => getUrlParams());
+  
+  // Track if hospital has been changed from context
+  const [hasHospitalChangedFromContext, setHasHospitalChangedFromContext] = useState(false);
+  
+  // Current hospital state - determines priority
+  const [currentHospital, setCurrentHospital] = useState(() => 
+    getCurrentHospital(hospitalFromContext, urlParams, false)
+  );
 
   // State management
   const [loading, setLoading] = useState(true);
@@ -479,12 +529,57 @@ function ReportEntry() {
   // Ref for form data to avoid stale closures
   const formDataRef = useRef(formData);
   const reportDateRef = useRef(reportDate);
+  const currentHospitalRef = useRef(currentHospital);
 
   // Update refs when state changes
   useEffect(() => {
     formDataRef.current = formData;
     reportDateRef.current = reportDate;
-  }, [formData, reportDate]);
+    currentHospitalRef.current = currentHospital;
+  }, [formData, reportDate, currentHospital]);
+
+  // Update current hospital when context changes
+  useEffect(() => {
+    // Check if hospital from context is different from current hospital
+    const isContextHospitalDifferent = hospitalFromContext?.id && 
+      hospitalFromContext.id !== currentHospital?.id;
+    
+    if (isContextHospitalDifferent) {
+      // Set flag that hospital has been changed from context
+      setHasHospitalChangedFromContext(true);
+      
+      // Update current hospital to use context
+      const newHospital = getCurrentHospital(hospitalFromContext, urlParams, true);
+      setCurrentHospital(newHospital);
+      
+      // Show notification
+      if (hospitalFromContext.name) {
+        showSnackbar(`病院を ${hospitalFromContext.name} に変更しました`, 'info');
+      }
+    }
+  }, [hospitalFromContext, currentHospital?.id, urlParams]);
+
+  // Listen for URL changes (if user manually changes URL)
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const newParams = getUrlParams();
+      setUrlParams(newParams);
+      
+      // When URL changes, reset the context change flag
+      setHasHospitalChangedFromContext(false);
+      
+      // Update current hospital based on new URL params
+      const newHospital = getCurrentHospital(hospitalFromContext, newParams, false);
+      setCurrentHospital(newHospital);
+    };
+
+    // Listen for popstate (back/forward navigation)
+    window.addEventListener('popstate', handleUrlChange);
+
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+    };
+  }, [hospitalFromContext]);
 
   // Check online status
   useEffect(() => {
@@ -513,9 +608,20 @@ function ReportEntry() {
     return formatJapaneseDate(new Date());
   };
 
+  // Format date for API (YYYY-MM-DD)
+  const formatDateForAPI = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Load report data for selected date
   const loadReportData = useCallback(async (date, forceReload = false) => {
-    if (!hospital?.id) {
+    const hospitalId = currentHospitalRef.current?.id;
+    
+    if (!hospitalId) {
       showSnackbar('病院が選択されていません', 'warning');
       return;
     }
@@ -523,8 +629,8 @@ function ReportEntry() {
     setLoadingReport(true);
     try {
       const response = await axios.post(apiConfig.reportGetByDate, {
-        date: date.toISOString().split('T')[0],
-        hospital_id: hospital.id
+        date: formatDateForAPI(date),
+        hospital_id: hospitalId
       });
 
       const { data } = response.data;
@@ -626,7 +732,7 @@ function ReportEntry() {
       setLoadingReport(false);
       setLoading(false);
     }
-  }, [hospital?.id]);
+  }, []);
 
   // Handle date change
   const handleDateChange = async (newDate) => {
@@ -673,7 +779,9 @@ function ReportEntry() {
 
   // Save as draft
   const handleSaveDraft = async () => {
-    if (!hospital?.id) {
+    const hospitalId = currentHospitalRef.current?.id;
+    
+    if (!hospitalId) {
       showSnackbar('病院が選択されていません', 'error');
       return;
     }
@@ -687,8 +795,8 @@ function ReportEntry() {
     try {
       const response = await axios.post(apiConfig.reportSubmit, {
         ...formData,
-        hospital_id: hospital.id,
-        report_date: reportDate.toISOString().split('T')[0],
+        hospital_id: hospitalId, // Use current hospital ID from ref
+        report_date: formatDateForAPI(reportDate),
         is_draft: true
       });
 
@@ -715,7 +823,9 @@ function ReportEntry() {
 
   // Submit report
   const handleSubmit = async () => {
-    if (!hospital?.id) {
+    const hospitalId = currentHospitalRef.current?.id;
+    
+    if (!hospitalId) {
       showSnackbar('病院が選択されていません', 'error');
       return;
     }
@@ -748,12 +858,14 @@ function ReportEntry() {
 
   // Perform actual submission
   const performSubmit = async (data) => {
+    const hospitalId = currentHospitalRef.current?.id;
+    
     setSubmitting(true);
     try {
       const response = await axios.post(apiConfig.reportSubmit, {
         ...data,
-        hospital_id: hospital.id,
-        report_date: reportDate.toISOString().split('T')[0],
+        hospital_id: hospitalId, // Use current hospital ID from ref
+        report_date: formatDateForAPI(reportDate),
         is_draft: false
       });
 
@@ -856,14 +968,14 @@ function ReportEntry() {
     navigate('/report-list');
   };
 
-  // Load initial data
+  // Load initial data when hospital or date changes
   useEffect(() => {
-    if (hospital?.id) {
+    if (currentHospital?.id) {
       loadReportData(reportDate);
     } else {
       setLoading(false);
     }
-  }, [hospital?.id, loadReportData]);
+  }, [currentHospital?.id, reportDate, loadReportData]);
 
   // Format time for last saved display
   const formatLastSavedTime = () => {
@@ -886,6 +998,35 @@ function ReportEntry() {
   // Check if form is read-only (not draft status)
   const isReadOnly = reportStatus && reportStatus !== 'draft';
 
+  // Debug info component
+  const DebugInfo = () => (
+    <Box sx={{ 
+      position: 'fixed', 
+      bottom: 10, 
+      right: 10, 
+      backgroundColor: 'rgba(0,0,0,0.7)', 
+      color: 'white', 
+      padding: 1, 
+      borderRadius: 1,
+      fontSize: '0.75rem',
+      zIndex: 1000,
+      maxWidth: 300
+    }}>
+      <Typography variant="caption" sx={{ display: 'block' }}>
+        <strong>Current Hospital:</strong> {currentHospital?.id || 'none'}
+      </Typography>
+      <Typography variant="caption" sx={{ display: 'block' }}>
+        <strong>Hospital Name:</strong> {currentHospital?.name || 'none'}
+      </Typography>
+      <Typography variant="caption" sx={{ display: 'block' }}>
+        <strong>URL Hospital:</strong> {urlParams.hospitalId || 'none'}
+      </Typography>
+      <Typography variant="caption" sx={{ display: 'block' }}>
+        <strong>Context Changed:</strong> {hasHospitalChangedFromContext ? 'Yes' : 'No'}
+      </Typography>
+    </Box>
+  );
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
       <Root
@@ -906,7 +1047,7 @@ function ReportEntry() {
             hasUnsavedChanges={hasUnsavedChanges}
             isSubmitting={submitting}
             isSavingDraft={savingDraft}
-            hospitalName={hospital?.name}
+            hospitalName={currentHospital?.name}
             readOnly={isReadOnly}
           />
         }
@@ -966,7 +1107,7 @@ function ReportEntry() {
               opacity: loading ? 0.5 : 1,
               pointerEvents: loading ? 'none' : 'auto'
             }}>
-              {!hospital?.id ? (
+              {!currentHospital?.id ? (
                 // No hospital selected state
                 <Box sx={{ 
                   display: 'flex', 
@@ -983,7 +1124,8 @@ function ReportEntry() {
                     病院が選択されていません
                   </Typography>
                   <Typography sx={{ color: '#666', maxWidth: '400px' }}>
-                    レポートを作成するには、サイドバーまたは上部のメニューから病院を選択してください。
+                    レポートを作成するには、まず病院を選択してください。
+                    レポート一覧から「レポート追加」をクリックして病院を選択してください。
                   </Typography>
                   <Button
                     variant="contained"
@@ -1030,7 +1172,7 @@ function ReportEntry() {
                     formData={formData}
                     departments={departments}
                     doctors={doctors}
-                    hospitalId={hospital.id}
+                    hospitalId={currentHospital?.id}
                     onFormDataChange={handleFormDataChange}
                     loading={loadingReport}
                     reportDate={reportDate}
@@ -1059,6 +1201,9 @@ function ReportEntry() {
                 }} 
               />
             )}
+            
+            {/* Debug Info - Only in development */}
+           
           </Container>
         }
       />

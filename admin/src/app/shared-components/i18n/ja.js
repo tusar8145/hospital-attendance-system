@@ -34,7 +34,7 @@ const locale = {
 	'Are you sure to save?':'本当に保存しますか?',
 	'Are you sure to create?':'本当に作成しますか?',
 	'Are you sure you want to delete this?':'これを削除してもよろしいですか?',
-	'ALL Hospital':'すべての病院',
+	'ALL Hospital':'全病院・施設',
 	'Data upload failed':'データのアップロードに失敗しました',
 	'Invalid File':'無効なファイル',
 	'Data replacement':'データの置き換え',
