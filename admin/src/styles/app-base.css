@@ -152,3 +152,9 @@ input:-webkit-autofill:active
 .fc-scrollgrid-section-liquid {
     height: 1px !important;
 }
+
+
+#smoothscroll td:nth-child(1), th:nth-child(1)
+{
+    min-width: 100px !important;
+}

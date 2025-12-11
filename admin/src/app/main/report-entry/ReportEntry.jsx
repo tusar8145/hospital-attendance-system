@@ -218,8 +218,8 @@ function ReportEntry() {
     };
   }, []);
 
-  // Auto-save functionality
-  useEffect(() => {
+  // Auto-save functionality future uncomment
+  /*useEffect(() => {
     if (hasUnsavedChanges && formData && !isOffline) {
       if (autoSaveTimer) {
         clearTimeout(autoSaveTimer);
@@ -237,7 +237,7 @@ function ReportEntry() {
         }
       };
     }
-  }, [formData, hasUnsavedChanges, isOffline]);
+  }, [formData, hasUnsavedChanges, isOffline]);*/
 
   useEffect(() => {
   return () => {

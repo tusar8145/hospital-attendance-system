@@ -66,5 +66,6 @@ const apiConfig = {
   reportDepartmentsWithDoctors: base_url +'/report/departments-with-doctors',
   reportStatus: base_url +'/report/status',
 
+  reportList: base_url +'/report/list',
 }
 export default apiConfig;

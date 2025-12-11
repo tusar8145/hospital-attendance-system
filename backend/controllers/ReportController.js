@@ -330,3 +330,215 @@ export const getReportStatus = async (req, res, next) => {
     response.error(error, res, next);
   }
 };
+
+
+// Add to ReportController.js
+export const getReportList = async (req, res, next) => {
+  try {
+    const { 
+      hospital_id, 
+      page = 1, 
+      limit = 10, 
+      start_date, 
+      end_date,
+      status,
+      search 
+    } = req.body;
+
+    if (!hospital_id) {
+      return response.error("hospital_id is required", res, next);
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const medicalCenterId = parseInt(hospital_id);
+
+    // Build where conditions
+    const where = {
+      medical_center_id: medicalCenterId
+    };
+
+    // Filter by date range
+    if (start_date && end_date) {
+      where.report_date = {
+        gte: new Date(start_date),
+        lte: new Date(end_date)
+      };
+    }
+
+    // Filter by status
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+
+    // Search functionality (optional)
+    if (search) {
+      where.OR = [
+        { report_no: { contains: search } },
+        { special_notes: { contains: search } }
+      ];
+    }
+
+    // Get total count
+    const totalCount = await prisma.report.count({ where });
+
+    // Get reports with pagination
+    const reports = await prisma.report.findMany({
+      where,
+      include: {
+        medical_center: {
+          select: { name: true }
+        },
+        created_by_admin: {
+          select: { name: true }
+        },
+        updated_by_admin: {
+          select: { name: true }
+        },
+        report_details: {
+          select: { 
+            patient_count: true,
+            consultation_type: true
+          }
+        },
+        _count: {
+          select: {
+            report_details: true
+          }
+        }
+      },
+      orderBy: {
+        report_date: 'desc'
+      },
+      skip,
+      take: parseInt(limit)
+    });
+
+    // Calculate statistics for dashboard
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Get statistics for current month
+    const monthlyStats = await prisma.report.groupBy({
+      by: ['status'],
+      where: {
+        medical_center_id: medicalCenterId,
+        report_date: {
+          gte: currentMonthStart,
+          lte: currentMonthEnd
+        }
+      },
+      _count: true
+    });
+
+    // Transform monthly stats to object
+    const stats = {
+      submitted: 0,
+      draft: 0,
+      approved: 0,
+      rejected: 0,
+      unsubmitted: 0
+    };
+
+    monthlyStats.forEach(stat => {
+      stats[stat.status] = stat._count;
+    });
+
+    // Calculate unsubmitted reports (days without report in current month)
+    const allDates = [];
+    const currentDate = new Date(currentMonthStart);
+    
+    while (currentDate <= currentMonthEnd) {
+      allDates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Get dates that have reports
+    const reportedDates = await prisma.report.findMany({
+      where: {
+        medical_center_id: medicalCenterId,
+        report_date: {
+          gte: currentMonthStart,
+          lte: currentMonthEnd
+        }
+      },
+      select: { report_date: true }
+    });
+
+    const reportedDateStrings = reportedDates.map(r => r.report_date.toISOString().split('T')[0]);
+    const unsubmittedDates = allDates.filter(date => 
+      !reportedDateStrings.includes(date.toISOString().split('T')[0])
+    );
+
+    stats.unsubmitted = unsubmittedDates.length;
+
+    // Format response
+    const formattedReports = reports.map(report => {
+      // Calculate patient statistics from report_details
+      let totalPatients = 0;
+      let inpatientTotal = 0;
+      let outpatientTotal = 0;
+
+      if (report.report_details && report.report_details.length > 0) {
+        totalPatients = report.report_details.reduce((sum, detail) => 
+          sum + (detail.patient_count || 0), 0);
+        
+        // For demo, we'll calculate some mock values
+        // In production, you might want to store these in the report table
+        inpatientTotal = Math.floor(totalPatients * 0.6); // 60% inpatients
+        outpatientTotal = Math.floor(totalPatients * 0.4); // 40% outpatients
+      }
+
+      return {
+        id: report.id,
+        report_no: report.report_no,
+        report_date: report.report_date,
+        formatted_date: formatJapaneseDate(report.report_date),
+        status: report.status,
+        admission_count: report.admission_count || 0,
+        discharge_count: report.discharge_count || 0,
+        inpatient_count: inpatientTotal,
+        outpatient_count: outpatientTotal,
+        creator_name: report.created_by_admin?.name || '--',
+        created_date: report.created_at ? formatJapaneseDate(report.created_at) : '--',
+        department_count: report._count?.report_details || 0,
+        medical_center_name: report.medical_center?.name,
+        submitted_at: report.submitted_at,
+        approved_at: report.approved_at,
+        special_notes: report.special_notes
+      };
+    });
+
+    response.success({
+      reports: formattedReports,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalItems: totalCount,
+        itemsPerPage: parseInt(limit)
+      },
+      statistics: {
+        submitted: stats.submitted,
+        draft: stats.draft,
+        approved: stats.approved,
+        rejected: stats.rejected,
+        unsubmitted: stats.unsubmitted,
+        total: Object.values(stats).reduce((a, b) => a + b, 0)
+      }
+    }, res);
+
+  } catch (error) {
+    console.error('Error in getReportList:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Helper function to format date in Japanese format
+function formatJapaneseDate(date) {
+  if (!date) return '--';
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}年${month}月${day}日`;
+}

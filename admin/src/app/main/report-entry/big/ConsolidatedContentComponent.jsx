@@ -646,22 +646,25 @@ const ConsolidatedContentComponent = ({
         <Table sx={{ minWidth: isMobile ? '1000px' : '1200px' }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ 
-                backgroundColor: "#F9FAFB",
-                border: "1px solid #e0e0e0",
-                padding: cellPadding,
-                textAlign: 'center',
-                fontWeight: 700,
-                fontSize: fontSize.medium, // Increased
-                color: "#2c3e50",
-                minWidth: '60px',
-                position: 'sticky',
-                left: 0,
-                backgroundColor: '#F9FAFB',
-                zIndex: 2
-              }}>
-                通番
-              </TableCell>
+<TableCell
+  sx={{  
+    backgroundColor: "#F9FAFB",
+    border: "1px solid #e0e0e0",
+    padding: cellPadding,
+    textAlign: 'center',
+    fontWeight: 700,
+    fontSize: fontSize.medium,
+    color: "#2c3e50",
+    minWidth: '80px', // Changed here
+    maxWidth: '30px',
+    position: 'sticky',
+    left: 0,
+    zIndex: 2
+  }}
+>
+  通番
+</TableCell>
+
               <TableCell sx={{ 
                 backgroundColor: "#F9FAFB",
                 border: "1px solid #e0e0e0",
