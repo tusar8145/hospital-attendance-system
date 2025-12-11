@@ -32,7 +32,7 @@ export const CommonHeader = ({
   return (
     <div className="p-24">
       <div className="flex justify-between items-center">
-        <Typography variant="h4" className="font-bold">
+        <Typography variant="h5" className="font-bold">
           {t(title)}
         </Typography>
 

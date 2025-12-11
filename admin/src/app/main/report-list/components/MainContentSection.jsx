@@ -2,6 +2,7 @@ import React from 'react';
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import ChevronLeft from "@mui/icons-material/ChevronLeft";
 import ChevronRight from "@mui/icons-material/ChevronRight";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import {
   Box,
   Button,
@@ -17,13 +18,18 @@ import {
   TableHead,
   TableRow,
   Typography,
+  Tooltip,
 } from "@mui/material";
 
 export const MainContentSection = ({ 
   reports, 
   pagination, 
   onPageChange,
-  onReportAction 
+  onReportAction,
+  filters,
+  onStatusFilter,
+  onExport,
+  onClearStatusFilter
 }) => {
   const getStatusChip = (status) => {
     switch(status) {
@@ -119,55 +125,17 @@ export const MainContentSection = ({
     }
   };
 
-  const handleActionClick = (report) => {
-    if (report.status === '未提出' || !report.status) {
-      onReportAction(report.id, 'submit', report);
-    } else {
-      onReportAction(report.id, 'view', report);
-    }
-  };
-
-  const getActionButton = (report) => {
-    if (report.status === '未提出' || !report.status) {
-      return (
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => handleActionClick(report)}
-          sx={{
-            bgcolor: "#0A6AE3",
-            color: "white",
-            textTransform: "none",
-            fontSize: "0.75rem",
-            fontWeight: 500,
-            px: 1,
-            py: 0.5,
-            minWidth: 57,
-            height: 36,
-            "&:hover": {
-              bgcolor: "#0858B8",
-            },
-          }}
-        >
-          提出
-        </Button>
-      );
-    } else {
-      return (
-        <Link
-          component="button"
-          onClick={() => handleActionClick(report)}
-          underline="always"
-          sx={{
-            color: "#0A6AE3",
-            fontWeight: 600,
-            fontSize: "0.875rem",
-            cursor: "pointer",
-          }}
-        >
-          表示
-        </Link>
-      );
+  // Map hospital type to Japanese label with color
+  const getHospitalTypeLabel = (type) => {
+    switch(type) {
+      case 'large_hospital':
+        return { label: '大病院', color: '#1976d2' };
+      case 'hospital':
+        return { label: '病院', color: '#2e7d32' };
+      case 'welfare':
+        return { label: '福祉施設', color: '#ed6c02' };
+      default:
+        return { label: type, color: '#757575' };
     }
   };
 
@@ -182,6 +150,76 @@ export const MainContentSection = ({
         boxShadow: "0px 2px 4px -1px rgba(13, 13, 18, 0.06)",
       }}
     >
+      {/* Header with export button and status filter info */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2.5,
+          py: 2,
+          borderBottom: 1,
+          borderColor: 'grey.200',
+          flexWrap: 'wrap',
+          gap: 2
+        }}
+      >
+        <Box>
+          <Typography variant="h6" fontWeight={600}>
+            レポート一覧 ({filters.year}年{filters.month}月)
+          </Typography>
+          {filters.status !== 'all' && (
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                フィルター:
+              </Typography>
+              <Chip
+                label={(() => {
+                  switch(filters.status) {
+                    case 'draft': return '下書き';
+                    case 'submitted': return '提出済み';
+                    case 'approved': return '確認済み';
+                    case 'pending': return '未確認 (下書き+提出済み)';
+                    default: return 'すべて';
+                  }
+                })()}
+                size="small"
+                color="primary"
+                variant="outlined"
+                onDelete={onClearStatusFilter}
+                sx={{ fontWeight: 500 }}
+              />
+            </Stack>
+          )}
+        </Box>
+
+        <Tooltip title="Excelでエクスポート">
+          <Button
+            variant="contained"
+            onClick={onExport}
+            sx={{
+              height: 40,
+              px: 1.5,
+              py: 1,
+              bgcolor: "#F5F5F5",
+              color: "primary.main",
+              borderRadius: 1,
+              textTransform: "none",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              boxShadow: 1,
+              minWidth: 100,
+              "&:hover": {
+                bgcolor: "#EEEEEE",
+              },
+            }}
+            startIcon={<FileDownloadIcon sx={{ width: 16, height: 16 }} />}
+          >
+            書出
+          </Button>
+        </Tooltip>
+      </Box>
+
       <TableContainer>
         <Table>
           <TableHead>
@@ -212,7 +250,27 @@ export const MainContentSection = ({
                   borderRight: 1,
                   borderBottom: 1,
                   borderColor: "grey.200",
-                  width: 145,
+                  width: 220,
+                  px: 2,
+                  py: 1.75,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  fontWeight={500}
+                  color="text.secondary"
+                  textAlign="center"
+                >
+                  医療機関
+                </Typography>
+              </TableCell>
+              <TableCell
+                sx={{
+                  bgcolor: "grey.50",
+                  borderRight: 1,
+                  borderBottom: 1,
+                  borderColor: "grey.200",
+                  width: 120,
                   px: 2,
                   py: 1.75,
                 }}
@@ -232,7 +290,7 @@ export const MainContentSection = ({
                   borderRight: 1,
                   borderBottom: 1,
                   borderColor: "grey.200",
-                  width: 146,
+                  width: 80,
                   px: 2,
                   py: 1.75,
                 }}
@@ -252,7 +310,7 @@ export const MainContentSection = ({
                   borderRight: 1,
                   borderBottom: 1,
                   borderColor: "grey.200",
-                  width: 144,
+                  width: 80,
                   px: 2,
                   py: 1.75,
                 }}
@@ -272,7 +330,7 @@ export const MainContentSection = ({
                   borderRight: 1,
                   borderBottom: 1,
                   borderColor: "grey.200",
-                  width: 145,
+                  width: 100,
                   px: 2,
                   py: 1.75,
                 }}
@@ -292,7 +350,7 @@ export const MainContentSection = ({
                   borderRight: 1,
                   borderBottom: 1,
                   borderColor: "grey.200",
-                  width: 146,
+                  width: 100,
                   px: 2,
                   py: 1.75,
                 }}
@@ -312,7 +370,7 @@ export const MainContentSection = ({
                   borderRight: 1,
                   borderBottom: 1,
                   borderColor: "grey.200",
-                  width: 198,
+                  width: 120,
                   px: 2,
                   py: 1.75,
                 }}
@@ -332,7 +390,7 @@ export const MainContentSection = ({
                   borderRight: 1,
                   borderBottom: 1,
                   borderColor: "grey.200",
-                  width: 155,
+                  width: 120,
                   px: 2,
                   py: 1.75,
                 }}
@@ -361,153 +419,206 @@ export const MainContentSection = ({
           </TableHead>
           <TableBody>
             {reports.length > 0 ? (
-              reports.map((row, index) => (
-                <TableRow key={row.id || index}>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                    }}
-                  >
-                    <Typography variant="body2" fontWeight={500}>
-                      {pagination.itemsPerPage * (pagination.currentPage - 1) + index + 1}
-                    </Typography>
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                    }}
-                  >
-                    <Typography variant="body2" fontWeight={500}>
-                      {row.formatted_date || '--'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      fontWeight={500}
+              reports.map((row, index) => {
+                const hospitalType = getHospitalTypeLabel(row.medical_center_type);
+                
+                return (
+                  <TableRow key={row.id || index} hover>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
                     >
-                      {row.admission_count || 0}
-                    </Typography>
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      fontWeight={500}
+                      <Typography variant="body2" fontWeight={500} textAlign="center">
+                        {pagination.itemsPerPage * (pagination.currentPage - 1) + index + 1}
+                      </Typography>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
                     >
-                      {row.discharge_count || 0}
-                    </Typography>
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      fontWeight={500}
-                    >
-                      {row.inpatient_count || 0}
-                    </Typography>
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      fontWeight={500}
-                    >
-                      {row.outpatient_count || 0}
-                    </Typography>
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                    }}
-                  >
-                    {row.creator_name ? (
-                      <Stack spacing={0}>
-                        <Typography variant="body2" fontWeight={500}>
-                          {row.creator_name}
+                      <Stack spacing={0.5}>
+                        <Typography 
+                          variant="body2" 
+                          fontWeight={600}
+                          sx={{ 
+                            lineHeight: 1.2,
+                            wordBreak: 'break-word'
+                          }}
+                        >
+                          {row.medical_center_name || '--'}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {row.created_date}
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            color: hospitalType.color,
+                            fontWeight: 500,
+                            fontSize: '0.7rem',
+                            lineHeight: 1.2
+                          }}
+                        >
+                          {hospitalType.label}
                         </Typography>
                       </Stack>
-                    ) : (
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={500}>
+                        {row.formatted_date || '--'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
+                    >
                       <Typography
                         variant="body2"
                         fontWeight={500}
+                        textAlign="center"
                       >
-                        --
+                        {row.admission_count || 0}
                       </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                    }}
-                  >
-                    {getStatusChip(row.status)}
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderRight: 1,
-                      borderBottom: 1,
-                      borderColor: "grey.200",
-                      px: 2,
-                      py: 1.75,
-                      textAlign: "center",
-                    }}
-                  >
-                    {getActionButton(row)}
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        fontWeight={500}
+                        textAlign="center"
+                      >
+                        {row.discharge_count || 0}
+                      </Typography>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        fontWeight={500}
+                        textAlign="center"
+                      >
+                        {row.inpatient_count || 0}
+                      </Typography>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        fontWeight={500}
+                        textAlign="center"
+                      >
+                        {row.outpatient_count || 0}
+                      </Typography>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
+                    >
+                      {row.creator_name ? (
+                        <Stack spacing={0}>
+                          <Typography variant="body2" fontWeight={500}>
+                            {row.creator_name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {row.created_date}
+                          </Typography>
+                        </Stack>
+                      ) : (
+                        <Typography
+                          variant="body2"
+                          fontWeight={500}
+                        >
+                          --
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                      }}
+                    >
+                      {getStatusChip(row.status)}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        borderRight: 1,
+                        borderBottom: 1,
+                        borderColor: "grey.200",
+                        px: 2,
+                        py: 1.75,
+                        textAlign: "center",
+                      }}
+                    >
+                      <Link
+                        component="button"
+                        onClick={() => onReportAction(row.id)}
+                        underline="always"
+                        sx={{
+                          color: "#0A6AE3",
+                          fontWeight: 600,
+                          fontSize: "0.875rem",
+                          cursor: "pointer",
+                        }}
+                      >
+                        表示
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
-                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={10} sx={{ textAlign: 'center', py: 4 }}>
                   <Typography color="text.secondary">
                     レポートが見つかりません
                   </Typography>
@@ -531,7 +642,7 @@ export const MainContentSection = ({
 
           <Stack direction="row" spacing={1} alignItems="center">
             <Box
-              onClick={() => onPageChange(pagination.currentPage - 1)}
+              onClick={() => pagination.currentPage > 1 && onPageChange(pagination.currentPage - 1)}
               sx={{
                 width: 32,
                 height: 32,
@@ -596,7 +707,7 @@ export const MainContentSection = ({
             />
 
             <Box
-              onClick={() => onPageChange(pagination.currentPage + 1)}
+              onClick={() => pagination.currentPage < pagination.totalPages && onPageChange(pagination.currentPage + 1)}
               sx={{
                 width: 32,
                 height: 32,

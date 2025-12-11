@@ -1,4 +1,3 @@
-// D:\Projects\trans\hospital-attendance-system\admin\src\app\main\report-list\ReportList.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
@@ -7,7 +6,14 @@ import {
   Alert,
   Snackbar,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Typography,
+  Chip,
+  IconButton
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
@@ -15,13 +21,14 @@ import { styled } from '@mui/material/styles';
 import FusePageSimple from '@fuse/core/FusePageSimple';
 import axios from 'axios';
 import apiConfig from '../../configs/apiConfig';
+import { useNavigate } from 'react-router-dom';
+import CloseIcon from '@mui/icons-material/Close';
 
 // Import components
 import Header from './components/Header';
 import Overview from './components/Overview';
 import ContentScreen from './components/ContentScreen';
 import { CommonHeader } from '../../shared-components/new/CommonHeader';
-import { useNavigate } from 'react-router-dom';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
@@ -38,7 +45,7 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
 }));
 
 function ReportList() {
-	 const navigate = useNavigate();
+  const navigate = useNavigate();
   const { t } = useTranslation('shared-components');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -59,13 +66,13 @@ function ReportList() {
     draft: 0,
     approved: 0,
     rejected: 0,
-    unsubmitted: 0,
+    pending: 0, // draft + submitted
     total: 0
   });
   const [filters, setFilters] = useState({
     status: 'all',
-    startDate: null,
-    endDate: null,
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
     search: ''
   });
   const [snackbar, setSnackbar] = useState({
@@ -74,27 +81,54 @@ function ReportList() {
     severity: 'success'
   });
 
+  // Months for dropdown
+  const months = [
+    { value: 1, label: '1月' },
+    { value: 2, label: '2月' },
+    { value: 3, label: '3月' },
+    { value: 4, label: '4月' },
+    { value: 5, label: '5月' },
+    { value: 6, label: '6月' },
+    { value: 7, label: '7月' },
+    { value: 8, label: '8月' },
+    { value: 9, label: '9月' },
+    { value: 10, label: '10月' },
+    { value: 11, label: '11月' },
+    { value: 12, label: '12月' }
+  ];
+
+  // Years for dropdown (last 5 years + current year)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
+
   // Fetch reports with pagination
   const fetchReports = useCallback(async (page = 1) => {
-    if (!hospital?.id) return;
-
     setLoading(true);
     try {
-      const response = await axios.post(apiConfig.reportList, {
-        hospital_id: hospital.id,
+      const payload = {
         page: page,
         limit: pagination.itemsPerPage,
-        status: filters.status !== 'all' ? filters.status : undefined,
-        start_date: filters.startDate ? filters.startDate.toISOString().split('T')[0] : undefined,
-        end_date: filters.endDate ? filters.endDate.toISOString().split('T')[0] : undefined,
+        month: filters.month,
+        year: filters.year,
         search: filters.search || undefined
-      });
+      };
+
+      // Only add status if not 'all'
+      if (filters.status !== 'all') {
+        payload.status = filters.status;
+      }
+
+      // Only add hospital_id if it exists
+      if (hospital?.id) {
+        payload.hospital_id = hospital.id;
+      }
+
+      const response = await axios.post(apiConfig.reportList, payload);
 
       if (response.data.success) {
-        const { reports: reportsData, pagination: paginationData, statistics: statsData } = response.data.data;
+        const { reports: reportsData, pagination: paginationData } = response.data.data;
         setReports(reportsData);
         setPagination(paginationData);
-        setStatistics(statsData);
       }
     } catch (error) {
       console.error('Error fetching reports:', error);
@@ -102,19 +136,23 @@ function ReportList() {
     } finally {
       setLoading(false);
     }
-  }, [hospital?.id, filters, pagination.itemsPerPage]);
+  }, [filters, pagination.itemsPerPage, hospital?.id]);
 
-  // Fetch statistics only (for Overview component)
+  // Fetch statistics
   const fetchStatistics = useCallback(async () => {
-    if (!hospital?.id) return;
-
     setLoadingStats(true);
     try {
-      const response = await axios.post(apiConfig.reportList, {
-        hospital_id: hospital.id,
-        page: 1,
-        limit: 1 // Just to get statistics
-      });
+      const payload = {
+        month: filters.month,
+        year: filters.year
+      };
+
+      // Only add hospital_id if it exists
+      if (hospital?.id) {
+        payload.hospital_id = hospital.id;
+      }
+
+      const response = await axios.post(apiConfig.reportStatistics, payload);
 
       if (response.data.success) {
         setStatistics(response.data.data.statistics);
@@ -124,21 +162,31 @@ function ReportList() {
     } finally {
       setLoadingStats(false);
     }
-  }, [hospital?.id]);
+  }, [filters.month, filters.year, hospital?.id]);
 
   // Initial load
   useEffect(() => {
-    if (hospital?.id) {
+    fetchReports();
+    fetchStatistics();
+  }, []);
+
+  // Fetch data when hospital changes
+  useEffect(() => {
+    if (hospital !== undefined) { // Check if hospital is defined (could be null)
       fetchReports();
       fetchStatistics();
     }
-  }, [hospital?.id, fetchReports, fetchStatistics]);
+  }, [hospital?.id]); // Only run when hospital.id changes
+
+  // Fetch data when filters change
+  useEffect(() => {
+    fetchReports();
+    // Only fetch statistics when month/year changes, not when status changes
+  }, [filters.month, filters.year, filters.status]);
 
   // Handle filter changes
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
-    // Reset to page 1 when filters change
-    setTimeout(() => fetchReports(1), 100);
   };
 
   // Handle page change
@@ -151,37 +199,62 @@ function ReportList() {
     handleFilterChange({ status });
   };
 
-  // Handle search
-  const handleSearch = (searchTerm) => {
-    handleFilterChange({ search: searchTerm });
+  // Clear status filter
+  const clearStatusFilter = () => {
+    handleFilterChange({ status: 'all' });
   };
 
-  // Handle date range filter
-  const handleDateRangeChange = (startDate, endDate) => {
-    handleFilterChange({ startDate, endDate });
+  // Handle month change
+  const handleMonthChange = (month) => {
+    handleFilterChange({ month });
+  };
+
+  // Handle year change
+  const handleYearChange = (year) => {
+    handleFilterChange({ year });
   };
 
   // Handle export
   const handleExport = async () => {
     try {
-      // Implement export functionality here
-      showSnackbar('エクスポート機能は近日実装予定です', 'info');
+      const payload = {
+        status: filters.status !== 'all' ? filters.status : undefined,
+        month: filters.month,
+        year: filters.year,
+        search: filters.search || undefined
+      };
+
+      // Only add hospital_id if it exists
+      if (hospital?.id) {
+        payload.hospital_id = hospital.id;
+      }
+
+      const response = await axios.post(apiConfig.reportExport, payload, {
+        responseType: 'blob'
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `reports_${filters.year}_${filters.month}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      showSnackbar('エクスポートが完了しました', 'success');
     } catch (error) {
+      console.error('Error exporting reports:', error);
       showSnackbar('エクスポートに失敗しました', 'error');
     }
   };
 
-  // Handle report action (view/submit)
-  const handleReportAction = (reportId, action, reportData) => {
-    if (action === 'view') {
-      navigate(`/report-entry?reportId=${reportId}`);
-    } else if (action === 'submit') {
-      const reportDate = reportData.report_date;
-      navigate(`/report-entry?date=${reportDate}`);
-    }
+  // Handle report action (view)
+  const handleReportAction = (reportId) => {
+    navigate(`/report-view/${reportId}`);
   };
 
-  // Handle add new report - navigates to report entry page
+  // Handle add new report
   const handleAddReport = () => {
     navigate('/report-entry');
   };
@@ -195,34 +268,46 @@ function ReportList() {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
+  // Get status label
+  const getStatusLabel = (status) => {
+    switch(status) {
+      case 'draft': return '下書き';
+      case 'submitted': return '提出済み';
+      case 'approved': return '確認済み';
+      case 'rejected': return '拒否済み';
+      case 'pending': return '未確認';
+      default: return 'すべて';
+    }
+  };
+
   // Format statistics for Overview component
   const overviewCards = [
     {
+      bgColor: "#f9b934",
+      icon: "Loading",
+      label: "今月のレポート草稿",
+      value: statistics.draft.toString(),
+      onClick: () => handleStatusFilter('draft')
+    },
+    {
       bgColor: "#2eae63",
-      icon: "NoteDone", // You'll need to create/import these icons
+      icon: "NoteDone",
       label: "今月提出済 レポート",
       value: statistics.submitted.toString(),
       onClick: () => handleStatusFilter('submitted')
     },
     {
-      bgColor: "#f26b38",
-      icon: "Alert01",
-      label: "未提出 レポート",
-      value: statistics.unsubmitted.toString(),
-      onClick: () => handleStatusFilter('unsubmitted')
-    },
-    {
       bgColor: "#0077b6",
       icon: "PropertyView",
-      label: "確認済 レポート",
+      label: "確定レポート",
       value: statistics.approved.toString(),
       onClick: () => handleStatusFilter('approved')
     },
     {
-      bgColor: "#f9b934",
-      icon: "Loading",
+      bgColor: "#f26b38",
+      icon: "Alert01",
       label: "未確認 レポート",
-      value: (statistics.draft + statistics.submitted).toString(),
+      value: statistics.pending.toString(),
       onClick: () => handleStatusFilter('pending') // draft + submitted
     },
   ];
@@ -236,30 +321,11 @@ function ReportList() {
     return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日`;
   };
 
-  if (!hospital?.id) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        alignItems: 'center', 
-        justifyContent: 'center',
-        height: '100%',
-        p: 3,
-        textAlign: 'center',
-        gap: 2
-      }}>
-        <Alert severity="warning" sx={{ width: '100%', maxWidth: 400 }}>
-          レポート一覧を表示するには、まず病院を選択してください。
-        </Alert>
-      </Box>
-    );
-  }
-
   return (
     <Root
       header={
         <CommonHeader
-          title={`レポート - ${getCurrentJapaneseDate()}`}
+          title={`レポート一覧 - ${getCurrentJapaneseDate()}`}
           onCreate={handleAddReport}
           createButtonText="レポート追加"
           showFilter={false}
@@ -276,6 +342,71 @@ function ReportList() {
             gap: 3
           }}
         >  
+          {/* Month/Year Selector and Status Filter */}
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 2, 
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between'
+          }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>月を選択</InputLabel>
+                <Select
+                  value={filters.month}
+                  label="月を選択"
+                  onChange={(e) => handleMonthChange(e.target.value)}
+                >
+                  {months.map((month) => (
+                    <MenuItem key={month.value} value={month.value}>
+                      {month.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>年を選択</InputLabel>
+                <Select
+                  value={filters.year}
+                  label="年を選択"
+                  onChange={(e) => handleYearChange(e.target.value)}
+                >
+                  {years.map((year) => (
+                    <MenuItem key={year} value={year}>
+                      {year}年
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Current Hospital and Status Filter */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Hospital Info */}
+              {hospital?.id ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'flex-end'
+                }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {hospital.name} 
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600}>
+                   選択中の医療機関
+                  </Typography>
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  全医療機関を表示中
+                </Typography>
+              )}
+
+            </Box>
+          </Box>
+
           {/* Stats Overview */}
           <Overview 
             cards={overviewCards}
@@ -284,14 +415,6 @@ function ReportList() {
 
           {/* Main Content */}
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Header 
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              onDateRangeChange={handleDateRangeChange}
-              onSearch={handleSearch}
-              onExport={handleExport}
-            />
-            
             <ContentScreen
               reports={reports}
               loading={loading}
@@ -300,9 +423,10 @@ function ReportList() {
               onPageChange={handlePageChange}
               onStatusFilter={handleStatusFilter}
               onReportAction={handleReportAction}
+              onExport={handleExport}
+              onClearStatusFilter={clearStatusFilter}
             />
           </Box>
-		
 
           {/* Snackbar for notifications */}
           <Snackbar

@@ -159,9 +159,9 @@ const ReportEntryHeader = ({
   const handleBack = () => {
     if (hasUnsavedChanges) {
       // Show confirmation dialog if there are unsaved changes
-      if (window.confirm('保存されていない変更があります。レポート一覧に戻りますか？')) {
+     // if (window.confirm('保存されていない変更があります。レポート一覧に戻りますか？')) {
         onBack();
-      }
+    //  }
     } else {
       onBack();
     }

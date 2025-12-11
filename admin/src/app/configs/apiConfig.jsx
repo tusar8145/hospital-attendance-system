@@ -67,5 +67,10 @@ const apiConfig = {
   reportStatus: base_url +'/report/status',
 
   reportList: base_url +'/report/list',
+  reportExport: base_url +'/report/export',
+  reportView: base_url +'/report/view',
+  updateReportStatus: base_url +'/report/update-status',
+  reportStatistics: base_url +'/report/statistics',
+  
 }
 export default apiConfig;

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, CircularProgress } from "@mui/material";
-import { HeaderSection } from "./HeaderSection";
 import { MainContentSection } from "./MainContentSection";
 
 const ContentScreen = ({ 
@@ -10,7 +9,9 @@ const ContentScreen = ({
   filters,
   onPageChange,
   onStatusFilter,
-  onReportAction 
+  onReportAction,
+  onExport,
+  onClearStatusFilter
 }) => {
   return (
     <Box
@@ -22,11 +23,6 @@ const ContentScreen = ({
         borderColor: "grey.200",
       }}
     >
-      <HeaderSection 
-        filters={filters}
-        onStatusFilter={onStatusFilter}
-      />
-      
       {loading ? (
         <Box sx={{ 
           display: 'flex', 
@@ -42,6 +38,10 @@ const ContentScreen = ({
           pagination={pagination}
           onPageChange={onPageChange}
           onReportAction={onReportAction}
+          filters={filters}
+          onStatusFilter={onStatusFilter}
+          onExport={onExport}
+          onClearStatusFilter={onClearStatusFilter}
         />
       )}
     </Box>
