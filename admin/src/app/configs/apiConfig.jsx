@@ -1,7 +1,7 @@
 let base_url= import.meta.env.VITE_BASE_URL
 const apiConfig = {
     base_url:base_url,
-
+    baseURL:base_url,
     login: base_url + 'auth/login',
     forgotPassword: base_url + 'auth/forgot-password',
     verifyOTP: base_url + 'auth/verify-otp',

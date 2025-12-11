@@ -126,6 +126,7 @@ export const getReportByDate = async (req, res, next) => {
     response.error(error, res, next);
   }
 };
+// Updated getReportByDateTable function
 export const getReportByDateTable = async (req, res, next) => {
   try {
     const { date, hospital_id } = req.body;
@@ -186,17 +187,167 @@ export const getReportByDateTable = async (req, res, next) => {
       }
     });
 
+    // Calculate monthly statistics for emergency transport
+    const startOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
+    const endOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
+    
+    const monthlyReports = await prisma.report.findMany({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+        report_date: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        }
+      },
+      select: {
+        emergency_transport: true,
+        post_transport_admission: true,
+        admission_count: true,
+        discharge_count: true
+      }
+    });
+
+    // Calculate monthly totals
+    const monthlyStats = monthlyReports.reduce((acc, report) => {
+      acc.emergency_transport += report.emergency_transport || 0;
+      acc.post_transport_admission += report.post_transport_admission || 0;
+      acc.admission_count += report.admission_count || 0;
+      acc.discharge_count += report.discharge_count || 0;
+      return acc;
+    }, { 
+      emergency_transport: 0, 
+      post_transport_admission: 0,
+      admission_count: 0,
+      discharge_count: 0 
+    });
+
+    // Organize data for frontend tables
+    const organizedData = {
+      patientCountData: organizePatientCountData(existingReport?.report_details || []),
+      diagnosisData: organizeDiagnosisData(existingReport?.report_details || []),
+      emergencyData: {
+        current: existingReport?.emergency_transport || 0,
+        hospitalization: existingReport?.post_transport_admission || 0,
+        monthly: monthlyStats.emergency_transport,
+        cumulative: monthlyStats.post_transport_admission
+      },
+      nurseData: organizeNurseData(existingReport?.shift_nurses || []),
+      hospitalData: {
+        inpatient: {
+          admission: existingReport?.admission_count || 0,
+          discharge: existingReport?.discharge_count || 0,
+          current: (existingReport?.admission_count || 0) - (existingReport?.discharge_count || 0)
+        },
+        outpatient: {
+          morning: existingReport?.external_morning || 0,
+          afternoon: existingReport?.external_afternoon || 0,
+          night: existingReport?.external_duty || 0,
+          total: (existingReport?.external_morning || 0) + 
+                 (existingReport?.external_afternoon || 0) + 
+                 (existingReport?.external_duty || 0)
+        }
+      },
+      visitCount: existingReport?.visit_count || 0
+    };
+
     response.success({
       report: existingReport,
       departments,
       doctors,
-      exists: !!existingReport
+      exists: !!existingReport,
+      tableData: organizedData,
+      monthlyStats
     }, res);
 
   } catch (error) {
     response.error(error, res, next);
   }
 };
+
+// Helper function to organize patient count data
+function organizePatientCountData(reportDetails) {
+  const organized = {};
+  
+  reportDetails.forEach(detail => {
+    const deptName = detail.department?.name || 'Unknown';
+    
+    if (!organized[deptName]) {
+      organized[deptName] = {
+        morning: 0,
+        afternoon: 0,
+        night: 0
+      };
+    }
+    
+    switch(detail.consultation_type) {
+      case 'morning':
+        organized[deptName].morning = detail.patient_count || 0;
+        break;
+      case 'afternoon':
+        organized[deptName].afternoon = detail.patient_count || 0;
+        break;
+      case 'night':
+        organized[deptName].night = detail.patient_count || 0;
+        break;
+    }
+  });
+  
+  return organized;
+}
+
+// Helper function to organize diagnosis data (doctors)
+function organizeDiagnosisData(reportDetails) {
+  const organized = {};
+  
+  reportDetails.forEach(detail => {
+    const deptName = detail.department?.name || 'Unknown';
+    
+    if (!organized[deptName]) {
+      organized[deptName] = {
+        morning: [],
+        afternoon: [],
+        night: []
+      };
+    }
+    
+    const doctors = [];
+    if (detail.doctor1?.name) doctors.push(detail.doctor1.name);
+    if (detail.doctor2?.name) doctors.push(detail.doctor2.name);
+    if (detail.doctor3?.name) doctors.push(detail.doctor3.name);
+    
+    switch(detail.consultation_type) {
+      case 'morning':
+        organized[deptName].morning = doctors;
+        break;
+      case 'afternoon':
+        organized[deptName].afternoon = doctors;
+        break;
+      case 'night':
+        organized[deptName].night = doctors;
+        break;
+    }
+  });
+  
+  return organized;
+}
+
+// Helper function to organize nurse data
+function organizeNurseData(shiftNurses) {
+  const organized = {
+    quasiNight: [],  // shift_type: 0
+    midnight: []     // shift_type: 1
+  };
+  
+  shiftNurses.forEach(nurse => {
+    if (nurse.shift_type === 0) {
+      organized.quasiNight.push(nurse.nurse_name);
+    } else if (nurse.shift_type === 1) {
+      organized.midnight.push(nurse.nurse_name);
+    }
+  });
+  
+  return organized;
+}
 // Submit/Update report
 export const submitReport = async (req, res, next) => {
   const transaction = await prisma.$transaction(async (tx) => {

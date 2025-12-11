@@ -7,7 +7,7 @@ import FusePageSimple from '@fuse/core/FusePageSimple';
 import axios from 'axios';
 import apiConfig from '../../../configs/apiConfig';
 import Alert from '@mui/material/Alert';
-import { Box, Stack, Typography, Paper } from '@mui/material';
+import { Box, Stack, Typography, Paper, CircularProgress } from '@mui/material';
 import HospitalDataTable from './components/HospitalDataTable';
 import SimpleDutyTable from './components/SimpleDutyTable';
 import MedicalManagementTable from './components/MedicalManagementTable';
@@ -15,7 +15,7 @@ import DetailedDutyTable from './components/DetailedDutyTable';
 import VisitTable from './components/VisitTable';
 import DiagnosisTable from './components/DiagnosisTable';
 import PatientCountTable from './components/PatientCountTable';
-import HeaderSection from '../HeaderSection'; // Import HeaderSection
+import HeaderSection from '../HeaderSection';
 import StatusConfirmationSection from '../StatusConfirmationSection';
 import ManagementComments from '../ManagementComments';
 
@@ -34,10 +34,45 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
 function Report() {
   const { t } = useTranslation('shared-components');
   const [loading, setLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(true);
   const [successAlert, setSuccessAlert] = useState(null);
   const [failAlert, setFailAlert] = useState(null);
   const { theme, toggleTheme } = useTheme();
   const { hospital, toggleHospital } = useTheme();
+
+  // Report data state
+  const [reportData, setReportData] = useState({
+    hospitalData: {
+      inpatient: {
+        admission: 0,
+        discharge: 0,
+        current: 0
+      },
+      outpatient: {
+        morning: 0,
+        afternoon: 0,
+        night: 0,
+        total: 0
+      }
+    },
+    emergencyData: {
+      current: 0,
+      hospitalization: 0,
+      monthly: 0,
+      cumulative: 0
+    },
+    nurseData: {
+      quasiNight: [],
+      midnight: []
+    },
+    diagnosisData: {},
+    patientCountData: {},
+    visitCount: 0,
+    monthlyStats: {},
+    report: null,
+    departments: [],
+    doctors: []
+  });
 
   // Status confirmation data
   const [statusData, setStatusData] = useState([
@@ -163,6 +198,53 @@ function Report() {
     }
   ]);
 
+  // Fetch report data
+  useEffect(() => {
+    fetchReportData();
+  }, []);
+
+  const fetchReportData = async () => {
+    try {
+      setReportLoading(true);
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
+      
+      const response = await axios.post(`${apiConfig.baseURL}report/get-by-date-table`, {
+        date: dateStr,
+        hospital_id: 10 // Replace with actual hospital ID from context/store
+      });
+      
+      if (response.data.success) {
+        const data = response.data.data;
+        setReportData({
+          hospitalData: data.tableData?.hospitalData || {
+            inpatient: { admission: 0, discharge: 0, current: 0 },
+            outpatient: { morning: 0, afternoon: 0, night: 0, total: 0 }
+          },
+          emergencyData: data.tableData?.emergencyData || {
+            current: 0, hospitalization: 0, monthly: 0, cumulative: 0
+          },
+          nurseData: data.tableData?.nurseData || {
+            quasiNight: [], midnight: []
+          },
+          diagnosisData: data.tableData?.diagnosisData || {},
+          patientCountData: data.tableData?.patientCountData || {},
+          visitCount: data.tableData?.visitCount || 0,
+          monthlyStats: data.monthlyStats || {},
+          report: data.report,
+          departments: data.departments || [],
+          doctors: data.doctors || []
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+      setFailAlert('レポートデータの取得に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   // Get current date in Japanese format
   const getCurrentJapaneseDate = () => {
     const now = new Date();
@@ -172,6 +254,21 @@ function Report() {
     const days = ['日', '月', '火', '水', '木', '金', '土'];
     const day = days[now.getDay()];
     return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日（${day}）`;
+  };
+
+  // Get hospital info from report data
+  const getHospitalInfo = () => {
+    if (reportData.report?.medical_center) {
+      const mc = reportData.report.medical_center;
+      return {
+        name: mc.name || '医療機関名',
+        address: mc.address || '住所情報なし'
+      };
+    }
+    return {
+      name: 'メディカルセンター東京',
+      address: '〒100-0001 東京都千代田区大手町1-1-1'
+    };
   };
 
   // Handle checkbox change for status confirmation
@@ -226,12 +323,112 @@ function Report() {
     setTimeout(() => setSuccessAlert(null), 3000);
   };
 
-  // Empty function for approval button
-  const handleApproval = () => {
-    setSuccessAlert('承認が完了しました');
-    setTimeout(() => setSuccessAlert(null), 3000);
-    // Add approval logic here
+  // Handle approval
+  const handleApproval = async () => {
+    try {
+      setLoading(true);
+      // Call API to approve report
+      if (reportData.report?.id) {
+        const response = await axios.post(`${apiConfig.baseURL}report/update-status`, {
+          report_id: reportData.report.id,
+          status: 'approved'
+        });
+        
+        if (response.data.success) {
+          setSuccessAlert('レポートが承認されました');
+          // Refresh report data
+          fetchReportData();
+        }
+      }
+    } catch (error) {
+      console.error('Error approving report:', error);
+      setFailAlert('承認に失敗しました');
+    } finally {
+      setLoading(false);
+      setTimeout(() => {
+        setSuccessAlert(null);
+        setFailAlert(null);
+      }, 3000);
+    }
   };
+
+  // Handle save as draft
+  const handleSaveDraft = async () => {
+    try {
+      setLoading(true);
+      // Prepare report data for submission
+      const reportDataToSubmit = {
+        hospital_id: 10,
+        report_date: new Date().toISOString().split('T')[0],
+        admission_count: reportData.hospitalData.inpatient.admission,
+        discharge_count: reportData.hospitalData.inpatient.discharge,
+        external_morning: reportData.hospitalData.outpatient.morning,
+        external_afternoon: reportData.hospitalData.outpatient.afternoon,
+        external_duty: reportData.hospitalData.outpatient.night,
+        emergency_transport: reportData.emergencyData.current,
+        post_transport_admission: reportData.emergencyData.hospitalization,
+        visit_count: reportData.visitCount,
+        is_draft: true
+      };
+      
+      const response = await axios.post(`${apiConfig.baseURL}report/submit`, reportDataToSubmit);
+      
+      if (response.data.success) {
+        setSuccessAlert('下書きとして保存しました');
+        fetchReportData();
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      setFailAlert('保存に失敗しました');
+    } finally {
+      setLoading(false);
+      setTimeout(() => {
+        setSuccessAlert(null);
+        setFailAlert(null);
+      }, 3000);
+    }
+  };
+
+  // Get creator info
+  const getCreatorInfo = () => {
+    if (reportData.report?.created_by_admin?.name) {
+      return reportData.report.created_by_admin.name;
+    }
+    return '管理部 田中太郎';
+  };
+
+  // Get approver info
+  const getApproverInfo = () => {
+    if (reportData.report?.approved_by_admin?.name) {
+      return reportData.report.approved_by_admin.name;
+    }
+    return '理事長 鈴木一郎';
+  };
+
+  // Get report status
+  const getReportStatus = () => {
+    if (reportData.report) {
+      const statusMap = {
+        'draft': '下書き',
+        'submitted': '提出済み',
+        'approved': '承認済み',
+        'rejected': '拒否済み'
+      };
+      return statusMap[reportData.report.status] || reportData.report.status;
+    }
+    return '未作成';
+  };
+
+  const hospitalInfo = getHospitalInfo();
+
+  if (reportLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <CircularProgress />
+        <Typography className="ml-4">レポートデータを読み込み中...</Typography>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 w-full p-4 sm:p-6 lg:p-8">
@@ -246,36 +443,49 @@ function Report() {
         </Alert>
       )}
 
-      {/* Header Section - Using HeaderSection Component */}
+      {/* Header Section */}
       <HeaderSection
         title={`管理日誌レポート - ${getCurrentJapaneseDate()}`}
-        subtitle="メディカルセンター東京　　〒100-0001 東京都千代田区大手町1-1-1"
+        subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
         primaryButtonText="承認する"
-        secondaryButtonText="コメント追加"
+        secondaryButtonText="下書き保存"
+        tertiaryButtonText="コメント追加"
         showSecondaryButton={true}
+        showTertiaryButton={true}
         primaryButtonColor="success"
         secondaryButtonColor="primary"
+        tertiaryButtonColor="info"
         onPrimaryButtonClick={handleApproval}
-        onSecondaryButtonClick={handleAddComment}
+        onSecondaryButtonClick={handleSaveDraft}
+        onTertiaryButtonClick={handleAddComment}
         showDate={true}
         customDate={getCurrentJapaneseDate()}
         variant="gradient"
+        loading={loading}
+        showReportStatus={true}
+        reportStatus={getReportStatus()}
+        reportNo={reportData.report?.report_no}
       >
-        {/* Additional info can be passed as children */}
+        {/* Additional info */}
         <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
           <Typography variant="caption" color="text.secondary">
-            🏥 総合病院レポート
+            🏥 {reportData.report?.medical_center?.type === 'large_hospital' ? '総合病院' : '病院'}レポート
           </Typography>
           <Typography variant="caption" color="text.secondary">
             📅 月次集計データ
           </Typography>
-          <Typography variant="caption" color="success.main">
-            ✓ データ検証済み
+          <Typography variant="caption" color={reportData.report?.status === 'approved' ? 'success.main' : 'warning.main'}>
+            {reportData.report?.status === 'approved' ? '✓ 承認済み' : '⚠ 承認待ち'}
           </Typography>
+          {reportData.report?.report_no && (
+            <Typography variant="caption" color="info.main">
+              📋 {reportData.report.report_no}
+            </Typography>
+          )}
         </Box>
       </HeaderSection>
 
-      {/* Status Confirmation Section - Using Common Component */}
+      {/* Status Confirmation Section */}
       <StatusConfirmationSection
         statusData={statusData}
         onStatusChange={handleStatusChange}
@@ -285,7 +495,7 @@ function Report() {
         compact={true}
       />
 
-      {/* Rest of your existing layout */}
+      {/* Data Tables Section */}
       <div className="flex flex-col lg:flex-row gap-0 mt-40">
         {/* Left Area - 40% */}
         <div className="lg:w-4/12">
@@ -294,7 +504,7 @@ function Report() {
               <div className="p-0 bg-transparent flex-1">
                 <div className="h-full flex justify-center">
                   <div className="text-center w-full">
-                    <HospitalDataTable />
+                    <HospitalDataTable data={reportData.hospitalData} />
                   </div>
                 </div>
               </div>
@@ -307,7 +517,10 @@ function Report() {
           <div className="p-0 h-full">
             <div className="h-full flex justify-center">
               <div className="text-center w-full">
-                <MedicalManagementTable />
+                <MedicalManagementTable 
+                  emergencyData={reportData.emergencyData}
+                  nurseData={reportData.nurseData}
+                />
               </div>
             </div>
           </div>
@@ -339,7 +552,7 @@ function Report() {
                 <div className="w-1/6 p-0 bg-transparent">
                   <div className="h-full flex justify-end">
                     <div className="text-center w-full">
-                      <VisitTable />
+                      <VisitTable visitCount={reportData.visitCount} />
                     </div>
                   </div>
                 </div>
@@ -349,6 +562,7 @@ function Report() {
         </div>
       </div>
 
+      {/* Diagnosis Table */}
       <div className="flex flex-col lg:flex-row gap-0 mt-40">
         <div className="lg:w-12/12">
           <div className="p-0 h-full">
@@ -356,7 +570,7 @@ function Report() {
               <div className="p-0 bg-transparent flex-1">
                 <div className="h-full flex justify-center">
                   <div className="text-center w-full">
-                    <DiagnosisTable />
+                    <DiagnosisTable diagnosisData={reportData.diagnosisData} />
                   </div>
                 </div>
               </div>
@@ -365,6 +579,7 @@ function Report() {
         </div>
       </div>
 
+      {/* Patient Count Table */}
       <div className="flex flex-col lg:flex-row gap-0 mt-40">
         <div className="lg:w-12/12">
           <div className="p-0 h-full">
@@ -372,7 +587,7 @@ function Report() {
               <div className="p-0 bg-transparent flex-1">
                 <div className="h-full flex justify-center">
                   <div className="text-center w-full">
-                    <PatientCountTable />
+                    <PatientCountTable patientData={reportData.patientCountData} />
                   </div>
                 </div>
               </div>
@@ -381,13 +596,13 @@ function Report() {
         </div>
       </div>
       
-      {/* Management Comments Section - Using Enhanced Component */}
+      {/* Management Comments Section */}
       <div className="mt-40">
         <ManagementComments
           comments={managementComments}
           title="管理事項"
           showSummary={true}
-          summaryMessage="本日の管理事項はすべて正常に処理されました。特段の問題は発生していません。"
+          summaryMessage={reportData.report?.special_notes || "本日の管理事項はすべて正常に処理されました。特段の問題は発生していません。"}
           showActionButtons={true}
           onAddComment={handleAddComment}
           onDeleteLastComment={handleDeleteLastComment}
@@ -398,6 +613,7 @@ function Report() {
           allowEditComments={true}
           allowDeleteComments={true}
           showCommentCount={true}
+          loading={loading}
         />
       </div>
 
@@ -405,17 +621,32 @@ function Report() {
       <Paper elevation={1} className="p-4 mt-6 bg-gray-50 border border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500">
           <div>
-            <span className="font-medium">作成者:</span> 管理部 田中太郎
+            <span className="font-medium">作成者:</span> {getCreatorInfo()}
             <span className="mx-2">|</span>
-            <span className="font-medium">承認者:</span> 理事長 鈴木一郎
+            <span className="font-medium">承認者:</span> {getApproverInfo()}
             <span className="mx-2">|</span>
             <span className="font-medium">コメント数:</span> {managementComments.length}
+            <span className="mx-2">|</span>
+            <span className="font-medium">ステータス:</span> {getReportStatus()}
           </div>
           <div className="mt-2 sm:mt-0">
-            最終更新: {getCurrentJapaneseDate()} 19:30
+            最終更新: {reportData.report?.updated_at ? 
+              new Date(reportData.report.updated_at).toLocaleDateString('ja-JP') + ' ' + 
+              new Date(reportData.report.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+              : getCurrentJapaneseDate() + ' 19:30'}
           </div>
         </div>
       </Paper>
+
+      {/* Loading overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg flex flex-col items-center">
+            <CircularProgress />
+            <Typography className="mt-4">処理中...</Typography>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,38 +1,26 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const HospitalDataTable = () => {
-  const [data, setData] = useState({
+const HospitalDataTable = ({ data = {} }) => {
+  // Default values
+  const hospitalData = {
     inpatient: {
-      admission: 22,
-      discharge: 12,
-      current: 37
+      admission: data?.inpatient?.admission || 0,
+      discharge: data?.inpatient?.discharge || 0,
+      current: data?.inpatient?.current || 0
     },
     outpatient: {
-      morning: 54,
-      afternoon: 99,
-      night: 88,
-      total: 77
+      morning: data?.outpatient?.morning || 0,
+      afternoon: data?.outpatient?.afternoon || 0,
+      night: data?.outpatient?.night || 0,
+      total: data?.outpatient?.total || 0
     }
-  });
-
-  const calculateTotal = () => {
-    const total = data.outpatient.morning + data.outpatient.afternoon + data.outpatient.night;
-    setData(prev => ({
-      ...prev,
-      outpatient: { ...prev.outpatient, total }
-    }));
-  };
-
-  const handleCellClick = (section, field) => {
-    console.log(`Clicked ${section}.${field}`);
   };
 
   return (
-    <div className="hospital-data-table w-full h-full   rounded-md mt-10 mb-10 ">
-      <div className="  overflow-hidden h-full">
+    <div className="hospital-data-table w-full h-full rounded-md mt-10 mb-10">
+      <div className="overflow-hidden h-full">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed">
-            {/* Row 1: Main Categories */}
             <thead>
               <tr className="text-center">
                 <th className="bg-gray-800 text-white font-bold p-3 border-r-2 border-gray-600 w-3/7" colSpan="3">
@@ -43,7 +31,6 @@ const HospitalDataTable = () => {
                 </th>
               </tr>
               
-              {/* Row 2: Subcategories */}
               <tr className="text-center">
                 {/* Inpatient subcategories */}
                 <th className="bg-gray-100 text-gray-800 font-semibold p-2 text-xs sm:text-sm w-1/7">
@@ -73,65 +60,43 @@ const HospitalDataTable = () => {
             </thead>
             
             <tbody>
-              {/* Row 3: Data */}
               <tr className="text-center">
                 {/* Inpatient data */}
-                <td 
-                  className="border border-gray-300 p-2 sm:p-3 cursor-pointer hover:bg-blue-50 transition-colors duration-200 w-1/7"
-                  onClick={() => handleCellClick('inpatient', 'admission')}
-                >
+                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
                   <div className="text-sm sm:text-base lg:text-lg font-medium">
-                    {data.inpatient.admission}
+                    {hospitalData.inpatient.admission}
                   </div>
                 </td>
-                <td 
-                  className="border border-gray-300 p-2 sm:p-3 cursor-pointer hover:bg-blue-50 transition-colors duration-200 w-1/7"
-                  onClick={() => handleCellClick('inpatient', 'discharge')}
-                >
+                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
                   <div className="text-sm sm:text-base lg:text-lg font-medium">
-                    {data.inpatient.discharge}
+                    {hospitalData.inpatient.discharge}
                   </div>
                 </td>
-                <td 
-                  className="border border-gray-300 p-2 sm:p-3 cursor-pointer hover:bg-blue-50 transition-colors duration-200 border-r-2 border-gray-300 w-1/7"
-                  onClick={() => handleCellClick('inpatient', 'current')}
-                >
+                <td className="border border-gray-300 p-2 sm:p-3 border-r-2 border-gray-300 w-1/7">
                   <div className="text-sm sm:text-base lg:text-lg font-medium">
-                    {data.inpatient.current}
+                    {hospitalData.inpatient.current}
                   </div>
                 </td>
                 
                 {/* Outpatient data */}
-                <td 
-                  className="border border-gray-300 p-2 sm:p-3 cursor-pointer hover:bg-blue-50 transition-colors duration-200 w-1/7"
-                  onClick={() => handleCellClick('outpatient', 'morning')}
-                >
+                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
                   <div className="text-sm sm:text-base lg:text-lg font-medium">
-                    {data.outpatient.morning}
+                    {hospitalData.outpatient.morning}
                   </div>
                 </td>
-                <td 
-                  className="border border-gray-300 p-2 sm:p-3 cursor-pointer hover:bg-blue-50 transition-colors duration-200 w-1/7"
-                  onClick={() => handleCellClick('outpatient', 'afternoon')}
-                >
+                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
                   <div className="text-sm sm:text-base lg:text-lg font-medium">
-                    {data.outpatient.afternoon}
+                    {hospitalData.outpatient.afternoon}
                   </div>
                 </td>
-                <td 
-                  className="border border-gray-300 p-2 sm:p-3 cursor-pointer hover:bg-blue-50 transition-colors duration-200 w-1/7"
-                  onClick={() => handleCellClick('outpatient', 'night')}
-                >
+                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
                   <div className="text-sm sm:text-base lg:text-lg font-medium">
-                    {data.outpatient.night}
+                    {hospitalData.outpatient.night}
                   </div>
                 </td>
-                <td 
-                  className="border border-gray-300 p-2 sm:p-3 cursor-pointer hover:bg-blue-50 transition-colors duration-200 bg-gray-50 font-bold w-1/7"
-                  onClick={calculateTotal}
-                >
+                <td className="border border-gray-300 p-2 sm:p-3 bg-gray-50 font-bold w-1/7">
                   <div className="text-sm sm:text-base lg:text-lg">
-                    {data.outpatient.total}
+                    {hospitalData.outpatient.total}
                   </div>
                 </td>
               </tr>

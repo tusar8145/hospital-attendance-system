@@ -1,43 +1,40 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const DiagnosisTable = () => {
-  const [data, setData] = useState({
-    diagnosis1: {
-      morning: 'x1',
-      afternoon: 'x2',
-      night: 'x3'
-    },
-    diagnosis2: {
-      morning: 'x1',
-      afternoon: 'x2',
-      night: 'x3'
-    }
-  });
+const DiagnosisTable = ({ diagnosisData = {} }) => {
+  // Get unique department names
+  const departments = Object.keys(diagnosisData);
 
-  const handleCellClick = (diagnosis, time) => {
-    console.log(`Clicked ${diagnosis}.${time}`);
-  };
-
-  // Generate 25 additional columns with empty data
+  // Generate additional empty columns
   const additionalColumns = Array.from({ length: 25 }, (_, i) => ({
     id: i + 1,
     label: `C${i + 5}`,
-    data: { morning: '', afternoon: '', night: '' }
+    data: { morning: [], afternoon: [], night: [] }
   }));
+
+  // Color classes for departments
+  const getColorClass = (index) => {
+    const colors = ['bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-yellow-600', 'bg-purple-600'];
+    return colors[index % colors.length];
+  };
+
+  const getLightColorClass = (index) => {
+    const colors = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'];
+    return colors[index % colors.length];
+  };
 
   return (
     <div className="diagnosis-table w-full h-full rounded-md mt-10 mb-10">
-      <div className="overflow-hidden h-full   ">
+      <div className="overflow-hidden h-full">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <tbody>
-              {/* Row 1 */}
+              {/* Row 1 - Headers */}
               <tr className="text-center">
-                {/* Column 1: 診察担当医 (spans 5 rows) - 50% narrower */}
+                {/* Column 1: 診察担当医 */}
                 <td 
                   className="border border-gray-200 bg-gray-800 text-white p-1"
                   rowSpan="5"
-                  style={{ width: '30px', minWidth: '30px', maxWidth: '30px' }}
+                  style={{ width: '30px' }}
                 >
                   <div className="flex flex-col justify-center items-center h-full">
                     <span className="block text-[10px] leading-tight">診</span>
@@ -48,215 +45,167 @@ const DiagnosisTable = () => {
                   </div>
                 </td>
                 
-                {/* Column 2: Empty (spans 2 rows) */}
+                {/* Empty column */}
                 <td 
                   className="border border-gray-200 bg-gray-100 p-1"
                   rowSpan="2"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
+                  style={{ width: '40px' }}
                 >
                   <div className="flex items-center justify-center h-full">
                     <span className="text-[10px]"></span>
                   </div>
                 </td>
                 
-                {/* Column 3: 診１ */}
-                <td 
-                  className="border border-gray-200 bg-blue-600 text-white font-bold p-1"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                >
-                  <div className="text-[10px]">診１</div>
-                </td>
+                {/* Department headers */}
+                {departments.slice(0, 2).map((dept, index) => (
+                  <td 
+                    key={`dept-${index}`}
+                    className={`border border-gray-200 ${getColorClass(index)} text-white font-bold p-1`}
+                    style={{ width: '40px' }}
+                  >
+                    <div className="text-[10px]">{dept}</div>
+                  </td>
+                ))}
                 
-                {/* Column 4: 診２ */}
-                <td 
-                  className="border border-gray-200 bg-red-600 text-white font-bold p-1"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                >
-                  <div className="text-[10px]">診２</div>
-                </td>
-                
-                {/* Additional 25 columns - Row 1 Headers */}
+                {/* Additional columns */}
                 {additionalColumns.map((col) => (
                   <td
                     key={`header-${col.id}`}
                     className="border border-gray-200 bg-purple-600 text-white font-bold p-1"
-                    style={{ width: '30px', minWidth: '30px', maxWidth: '30px' }}
+                    style={{ width: '30px' }}
                   >
                     <div className="text-[10px]">{col.label}</div>
                   </td>
                 ))}
               </tr>
               
-              {/* Row 2 */}
+              {/* Row 2 - Sub-headers */}
               <tr className="text-center">
-                {/* Column 3: 内科 */}
-                <td 
-                  className="border border-gray-200 bg-blue-500 text-white font-semibold p-1"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                >
-                  <div className="text-[10px]">内科</div>
-                </td>
+                {departments.slice(0, 2).map((dept, index) => (
+                  <td 
+                    key={`subheader-${dept}`}
+                    className={`border border-gray-200 ${getLightColorClass(index)} text-white font-semibold p-1`}
+                    style={{ width: '40px' }}
+                  >
+                    <div className="text-[10px]">{dept}</div>
+                  </td>
+                ))}
                 
-                {/* Column 4: 準内 */}
-                <td 
-                  className="border border-gray-200 bg-red-500 text-white font-semibold p-1"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                >
-                  <div className="text-[10px]">準内</div>
-                </td>
-                
-                {/* Additional 25 columns - Row 2 Sub-headers */}
                 {additionalColumns.map((col) => (
                   <td
                     key={`subheader-${col.id}`}
                     className="border border-gray-200 bg-purple-500 text-white font-semibold p-1"
-                    style={{ width: '30px', minWidth: '30px', maxWidth: '30px' }}
+                    style={{ width: '30px' }}
                   >
                     <div className="text-[10px]">-</div>
                   </td>
                 ))}
               </tr>
               
-              {/* Row 3 */}
+              {/* Row 3: Morning Diagnosis */}
               <tr className="text-center">
-                {/* Column 2: 午前診 */}
                 <td 
                   className="border border-gray-200 bg-gray-100 font-medium p-1"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
+                  style={{ width: '40px' }}
                 >
                   <div className="flex items-center justify-center h-full">
                     <span className="text-[10px]">午前診</span>
                   </div>
                 </td>
                 
-                {/* Column 3: x1 */}
-                <td 
-                  className="border border-gray-200 p-1 cursor-pointer hover:bg-blue-50 transition-colors duration-200"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                  onClick={() => handleCellClick('diagnosis1', 'morning')}
-                >
-                  <div className="text-[11px] font-medium">
-                    {data.diagnosis1.morning}
-                  </div>
-                </td>
+                {departments.slice(0, 2).map((dept, index) => (
+                  <td 
+                    key={`morning-${dept}`}
+                    className="border border-gray-200 p-1"
+                    style={{ width: '40px' }}
+                  >
+                    <div className="text-[9px] leading-tight">
+                      {diagnosisData[dept]?.morning?.map((doctor, i) => (
+                        <div key={i}>{doctor}</div>
+                      )) || '-'}
+                    </div>
+                  </td>
+                ))}
                 
-                {/* Column 4: x1 */}
-                <td 
-                  className="border border-gray-200 p-1 cursor-pointer hover:bg-red-50 transition-colors duration-200"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                  onClick={() => handleCellClick('diagnosis2', 'morning')}
-                >
-                  <div className="text-[11px] font-medium">
-                    {data.diagnosis2.morning}
-                  </div>
-                </td>
-                
-                {/* Additional 25 columns - Row 3 Data */}
                 {additionalColumns.map((col) => (
                   <td
                     key={`data-morning-${col.id}`}
-                    className="border border-gray-200 p-1 cursor-pointer hover:bg-purple-50 transition-colors duration-200"
-                    style={{ width: '30px', minWidth: '30px', maxWidth: '30px' }}
+                    className="border border-gray-200 p-1"
+                    style={{ width: '30px' }}
                   >
-                    <div className="text-[11px] font-medium">
-                      {col.data.morning || '-'}
-                    </div>
+                    <div className="text-[9px]">-</div>
                   </td>
                 ))}
               </tr>
               
-              {/* Row 4 */}
+              {/* Row 4: Afternoon Diagnosis */}
               <tr className="text-center">
-                {/* Column 2: 午後診 */}
                 <td 
                   className="border border-gray-200 bg-gray-100 font-medium p-1"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
+                  style={{ width: '40px' }}
                 >
                   <div className="flex items-center justify-center h-full">
                     <span className="text-[10px]">午後診</span>
                   </div>
                 </td>
                 
-                {/* Column 3: x2 */}
-                <td 
-                  className="border border-gray-200 p-1 cursor-pointer hover:bg-blue-50 transition-colors duration-200"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                  onClick={() => handleCellClick('diagnosis1', 'afternoon')}
-                >
-                  <div className="text-[11px] font-medium">
-                    {data.diagnosis1.afternoon}
-                  </div>
-                </td>
+                {departments.slice(0, 2).map((dept, index) => (
+                  <td 
+                    key={`afternoon-${dept}`}
+                    className="border border-gray-200 p-1"
+                    style={{ width: '40px' }}
+                  >
+                    <div className="text-[9px] leading-tight">
+                      {diagnosisData[dept]?.afternoon?.map((doctor, i) => (
+                        <div key={i}>{doctor}</div>
+                      )) || '-'}
+                    </div>
+                  </td>
+                ))}
                 
-                {/* Column 4: x2 */}
-                <td 
-                  className="border border-gray-200 p-1 cursor-pointer hover:bg-red-50 transition-colors duration-200"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                  onClick={() => handleCellClick('diagnosis2', 'afternoon')}
-                >
-                  <div className="text-[11px] font-medium">
-                    {data.diagnosis2.afternoon}
-                  </div>
-                </td>
-                
-                {/* Additional 25 columns - Row 4 Data */}
                 {additionalColumns.map((col) => (
                   <td
                     key={`data-afternoon-${col.id}`}
-                    className="border border-gray-200 p-1 cursor-pointer hover:bg-purple-50 transition-colors duration-200"
-                    style={{ width: '30px', minWidth: '30px', maxWidth: '30px' }}
+                    className="border border-gray-200 p-1"
+                    style={{ width: '30px' }}
                   >
-                    <div className="text-[11px] font-medium">
-                      {col.data.afternoon || '-'}
-                    </div>
+                    <div className="text-[9px]">-</div>
                   </td>
                 ))}
               </tr>
               
-              {/* Row 5 */}
+              {/* Row 5: Night Diagnosis */}
               <tr className="text-center">
-                {/* Column 2: 夜診 */}
                 <td 
                   className="border border-gray-200 bg-gray-100 font-medium p-1"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
+                  style={{ width: '40px' }}
                 >
                   <div className="flex items-center justify-center h-full">
                     <span className="text-[10px]">夜診</span>
                   </div>
                 </td>
                 
-                {/* Column 3: x3 */}
-                <td 
-                  className="border border-gray-200 p-1 cursor-pointer hover:bg-blue-50 transition-colors duration-200"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                  onClick={() => handleCellClick('diagnosis1', 'night')}
-                >
-                  <div className="text-[11px] font-medium">
-                    {data.diagnosis1.night}
-                  </div>
-                </td>
+                {departments.slice(0, 2).map((dept, index) => (
+                  <td 
+                    key={`night-${dept}`}
+                    className="border border-gray-200 p-1"
+                    style={{ width: '40px' }}
+                  >
+                    <div className="text-[9px] leading-tight">
+                      {diagnosisData[dept]?.night?.map((doctor, i) => (
+                        <div key={i}>{doctor}</div>
+                      )) || '-'}
+                    </div>
+                  </td>
+                ))}
                 
-                {/* Column 4: x3 */}
-                <td 
-                  className="border border-gray-200 p-1 cursor-pointer hover:bg-red-50 transition-colors duration-200"
-                  style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
-                  onClick={() => handleCellClick('diagnosis2', 'night')}
-                >
-                  <div className="text-[11px] font-medium">
-                    {data.diagnosis2.night}
-                  </div>
-                </td>
-                
-                {/* Additional 25 columns - Row 5 Data */}
                 {additionalColumns.map((col) => (
                   <td
                     key={`data-night-${col.id}`}
-                    className="border border-gray-200 p-1 cursor-pointer hover:bg-purple-50 transition-colors duration-200"
-                    style={{ width: '30px', minWidth: '30px', maxWidth: '30px' }}
+                    className="border border-gray-200 p-1"
+                    style={{ width: '30px' }}
                   >
-                    <div className="text-[11px] font-medium">
-                      {col.data.night || '-'}
-                    </div>
+                    <div className="text-[9px]">-</div>
                   </td>
                 ))}
               </tr>
