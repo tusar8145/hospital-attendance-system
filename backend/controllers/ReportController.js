@@ -54,363 +54,6 @@ async function getMedicalCenterFilter(user) {
   }
 }
 
-// Get report by date and hospital
-export const getReportByDate = async (req, res, next) => {
-  try {
-    const { date, hospital_id } = req.body;
-    
-    if (!date || !hospital_id) {
-      return response.error("Date and hospital_id are required", res, next);
-    }
-
-    const reportDate = new Date(date);
-    
-    // Get existing report
-    const existingReport = await prisma.report.findUnique({
-      where: {
-        medical_center_id_report_date: {
-          medical_center_id: parseInt(hospital_id),
-          report_date: reportDate
-        }
-      },
-      include: {
-        report_details: {
-          include: {
-            department: true,
-            doctor1: true,
-            doctor2: true,
-            doctor3: true
-          },
-          orderBy: [
-            { sequence_no: 'asc' },
-            { consultation_type: 'asc' }
-          ]
-        },
-        shift_nurses: true,
-        duty_staff: true,
-        medical_center: true
-      }
-    });
-
-    // Get related data for the form
-    const departments = await prisma.department.findMany({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        status: 1
-      }
-    });
-
-    const doctors = await prisma.doctor.findMany({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        status: 1
-      },
-      include: {
-        dept_links: {
-          where: { status: 1 },
-          include: {
-            department: true
-          }
-        }
-      }
-    });
-
-    response.success({
-      report: existingReport,
-      departments,
-      doctors,
-      exists: !!existingReport
-    }, res);
-
-  } catch (error) {
-    response.error(error, res, next);
-  }
-};
-// Updated getReportByDateTable function
-export const getReportByDateTable = async (req, res, next) => {
-  try {
-    const { date, hospital_id } = req.body;
-    
-    if (!date || !hospital_id) {
-      return response.error("Date and hospital_id are required", res, next);
-    }
-
-    const reportDate = new Date(date);
-    
-    // Get existing report
-    const existingReport = await prisma.report.findUnique({
-      where: {
-        medical_center_id_report_date: {
-          medical_center_id: parseInt(hospital_id),
-          report_date: reportDate
-        }
-      },
-      include: {
-        report_details: {
-          include: {
-            department: true,
-            doctor1: true,
-            doctor2: true,
-            doctor3: true
-          },
-          orderBy: [
-            { sequence_no: 'asc' },
-            { consultation_type: 'asc' }
-          ]
-        },
-        shift_nurses: true,
-        duty_staff: true,
-        medical_center: true
-      }
-    });
-
-    // Get related data for the form
-    const departments = await prisma.department.findMany({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        status: 1
-      }
-    });
-
-    const doctors = await prisma.doctor.findMany({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        status: 1
-      },
-      include: {
-        dept_links: {
-          where: { status: 1 },
-          include: {
-            department: true
-          }
-        }
-      }
-    });
-
-    // Calculate monthly statistics for emergency transport
-    const startOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
-    const endOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
-    
-    const monthlyReports = await prisma.report.findMany({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        report_date: {
-          gte: startOfMonth,
-          lte: endOfMonth
-        }
-      },
-      select: {
-        emergency_transport: true,
-        post_transport_admission: true,
-        admission_count: true,
-        discharge_count: true
-      }
-    });
-
-    // Calculate monthly totals
-    const monthlyStats = monthlyReports.reduce((acc, report) => {
-      acc.emergency_transport += report.emergency_transport || 0;
-      acc.post_transport_admission += report.post_transport_admission || 0;
-      acc.admission_count += report.admission_count || 0;
-      acc.discharge_count += report.discharge_count || 0;
-      return acc;
-    }, { 
-      emergency_transport: 0, 
-      post_transport_admission: 0,
-      admission_count: 0,
-      discharge_count: 0 
-    });
-
-    // Organize data for frontend tables
-    const organizedData = {
-      patientCountData: organizePatientCountData(existingReport?.report_details || []),
-      diagnosisData: organizeDiagnosisData(existingReport?.report_details || []),
-      emergencyData: {
-        current: existingReport?.emergency_transport || 0,
-        hospitalization: existingReport?.post_transport_admission || 0,
-        monthly: monthlyStats.emergency_transport,
-        cumulative: monthlyStats.post_transport_admission
-      },
-      nurseData: organizeNurseData(existingReport?.shift_nurses || []),
-      hospitalData: {
-        inpatient: {
-          admission: existingReport?.admission_count || 0,
-          discharge: existingReport?.discharge_count || 0,
-          current: (existingReport?.admission_count || 0) - (existingReport?.discharge_count || 0)
-        },
-        outpatient: {
-          morning: existingReport?.external_morning || 0,
-          afternoon: existingReport?.external_afternoon || 0,
-          night: existingReport?.external_duty || 0,
-          total: (existingReport?.external_morning || 0) + 
-                 (existingReport?.external_afternoon || 0) + 
-                 (existingReport?.external_duty || 0)
-        }
-      },
-      visitCount: existingReport?.visit_count || 0
-    };
-
-    response.success({
-      report: existingReport,
-      departments,
-      doctors,
-      exists: !!existingReport,
-      tableData: organizedData,
-      monthlyStats
-    }, res);
-
-  } catch (error) {
-    response.error(error, res, next);
-  }
-};
-
-// Add this function to your report controller
-export const getReportById = async (req, res, next) => {
-  try {
-    const { report_id } = req.body;
-    
-    if (!report_id) {
-      return response.error("Report ID is required", res, next);
-    }
-
-    // Get report by ID
-    const report = await prisma.report.findUnique({
-      where: {
-        id: parseInt(report_id)
-      },
-      include: {
-        report_details: {
-          include: {
-            department: true,
-            doctor1: true,
-            doctor2: true,
-            doctor3: true
-          },
-          orderBy: [
-            { sequence_no: 'asc' },
-            { consultation_type: 'asc' }
-          ]
-        },
-        shift_nurses: true,
-        duty_staff: true,
-        medical_center: true,
-        created_by_admin: {
-          select: { name: true }
-        },
-        updated_by_admin: {
-          select: { name: true }
-        },
-        approved_by_admin: {
-          select: { name: true }
-        }
-      }
-    });
-
-    if (!report) {
-      return response.error("Report not found", res, next);
-    }
-
-    // Calculate monthly statistics for emergency transport
-    const startOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth(), 1);
-    const endOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth() + 1, 0);
-    
-    const monthlyReports = await prisma.report.findMany({
-      where: {
-        medical_center_id: report.medical_center_id,
-        report_date: {
-          gte: startOfMonth,
-          lte: endOfMonth
-        }
-      },
-      select: {
-        emergency_transport: true,
-        post_transport_admission: true,
-        admission_count: true,
-        discharge_count: true
-      }
-    });
-
-    // Calculate monthly totals
-    const monthlyStats = monthlyReports.reduce((acc, monthlyReport) => {
-      acc.emergency_transport += monthlyReport.emergency_transport || 0;
-      acc.post_transport_admission += monthlyReport.post_transport_admission || 0;
-      acc.admission_count += monthlyReport.admission_count || 0;
-      acc.discharge_count += monthlyReport.discharge_count || 0;
-      return acc;
-    }, { 
-      emergency_transport: 0, 
-      post_transport_admission: 0,
-      admission_count: 0,
-      discharge_count: 0 
-    });
-
-    // Organize data for frontend tables
-    const organizedData = {
-      patientCountData: organizePatientCountData(report.report_details || []),
-      diagnosisData: organizeDiagnosisData(report.report_details || []),
-      emergencyData: {
-        current: report.emergency_transport || 0,
-        hospitalization: report.post_transport_admission || 0,
-        monthly: monthlyStats.emergency_transport,
-        cumulative: monthlyStats.post_transport_admission
-      },
-      nurseData: organizeNurseData(report.shift_nurses || []),
-      hospitalData: {
-        inpatient: {
-          admission: report.admission_count || 0,
-          discharge: report.discharge_count || 0,
-          current: (report.admission_count || 0) - (report.discharge_count || 0)
-        },
-        outpatient: {
-          morning: report.external_morning || 0,
-          afternoon: report.external_afternoon || 0,
-          night: report.external_duty || 0,
-          total: (report.external_morning || 0) + 
-                 (report.external_afternoon || 0) + 
-                 (report.external_duty || 0)
-        }
-      },
-      visitCount: report.visit_count || 0
-    };
-
-    // Get departments and doctors for this medical center
-    const departments = await prisma.department.findMany({
-      where: {
-        medical_center_id: report.medical_center_id,
-        status: 1
-      }
-    });
-
-    const doctors = await prisma.doctor.findMany({
-      where: {
-        medical_center_id: report.medical_center_id,
-        status: 1
-      },
-      include: {
-        dept_links: {
-          where: { status: 1 },
-          include: {
-            department: true
-          }
-        }
-      }
-    });
-
-    response.success({
-      report,
-      departments,
-      doctors,
-      exists: true,
-      tableData: organizedData,
-      monthlyStats
-    }, res);
-
-  } catch (error) {
-    console.error('Error in getReportById:', error);
-    response.error(error.message, res, next);
-  }
-};
-
 // Helper function to organize patient count data
 function organizePatientCountData(reportDetails) {
   const organized = {};
@@ -495,6 +138,398 @@ function organizeNurseData(shiftNurses) {
   
   return organized;
 }
+
+// Get report by date and hospital
+export const getReportByDate = async (req, res, next) => {
+  try {
+    const { date, hospital_id } = req.body;
+    
+    if (!date || !hospital_id) {
+      return response.error("Date and hospital_id are required", res, next);
+    }
+
+    const reportDate = new Date(date);
+    
+    // Get existing report
+    const existingReport = await prisma.report.findUnique({
+      where: {
+        medical_center_id_report_date: {
+          medical_center_id: parseInt(hospital_id),
+          report_date: reportDate
+        }
+      },
+      include: {
+        report_details: {
+          include: {
+            department: true,
+            doctor1: true,
+            doctor2: true,
+            doctor3: true
+          },
+          orderBy: [
+            { sequence_no: 'asc' },
+            { consultation_type: 'asc' }
+          ]
+        },
+        shift_nurses: true,
+        duty_staff: true,
+        medical_center: true
+      }
+    });
+
+    // Get related data for the form
+    const departments = await prisma.department.findMany({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+        status: 1
+      }
+    });
+
+    const doctors = await prisma.doctor.findMany({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+        status: 1
+      },
+      include: {
+        dept_links: {
+          where: { status: 1 },
+          include: {
+            department: true
+          }
+        }
+      }
+    });
+
+    response.success({
+      report: existingReport,
+      departments,
+      doctors,
+      exists: !!existingReport
+    }, res);
+
+  } catch (error) {
+    response.error(error, res, next);
+  }
+};
+
+// Get report by date with table data
+export const getReportByDateTable = async (req, res, next) => {
+  try {
+    const { date, hospital_id } = req.body;
+    
+    if (!date || !hospital_id) {
+      return response.error("Date and hospital_id are required", res, next);
+    }
+
+    const reportDate = new Date(date);
+    
+    // Get existing report
+    const existingReport = await prisma.report.findUnique({
+      where: {
+        medical_center_id_report_date: {
+          medical_center_id: parseInt(hospital_id),
+          report_date: reportDate
+        }
+      },
+      include: {
+        report_details: {
+          include: {
+            department: true,
+            doctor1: true,
+            doctor2: true,
+            doctor3: true
+          },
+          orderBy: [
+            { sequence_no: 'asc' },
+            { consultation_type: 'asc' }
+          ]
+        },
+        shift_nurses: true,
+        duty_staff: true,
+        medical_center: true
+      }
+    });
+
+    // Get related data for the form
+    const departments = await prisma.department.findMany({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+        status: 1
+      }
+    });
+
+    const doctors = await prisma.doctor.findMany({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+        status: 1
+      },
+      include: {
+        dept_links: {
+          where: { status: 1 },
+          include: {
+            department: true
+          }
+        }
+      }
+    });
+
+    // Calculate monthly statistics
+    const startOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
+    const endOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
+    
+    const monthlyReports = await prisma.report.findMany({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+        report_date: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        }
+      },
+      select: {
+        emergency_transport: true,
+        post_transport_admission: true,
+        admission_count: true,
+        discharge_count: true
+      }
+    });
+
+    const monthlyStats = monthlyReports.reduce((acc, report) => {
+      acc.emergency_transport += report.emergency_transport || 0;
+      acc.post_transport_admission += report.post_transport_admission || 0;
+      acc.admission_count += report.admission_count || 0;
+      acc.discharge_count += report.discharge_count || 0;
+      return acc;
+    }, { 
+      emergency_transport: 0, 
+      post_transport_admission: 0,
+      admission_count: 0,
+      discharge_count: 0 
+    });
+
+    // Organize data for frontend tables
+    const organizedData = {
+      patientCountData: organizePatientCountData(existingReport?.report_details || []),
+      diagnosisData: organizeDiagnosisData(existingReport?.report_details || []),
+      emergencyData: {
+        current: existingReport?.emergency_transport || 0,
+        hospitalization: existingReport?.post_transport_admission || 0,
+        monthly: monthlyStats.emergency_transport,
+        cumulative: monthlyStats.post_transport_admission
+      },
+      nurseData: organizeNurseData(existingReport?.shift_nurses || []),
+      hospitalData: {
+        inpatient: {
+          admission: existingReport?.admission_count || 0,
+          discharge: existingReport?.discharge_count || 0,
+          current: (existingReport?.admission_count || 0) - (existingReport?.discharge_count || 0)
+        },
+        outpatient: {
+          morning: existingReport?.external_morning || 0,
+          afternoon: existingReport?.external_afternoon || 0,
+          night: existingReport?.external_duty || 0,
+          total: (existingReport?.external_morning || 0) + 
+                 (existingReport?.external_afternoon || 0) + 
+                 (existingReport?.external_duty || 0)
+        }
+      },
+      visitCount: existingReport?.visit_count || 0
+    };
+
+    response.success({
+      report: existingReport,
+      departments,
+      doctors,
+      exists: !!existingReport,
+      tableData: organizedData,
+      monthlyStats
+    }, res);
+
+  } catch (error) {
+    response.error(error, res, next);
+  }
+};
+
+// Get report by ID with approvals and comments
+export const getReportById = async (req, res, next) => {
+  try {
+    const { report_id } = req.body;
+    
+    if (!report_id) {
+      return response.error("Report ID is required", res, next);
+    }
+
+    // Get report by ID
+    const report = await prisma.report.findUnique({
+      where: {
+        id: parseInt(report_id)
+      },
+      include: {
+        report_details: {
+          include: {
+            department: true,
+            doctor1: true,
+            doctor2: true,
+            doctor3: true
+          },
+          orderBy: [
+            { sequence_no: 'asc' },
+            { consultation_type: 'asc' }
+          ]
+        },
+        shift_nurses: true,
+        duty_staff: true,
+        medical_center: true,
+        created_by_admin: {
+          select: { name: true }
+        },
+        updated_by_admin: {
+          select: { name: true }
+        },
+        approved_by_admin: {
+          select: { name: true }
+        },
+        // Include approvals
+        approvals: {
+          include: {
+            admin: {
+              select: {
+                id: true,
+                name: true,
+                role: true
+              }
+            }
+          },
+          orderBy: {
+            created_at: 'asc'
+          }
+        },
+        // Include comments
+        report_comments: {
+          where: {
+            is_internal: false
+          },
+          include: {
+            admin: {
+              select: {
+                id: true,
+                name: true,
+                role: true
+              }
+            }
+          },
+          orderBy: {
+            created_at: 'desc'
+          }
+        }
+      }
+    });
+
+    if (!report) {
+      return response.error("Report not found", res, next);
+    }
+
+    // Calculate monthly statistics
+    const startOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth(), 1);
+    const endOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth() + 1, 0);
+    
+    const monthlyReports = await prisma.report.findMany({
+      where: {
+        medical_center_id: report.medical_center_id,
+        report_date: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        }
+      },
+      select: {
+        emergency_transport: true,
+        post_transport_admission: true,
+        admission_count: true,
+        discharge_count: true
+      }
+    });
+
+    const monthlyStats = monthlyReports.reduce((acc, monthlyReport) => {
+      acc.emergency_transport += monthlyReport.emergency_transport || 0;
+      acc.post_transport_admission += monthlyReport.post_transport_admission || 0;
+      acc.admission_count += monthlyReport.admission_count || 0;
+      acc.discharge_count += monthlyReport.discharge_count || 0;
+      return acc;
+    }, { 
+      emergency_transport: 0, 
+      post_transport_admission: 0,
+      admission_count: 0,
+      discharge_count: 0 
+    });
+
+    // Organize data for frontend tables
+    const organizedData = {
+      patientCountData: organizePatientCountData(report.report_details || []),
+      diagnosisData: organizeDiagnosisData(report.report_details || []),
+      emergencyData: {
+        current: report.emergency_transport || 0,
+        hospitalization: report.post_transport_admission || 0,
+        monthly: monthlyStats.emergency_transport,
+        cumulative: monthlyStats.post_transport_admission
+      },
+      nurseData: organizeNurseData(report.shift_nurses || []),
+      hospitalData: {
+        inpatient: {
+          admission: report.admission_count || 0,
+          discharge: report.discharge_count || 0,
+          current: (report.admission_count || 0) - (report.discharge_count || 0)
+        },
+        outpatient: {
+          morning: report.external_morning || 0,
+          afternoon: report.external_afternoon || 0,
+          night: report.external_duty || 0,
+          total: (report.external_morning || 0) + 
+                 (report.external_afternoon || 0) + 
+                 (report.external_duty || 0)
+        }
+      },
+      visitCount: report.visit_count || 0
+    };
+
+    // Get departments and doctors
+    const departments = await prisma.department.findMany({
+      where: {
+        medical_center_id: report.medical_center_id,
+        status: 1
+      }
+    });
+
+    const doctors = await prisma.doctor.findMany({
+      where: {
+        medical_center_id: report.medical_center_id,
+        status: 1
+      },
+      include: {
+        dept_links: {
+          where: { status: 1 },
+          include: {
+            department: true
+          }
+        }
+      }
+    });
+
+    response.success({
+      report,
+      departments,
+      doctors,
+      exists: true,
+      tableData: organizedData,
+      monthlyStats,
+      approvals: report.approvals,
+      comments: report.report_comments
+    }, res);
+
+  } catch (error) {
+    console.error('Error in getReportById:', error);
+    response.error(error.message, res, next);
+  }
+};
+
 // Submit/Update report
 export const submitReport = async (req, res, next) => {
   const transaction = await prisma.$transaction(async (tx) => {
@@ -627,7 +662,7 @@ export const submitReport = async (req, res, next) => {
         });
       }
 
-      // Get complete report with relations
+      // Get complete report
       const completeReport = await tx.report.findUnique({
         where: { id: report.id },
         include: {
@@ -752,8 +787,8 @@ export const getReportList = async (req, res, next) => {
       end_date,
       status,
       search,
-      month, // New parameter for month selection
-      year // New parameter for year selection
+      month,
+      year
     } = req.body;
 
     // Get user from request for medical center filtering
@@ -764,14 +799,11 @@ export const getReportList = async (req, res, next) => {
 
     // Handle medical_center_id filtering
     if (hospital_id) {
-      // If hospital_id is explicitly provided, use it
       where.medical_center_id = parseInt(hospital_id);
     } else {
-      // Determine medical_center_id filtering based on user role
       const medicalCenterFilter = await getMedicalCenterFilter(user);
       if (medicalCenterFilter) {
         if (medicalCenterFilter === -1) {
-          // No medical centers assigned, return empty
           return response.success({
             reports: [],
             pagination: {
@@ -791,7 +823,6 @@ export const getReportList = async (req, res, next) => {
         }
         where.medical_center_id = medicalCenterFilter;
       }
-      // If medicalCenterFilter is null (admin), don't filter by medical_center_id
     }
 
     // Handle month and year filtering
@@ -803,13 +834,12 @@ export const getReportList = async (req, res, next) => {
         lte: endDate
       };
     } else if (start_date && end_date) {
-      // Fallback to date range
       where.report_date = {
         gte: new Date(start_date),
         lte: new Date(end_date)
       };
     } else {
-      // Default to current month if no date filter
+      // Default to current month
       const now = new Date();
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -822,7 +852,6 @@ export const getReportList = async (req, res, next) => {
     // Filter by status
     if (status && status !== 'all') {
       if (status === 'pending') {
-        // Pending = draft + submitted (not approved/rejected)
         where.status = { in: ['draft', 'submitted'] };
       } else {
         where.status = status;
@@ -871,12 +900,12 @@ export const getReportList = async (req, res, next) => {
       take: parseInt(limit)
     });
 
-    // Calculate statistics for the selected month
+    // Calculate statistics
     const monthStart = where.report_date?.gte || new Date();
     const monthEnd = where.report_date?.lte || new Date();
     
     const statsWhere = { ...where };
-    delete statsWhere.status; // Remove status filter for statistics
+    delete statsWhere.status;
 
     const allReportsInMonth = await prisma.report.findMany({
       where: statsWhere,
@@ -910,7 +939,6 @@ export const getReportList = async (req, res, next) => {
         totalPatients = report.report_details.reduce((sum, detail) => 
           sum + (detail.patient_count || 0), 0);
         
-        // Calculate inpatient/outpatient distribution
         const externalTotal = (report.external_morning || 0) + 
                              (report.external_afternoon || 0) + 
                              (report.external_duty || 0);
@@ -1365,6 +1393,374 @@ export const getReportStatistics = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in getReportStatistics:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+
+// Add comment to report
+export const addComment = async (req, res, next) => {
+  try {
+    const { report_id, comment, is_internal = false } = req.body;
+    const userId = req.user.id;
+    
+    if (!report_id || !comment) {
+      return response.error("Report ID and comment are required", res, next);
+    }
+
+    // Check if report exists
+    const reportExists = await prisma.report.findUnique({
+      where: { id: parseInt(report_id) }
+    });
+
+    if (!reportExists) {
+      return response.error("Report not found", res, next);
+    }
+
+    // Create comment
+    const newComment = await prisma.report_comment.create({
+      data: {
+        report_id: parseInt(report_id),
+        admin_id: userId,
+        comment: comment,
+        is_internal: is_internal,
+        can_edit: true
+      },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    response.success({
+      success: true,
+      message: "Comment added successfully",
+      comment: newComment
+    }, res);
+
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Edit comment
+export const editComment = async (req, res, next) => {
+  try {
+    const { comment } = req.body;
+    const commentId = parseInt(req.params.id);
+    const userId = req.user.id;
+    
+    if (!comment) {
+      return response.error("Comment is required", res, next);
+    }
+
+    // Get existing comment
+    const existingComment = await prisma.report_comment.findUnique({
+      where: { id: commentId },
+      include: {
+        admin: true
+      }
+    });
+
+    if (!existingComment) {
+      return response.error("Comment not found", res, next);
+    }
+
+    // Check if user owns the comment
+    if (existingComment.admin_id !== userId) {
+      return response.error("You can only edit your own comments", res, next);
+    }
+
+    // Check if comment can still be edited (within 6 hours)
+    const createdDate = new Date(existingComment.created_at);
+    const now = new Date();
+    const sixHoursAgo = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+    
+    if (createdDate < sixHoursAgo) {
+      return response.error("Comments can only be edited within 6 hours of creation", res, next);
+    }
+
+    // Check if can_edit is still true
+    if (!existingComment.can_edit) {
+      return response.error("This comment can no longer be edited", res, next);
+    }
+
+    // Update comment
+    const updatedComment = await prisma.report_comment.update({
+      where: { id: commentId },
+      data: {
+        comment: comment,
+        edited_at: new Date(),
+        updated_at: new Date()
+      },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    response.success({
+      success: true,
+      message: "Comment updated successfully",
+      comment: updatedComment
+    }, res);
+
+  } catch (error) {
+    console.error('Error editing comment:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Delete comment
+export const deleteComment = async (req, res, next) => {
+  try {
+    const commentId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Get existing comment
+    const existingComment = await prisma.report_comment.findUnique({
+      where: { id: commentId },
+      include: {
+        admin: true
+      }
+    });
+
+    if (!existingComment) {
+      return response.error("Comment not found", res, next);
+    }
+
+    // Check if user owns the comment or is admin/superAdmin
+    const canDelete = existingComment.admin_id === userId || 
+                     userRole === 'admin' || 
+                     userRole === 'superAdmin';
+
+    if (!canDelete) {
+      return response.error("You don't have permission to delete this comment", res, next);
+    }
+
+    // Check if comment can still be deleted (within 6 hours for non-admins)
+    if (existingComment.admin_id === userId && 
+        userRole !== 'admin' && 
+        userRole !== 'superAdmin') {
+      
+      const createdDate = new Date(existingComment.created_at);
+      const now = new Date();
+      const sixHoursAgo = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+      
+      if (createdDate < sixHoursAgo) {
+        return response.error("Comments can only be deleted within 6 hours of creation", res, next);
+      }
+    }
+
+    // Delete comment
+    await prisma.report_comment.delete({
+      where: { id: commentId }
+    });
+
+    response.success({
+      success: true,
+      message: "Comment deleted successfully"
+    }, res);
+
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Get report comments
+export const getComments = async (req, res, next) => {
+  try {
+    const { report_id } = req.body;
+    
+    if (!report_id) {
+      return response.error("Report ID is required", res, next);
+    }
+
+    const comments = await prisma.report_comment.findMany({
+      where: {
+        report_id: parseInt(report_id),
+        is_internal: false // Only show non-internal comments
+      },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            role: true
+          }
+        }
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
+
+    response.success({
+      success: true,
+      comments: comments
+    }, res);
+
+  } catch (error) {
+    console.error('Error getting comments:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+
+
+
+// Add this function to handle approval hierarchy check
+const checkApprovalHierarchy = async (reportId, currentUserRole, currentUserId, prisma) => {
+  // Get all approvals for this report
+  const existingApprovals = await prisma.report_approval.findMany({
+    where: { report_id: parseInt(reportId) },
+    include: {
+      admin: {
+        select: {
+          id: true,
+          role: true
+        }
+      }
+    }
+  });
+
+  // Role hierarchy with power levels (lower number = higher power)
+  const roleHierarchy = {
+    'superAdmin': 1,
+    'admin': 2,
+    'hospitalAssistant': 3,
+    'staff': 4,
+    'operator': 5
+  };
+
+  const userRoleLevel = roleHierarchy[currentUserRole];
+  
+  // Check if user has already approved this report
+  const userApproval = existingApprovals.find(a => a.admin_id === currentUserId);
+  if (userApproval) {
+    return { canApprove: false, reason: 'You have already approved this report' };
+  }
+
+  // Check if any higher role has already approved
+  const higherRoleApprovals = existingApprovals.filter(approval => {
+    const approvalRoleLevel = roleHierarchy[approval.admin.role];
+    return approvalRoleLevel < userRoleLevel;
+  });
+
+  // If higher role has approved and bypassed lower roles, lower roles cannot approve
+  const bypassingHigherApproval = higherRoleApprovals.find(a => a.bypassed_lower_roles);
+  if (bypassingHigherApproval) {
+    return { 
+      canApprove: false, 
+      reason: `A ${bypassingHigherApproval.admin.role} has already approved and bypassed lower roles` 
+    };
+  }
+
+  // Check if lower roles need to approve first
+  const lowerRoles = Object.entries(roleHierarchy)
+    .filter(([role, level]) => level > userRoleLevel)
+    .map(([role]) => role);
+
+  const lowerRoleApprovals = existingApprovals.filter(approval => 
+    lowerRoles.includes(approval.admin.role)
+  );
+
+  // Determine if we're bypassing lower roles
+  const bypassedLowerRoles = lowerRoles.length > 0 && lowerRoleApprovals.length === 0;
+
+  return {
+    canApprove: true,
+    bypassedLowerRoles,
+    existingApprovals
+  };
+};
+
+// Update the approveReport function to include hierarchy check
+export const approveReport = async (req, res, next) => {
+  try {
+    const { report_id, comments, approval_status = 'approved' } = req.body;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    if (!report_id) {
+      return response.error("Report ID is required", res, next);
+    }
+
+    // Check approval hierarchy
+    const hierarchyCheck = await checkApprovalHierarchy(report_id, userRole, userId, prisma);
+    if (!hierarchyCheck.canApprove) {
+      return response.error(hierarchyCheck.reason, res, next);
+    }
+
+    // Get the report
+    const report = await prisma.report.findUnique({
+      where: { id: parseInt(report_id) }
+    });
+
+    if (!report) {
+      return response.error("Report not found", res, next);
+    }
+
+    // Create approval record
+    const approval = await prisma.report_approval.create({
+      data: {
+        report_id: parseInt(report_id),
+        admin_id: userId,
+        approval_status: approval_status,
+        comments: comments,
+        previous_status: report.status,
+        bypassed_lower_roles: hierarchyCheck.bypassedLowerRoles
+      },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    // Update report status if superAdmin or admin approves
+    let reportUpdated = false;
+    if (userRole === 'superAdmin' || userRole === 'admin') {
+      await prisma.report.update({
+        where: { id: parseInt(report_id) },
+        data: {
+          status: 'approved',
+          approved_at: new Date(),
+          approved_by: userId,
+          updated_at: new Date(),
+          updated_by: userId
+        }
+      });
+      reportUpdated = true;
+    }
+
+    response.success({
+      success: true,
+      message: "Report approved successfully",
+      approval: approval,
+      report_updated: reportUpdated,
+      bypassed_lower_roles: hierarchyCheck.bypassedLowerRoles
+    }, res);
+
+  } catch (error) {
+    console.error('Error approving report:', error);
     response.error(error.message, res, next);
   }
 };

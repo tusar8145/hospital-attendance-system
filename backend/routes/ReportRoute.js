@@ -16,4 +16,11 @@ router.post("/report/update-status", auth, ReportController.updateReportStatus);
 router.post("/report/statistics", auth, ReportController.getReportStatistics);
 router.post("/report/get-by-id", auth, ReportController.getReportById);
 
+// New routes for approval and comments
+router.post("/report/approve", auth, ReportController.approveReport);
+router.post("/report/comment", auth, ReportController.addComment);
+router.put("/report/comment/:id", auth, ReportController.editComment);
+router.delete("/report/comment/:id", auth, ReportController.deleteComment);
+router.post("/report/comments", auth, ReportController.getComments);
+
 export { router as ReportRoute };

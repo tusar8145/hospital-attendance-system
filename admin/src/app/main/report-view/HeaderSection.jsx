@@ -112,7 +112,7 @@ const HeaderSection = ({
         </Box>
         
         <Box sx={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-          {showSecondaryButton && (
+          {showSecondaryButton && secondaryButtonText !='コメント追加' && (
             <ActionButton
               variant="contained"
               color={secondaryButtonColor}

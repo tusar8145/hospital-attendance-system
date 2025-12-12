@@ -38,10 +38,17 @@ enum ConsultationType {
 /////////////////////////////
 // Enum for Report Status
 /////////////////////////////
-// Add to existing enums
 enum ReportStatus {
   draft
   submitted
+  approved
+  rejected
+}
+
+/////////////////////////////
+// Enum for Approval Status
+/////////////////////////////
+enum ApprovalStatus {
   approved
   rejected
 }
@@ -96,6 +103,9 @@ model admins {
   
   // Comments relations
   report_comments              report_comment[]
+  
+  // Approval relations
+  report_approvals             report_approval[]
 }
 
 /////////////////////////////
@@ -317,11 +327,14 @@ model report {
   approved_by             Int?
   approved_by_admin       admins?     @relation("ReportApprovedBy", fields: [approved_by], references: [id])
   
+  hospital_type           String?
+
   // Relations
   report_details          report_detail[]  // Child records
   report_comments         report_comment[] // Comments
   shift_nurses            report_shift_nurse[] // Shift nurses
   duty_staff              report_duty_staff[] // Duty staff
+  approvals               report_approval[] // Approvals
   
   @@index([medical_center_id])
   @@index([report_date])
@@ -379,6 +392,8 @@ model report_comment {
   admin_id                Int
   comment                 String      @db.Text
   is_internal             Boolean     @default(false) // Internal note vs public comment
+  can_edit                Boolean     @default(true)
+  edited_at               DateTime?
   
   // Relations
   report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
@@ -387,6 +402,31 @@ model report_comment {
   created_at              DateTime?   @default(now())
   updated_at              DateTime?   @default(now())
   
+  @@index([report_id])
+  @@index([admin_id])
+  @@index([created_at])
+}
+
+/////////////////////////////
+// Report Approval Table
+/////////////////////////////
+model report_approval {
+  id                      Int         @id @default(autoincrement())
+  report_id               Int
+  admin_id                Int
+  approval_status         ApprovalStatus @default(approved)
+  comments                String?     @db.Text
+  previous_status         ReportStatus?
+  bypassed_lower_roles    Boolean     @default(false)
+  
+  // Relations
+  report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  admin                   admins      @relation(fields: [admin_id], references: [id])
+  
+  created_at              DateTime?   @default(now())
+  updated_at              DateTime?   @default(now())
+  
+  @@unique([report_id, admin_id])
   @@index([report_id])
   @@index([admin_id])
 }

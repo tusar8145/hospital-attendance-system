@@ -27,8 +27,17 @@ const ManagementComments = ({
   allowDeleteLastComment = true,
   allowEditComments = true,
   allowDeleteComments = true,
-  showCommentCount = true
+  showCommentCount = true,
+  renderComment // Add this prop to accept custom render function
 }) => {
+  console.log('ManagementComments received:', {
+    comments,
+    commentsCount: comments?.length,
+    title,
+    summaryMessage,
+    hasRenderComment: !!renderComment
+  });
+
   return (
     <Paper 
       elevation={2} 
@@ -106,70 +115,80 @@ const ManagementComments = ({
         ) : (
           <Stack spacing={3}>
             {comments.map((comment, index) => (
-              <div 
-                key={index} 
-                className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-r-lg hover:bg-blue-100 transition-colors duration-200 group relative"
-              >
-                {/* Action buttons for each comment */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
-                  {allowEditComments && onEditComment && (
-                    <Tooltip title="編集">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditComment(index, comment);
-                        }}
-                        className="text-blue-500 hover:bg-blue-50"
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  
-                  {allowDeleteComments && onDeleteComment && (
-                    <Tooltip title="削除">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteComment(index);
-                        }}
-                        className="text-red-500 hover:bg-red-50"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                </div>
-                
-                <div className="flex items-start">
-                  <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold mr-3 mt-1">
-                    {index + 1}
-                  </span>
-                  <div className="flex-1">
-                    <Typography variant="body2" className="text-gray-700 leading-relaxed">
-                      {comment.text || comment}
-                    </Typography>
+              // Use custom render function if provided, otherwise use default
+              renderComment ? (
+                renderComment(comment, index)
+              ) : (
+                <div 
+                  key={comment.id || index} 
+                  className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-r-lg hover:bg-blue-100 transition-colors duration-200 group relative"
+                >
+                  {/* Action buttons for each comment */}
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                    {allowEditComments && onEditComment && (
+                      <Tooltip title="編集">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditComment(index, comment);
+                          }}
+                          className="text-blue-500 hover:bg-blue-50"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     
-                    <div className="mt-3 pt-2 border-t border-blue-200">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500">
-                        <div className="flex items-center">
-                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                          </svg>
-                          報告時間: {comment.time || '未設定'}
-                        </div>
-                        {comment.author && (
-                          <div className="mt-1 sm:mt-0 text-gray-600">
-                            報告者: <span className="font-medium">{comment.author}</span>
-                          </div>
+                    {allowDeleteComments && onDeleteComment && (
+                      <Tooltip title="削除">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteComment(index);
+                          }}
+                          className="text-red-500 hover:bg-red-50"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold mr-3 mt-1">
+                      {index + 1}
+                    </span>
+                    <div className="flex-1">
+                      <Typography variant="body2" className="text-gray-700 leading-relaxed">
+                        {comment.text || comment}
+                        {comment.is_special_notes && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            特記事項
+                          </span>
                         )}
+                      </Typography>
+                      
+                      <div className="mt-3 pt-2 border-t border-blue-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                            報告時間: {comment.time || '未設定'}
+                          </div>
+                          {comment.author && (
+                            <div className="mt-1 sm:mt-0 text-gray-600">
+                              報告者: <span className="font-medium">{comment.author}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )
             ))}
           </Stack>
         )}

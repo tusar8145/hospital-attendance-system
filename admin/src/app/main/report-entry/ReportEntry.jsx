@@ -46,6 +46,8 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
+import { useAppSelector } from 'app/store/hooks';
+import { selectUser } from 'src/app/auth/user/store/userSlice';
 
 // Lazy load the main report component
 const FrameScreen = React.lazy(() => import('./big/FrameScreen'));
@@ -83,12 +85,17 @@ const ReportEntryHeader = ({
   isSubmitting,
   isSavingDraft,
   hospitalName,
-  readOnly = false
+  readOnly = false,
+  isEditingFromView = false
 }) => {
   const navigate = useNavigate();
   const theme = useMuiTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Get user data from Redux
+  const user = useAppSelector(selectUser);
+  const userRole = user?.role || '';
   
   // Format date for display
   const formatJapaneseDate = (date) => {
@@ -160,10 +167,22 @@ const ReportEntryHeader = ({
   const handleBack = () => {
     if (hasUnsavedChanges) {
       // Show confirmation dialog if there are unsaved changes
-        onBack();
+      onBack();
     } else {
       onBack();
     }
+  };
+
+  // Get user role display name
+  const getUserRoleDisplay = () => {
+    const roleMap = {
+      'superAdmin': 'System Administrator',
+      'admin': 'Chief Executive',
+      'hospitalAssistant': 'Head Manager',
+      'staff': 'Manager',
+      'operator': 'Data Input Person'
+    };
+    return roleMap[userRole] || userRole || 'Guest';
   };
 
   return (
@@ -225,6 +244,14 @@ const ReportEntryHeader = ({
               }}
             >
               {title}
+              {isEditingFromView && (
+                <Chip 
+                  label="編集モード" 
+                  size="small" 
+                  color="warning" 
+                  sx={{ ml: 1, fontSize: '0.75rem', height: 20 }}
+                />
+              )}
             </Typography>
             {hospitalName && (
               <Typography 
@@ -244,7 +271,7 @@ const ReportEntryHeader = ({
           </Box>
         </Box>
         
-        {/* Right Section: Actions */}
+        {/* Right Section: Actions and User Info */}
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -252,6 +279,27 @@ const ReportEntryHeader = ({
           flex: 1,
           justifyContent: 'flex-end'
         }}>
+          {/* User Role Info - Desktop only */}
+          {!isMobile && userRole && (
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              mr: 1
+            }}>
+              <Typography variant="caption" sx={{ color: '#666', fontSize: '0.75rem' }}>
+                ロール:
+              </Typography>
+              <Typography variant="caption" sx={{ 
+                fontWeight: 600, 
+                color: '#0A6AE3',
+                fontSize: '0.75rem'
+              }}>
+                {getUserRoleDisplay()}
+              </Typography>
+            </Box>
+          )}
+          
           {/* Refresh Button */}
           <Tooltip title="更新">
             <IconButton 
@@ -446,8 +494,6 @@ const getUrlParams = () => {
 };
 
 // Helper function to determine hospital priority
-// Phase 1: URL parameter (when landing on the page)
-// Phase 2: Context (after user changes hospital)
 const getCurrentHospital = (hospitalFromContext, urlParams, hasHospitalChangedFromContext) => {
   // If user has changed hospital from context, use context
   if (hasHospitalChangedFromContext && hospitalFromContext?.id) {
@@ -461,7 +507,7 @@ const getCurrentHospital = (hospitalFromContext, urlParams, hasHospitalChangedFr
   // Otherwise, use URL parameter (initial load)
   if (urlParams.hospitalId) {
     return {
-      id: urlParams.hospitalId,
+      id: parseInt(urlParams.hospitalId, 10), // Ensure it's a number
       name: hospitalFromContext?.name || `Hospital ID: ${urlParams.hospitalId}`,
       type: hospitalFromContext?.type || urlParams.type
     };
@@ -482,6 +528,11 @@ function ReportEntry() {
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get user data from Redux
+  const user = useAppSelector(selectUser);
+  const userRole = user?.role || '';
+  const userId = user?.id || null;
   
   // Get initial URL parameters
   const [urlParams, setUrlParams] = useState(() => getUrlParams());
@@ -525,11 +576,19 @@ function ReportEntry() {
   const [lastSaved, setLastSaved] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [isEditingFromView, setIsEditingFromView] = useState(false);
+  const [originalReportDate, setOriginalReportDate] = useState(null);
   
-  // Ref for form data to avoid stale closures
+  // Refs for form data to avoid stale closures
   const formDataRef = useRef(formData);
   const reportDateRef = useRef(reportDate);
   const currentHospitalRef = useRef(currentHospital);
+  
+  // Track if we've already loaded data
+  const hasLoadedDataRef = useRef(false);
+  
+  // Get reportId from URL params
+  const reportIdFromUrl = urlParams.reportId ? parseInt(urlParams.reportId, 10) : null;
 
   // Update refs when state changes
   useEffect(() => {
@@ -538,48 +597,24 @@ function ReportEntry() {
     currentHospitalRef.current = currentHospital;
   }, [formData, reportDate, currentHospital]);
 
-  // Update current hospital when context changes
+  // Check if we're coming from view mode
   useEffect(() => {
-    // Check if hospital from context is different from current hospital
-    const isContextHospitalDifferent = hospitalFromContext?.id && 
-      hospitalFromContext.id !== currentHospital?.id;
-    
-    if (isContextHospitalDifferent) {
-      // Set flag that hospital has been changed from context
-      setHasHospitalChangedFromContext(true);
-      
-      // Update current hospital to use context
-      const newHospital = getCurrentHospital(hospitalFromContext, urlParams, true);
-      setCurrentHospital(newHospital);
-      
-      // Show notification
-      if (hospitalFromContext.name) {
-        showSnackbar(`病院を ${hospitalFromContext.name} に変更しました`, 'info');
+    const params = getUrlParams();
+    if (params.date) {
+      // Parse date from URL
+      const [year, month, day] = params.date.split('-');
+      const parsedDate = new Date(year, month - 1, day);
+      if (!isNaN(parsedDate.getTime())) {
+        setReportDate(parsedDate);
+        setOriginalReportDate(parsedDate);
       }
     }
-  }, [hospitalFromContext, currentHospital?.id, urlParams]);
-
-  // Listen for URL changes (if user manually changes URL)
-  useEffect(() => {
-    const handleUrlChange = () => {
-      const newParams = getUrlParams();
-      setUrlParams(newParams);
-      
-      // When URL changes, reset the context change flag
-      setHasHospitalChangedFromContext(false);
-      
-      // Update current hospital based on new URL params
-      const newHospital = getCurrentHospital(hospitalFromContext, newParams, false);
-      setCurrentHospital(newHospital);
-    };
-
-    // Listen for popstate (back/forward navigation)
-    window.addEventListener('popstate', handleUrlChange);
-
-    return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-    };
-  }, [hospitalFromContext]);
+    
+    // Check if we're editing from view mode
+    if (params.fromView === 'true' || params.reportId) {
+      setIsEditingFromView(true);
+    }
+  }, []);
 
   // Check online status
   useEffect(() => {
@@ -603,11 +638,6 @@ function ReportEntry() {
     return `${year}年${month}月${day}日`;
   };
 
-  // Get current date in Japanese format
-  const getCurrentJapaneseDate = () => {
-    return formatJapaneseDate(new Date());
-  };
-
   // Format date for API (YYYY-MM-DD)
   const formatDateForAPI = (date) => {
     const d = new Date(date);
@@ -617,20 +647,97 @@ function ReportEntry() {
     return `${year}-${month}-${day}`;
   };
 
-  // Load report data for selected date
-  const loadReportData = useCallback(async (date, forceReload = false) => {
-    const hospitalId = currentHospitalRef.current?.id;
-    
-    if (!hospitalId) {
-      showSnackbar('病院が選択されていません', 'warning');
+  // Load report data by ID when coming from view mode
+  const loadReportById = useCallback(async (reportIdToLoad) => {
+    if (!reportIdToLoad) {
+      showSnackbar('レポートIDが指定されていません', 'warning');
       return;
     }
 
     setLoadingReport(true);
     try {
-      const response = await axios.post(apiConfig.reportGetByDate, {
+      const response = await axios.post(`${apiConfig.baseURL}/report/get-by-id`, {
+        report_id: reportIdToLoad
+      });
+
+      const { data } = response.data;
+      
+      if (data && data.success !== false) {
+        const { report, departments: depts, doctors: docs } = data;
+        
+        // Update departments and doctors
+        setDepartments(depts || []);
+        setDoctors(docs || []);
+        setReportExists(true);
+        
+        if (report) {
+          // Set report date from the report data
+          if (report.report_date) {
+            const reportDateObj = new Date(report.report_date);
+            setReportDate(reportDateObj);
+            setOriginalReportDate(reportDateObj);
+          }
+          
+          // Format the report data for the form
+          const formattedReport = {
+            id: report.id,
+            report_no: report.report_no,
+            status: report.status,
+            special_notes: report.special_notes || '',
+            admission_count: report.admission_count || 0,
+            discharge_count: report.discharge_count || 0,
+            external_morning: report.external_morning || 0,
+            external_afternoon: report.external_afternoon || 0,
+            external_duty: report.external_duty || 0,
+            emergency_transport: report.emergency_transport || 0,
+            post_transport_admission: report.post_transport_admission || 0,
+            visit_count: report.visit_count || 0,
+            shift_nurses: report.shift_nurses || [],
+            duty_staff: report.duty_staff || [],
+            report_details: report.report_details || []
+          };
+          
+          setFormData(formattedReport);
+          setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
+          setReportStatus(report.status);
+          setReportId(report.id);
+          setHasUnsavedChanges(false);
+          
+          showSnackbar(`${formatJapaneseDate(new Date(report.report_date))}のレポートを読み込みました`, 'info');
+        }
+        
+        setValidationErrors({});
+      }
+    } catch (error) {
+      console.error('Error loading report by ID:', error);
+      const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
+      showSnackbar(errorMessage, 'error');
+      
+      // Fall back to loading by date if we have hospital ID
+      if (currentHospitalRef.current?.id) {
+        loadReportData(reportDateRef.current);
+      }
+    } finally {
+      setLoadingReport(false);
+      setLoading(false);
+    }
+  }, []);
+
+  // Load report data for selected date (normal flow)
+  const loadReportData = useCallback(async (date, forceReload = false) => {
+    const hospitalId = currentHospitalRef.current?.id;
+    
+    if (!hospitalId) {
+      showSnackbar('病院が選択されていません', 'warning');
+      setLoading(false);
+      return;
+    }
+
+    setLoadingReport(true);
+    try {
+      const response = await axios.post(`${apiConfig.baseURL}/report/get-by-date-table`, {
         date: formatDateForAPI(date),
-        hospital_id: hospitalId
+        hospital_id: hospitalId // Ensure it's a number
       });
 
       const { data } = response.data;
@@ -741,20 +848,67 @@ function ReportEntry() {
       return;
     }
 
-    if (hasUnsavedChanges) {
-      setConfirmDialog({
-        open: true,
-        title: '未保存の変更があります',
-        message: '日付を変更すると現在の変更が失われます。続行しますか？',
-        action: () => {
+    if (isEditingFromView && originalReportDate) {
+      // When editing from view mode, check if date is different from original
+      const isDateChanged = newDate.getTime() !== originalReportDate.getTime();
+      
+      if (isDateChanged) {
+        // Warn user that changing date will create a new report
+        setConfirmDialog({
+          open: true,
+          title: 'レポート日付変更',
+          message: '日付を変更すると、新しいレポートの作成になります。現在のレポートデータは新しい日付のレポートとして保存されます。続行しますか？',
+          action: () => {
+            setReportDate(newDate);
+            // When changing date in edit mode, we should load by date (not by ID)
+            loadReportData(newDate, true);
+          },
+          actionType: 'dateChangeFromView'
+        });
+      } else {
+        // Same date, normal reload
+        if (hasUnsavedChanges) {
+          setConfirmDialog({
+            open: true,
+            title: '未保存の変更があります',
+            message: '日付を変更すると現在の変更が失われます。続行しますか？',
+            action: () => {
+              setReportDate(newDate);
+              // Load by ID if we have reportId, otherwise load by date
+              if (reportIdFromUrl) {
+                loadReportById(reportIdFromUrl);
+              } else {
+                loadReportData(newDate, true);
+              }
+            },
+            actionType: 'dateChange'
+          });
+        } else {
           setReportDate(newDate);
-          loadReportData(newDate, true);
-        },
-        actionType: 'dateChange'
-      });
+          if (reportIdFromUrl) {
+            loadReportById(reportIdFromUrl);
+          } else {
+            loadReportData(newDate, true);
+          }
+        }
+      }
     } else {
-      setReportDate(newDate);
-      loadReportData(newDate, true);
+      // Normal date change logic
+      if (hasUnsavedChanges) {
+        setConfirmDialog({
+          open: true,
+          title: '未保存の変更があります',
+          message: '日付を変更すると現在の変更が失われます。続行しますか？',
+          action: () => {
+            setReportDate(newDate);
+            loadReportData(newDate, true);
+          },
+          actionType: 'dateChange'
+        });
+      } else {
+        setReportDate(newDate);
+        loadReportData(newDate, true);
+      }
     }
   };
 
@@ -793,7 +947,7 @@ function ReportEntry() {
 
     setSavingDraft(true);
     try {
-      const response = await axios.post(apiConfig.reportSubmit, {
+      const response = await axios.post(`${apiConfig.baseURL}/report/submit`, {
         ...formData,
         hospital_id: hospitalId, // Use current hospital ID from ref
         report_date: formatDateForAPI(reportDate),
@@ -807,6 +961,12 @@ function ReportEntry() {
         setInitialFormData(JSON.parse(JSON.stringify(formData)));
         setHasUnsavedChanges(false);
         setLastSaved(new Date());
+        
+        // If editing from view with changed date, update original date
+        if (isEditingFromView && originalReportDate && 
+            reportDate.getTime() !== originalReportDate.getTime()) {
+          setOriginalReportDate(reportDate);
+        }
         
         showSnackbar('下書きを保存しました', 'success');
       } else {
@@ -862,7 +1022,7 @@ function ReportEntry() {
     
     setSubmitting(true);
     try {
-      const response = await axios.post(apiConfig.reportSubmit, {
+      const response = await axios.post(`${apiConfig.baseURL}/report/submit`, {
         ...data,
         hospital_id: hospitalId, // Use current hospital ID from ref
         report_date: formatDateForAPI(reportDate),
@@ -877,10 +1037,28 @@ function ReportEntry() {
         setHasUnsavedChanges(false);
         setValidationErrors({});
         
+        // If editing from view with changed date, update original date
+        if (isEditingFromView && originalReportDate && 
+            reportDate.getTime() !== originalReportDate.getTime()) {
+          setOriginalReportDate(reportDate);
+        }
+        
         showSnackbar('レポートを提出しました', 'success');
         
         // Close confirmation dialog
         setConfirmDialog({ ...confirmDialog, open: false });
+        
+        // If editing from view mode, redirect back to view page
+        if (isEditingFromView && response.data.report?.id) {
+          // Get type from URL params
+          const params = getUrlParams();
+          const type = params.type || '1';
+          
+          // Redirect to view page after submission
+          setTimeout(() => {
+            navigate(`/report-view?id=${response.data.report.id}&type=${type}`);
+          }, 1500);
+        }
       } else {
         showSnackbar(response.data.message || 'レポートの提出に失敗しました', 'error');
       }
@@ -955,27 +1133,67 @@ function ReportEntry() {
         open: true,
         title: '未保存の変更があります',
         message: '更新すると現在の変更が失われます。続行しますか？',
-        action: () => loadReportData(reportDate, true),
+        action: () => {
+          // If we have reportId from URL, load by ID, otherwise load by date
+          if (reportIdFromUrl) {
+            loadReportById(reportIdFromUrl);
+          } else {
+            loadReportData(reportDate, true);
+          }
+        },
         actionType: 'refresh'
       });
     } else {
-      loadReportData(reportDate, true);
+      if (reportIdFromUrl) {
+        loadReportById(reportIdFromUrl);
+      } else {
+        loadReportData(reportDate, true);
+      }
     }
   };
 
-  // Handle back to report list
+  // Handle back to report list or view
   const handleBack = () => {
-    navigate('/report-list');
+    if (isEditingFromView && reportIdFromUrl) {
+      // If editing from view mode and we have a report ID, go back to view
+      const params = getUrlParams();
+      const type = params.type || '1';
+      navigate(`/report-view?id=${reportIdFromUrl}&type=${type}`);
+    } else if (hasUnsavedChanges) {
+      // Show confirmation for unsaved changes
+      setConfirmDialog({
+        open: true,
+        title: '未保存の変更があります',
+        message: '戻ると現在の変更が失われます。保存せずに戻りますか？',
+        action: () => navigate('/report-list'),
+        actionType: 'back'
+      });
+    } else {
+      navigate('/report-list');
+    }
   };
 
-  // Load initial data when hospital or date changes
+  // Load initial data - MAIN FIX: Only load once when component mounts
   useEffect(() => {
+    // Prevent duplicate loads
+    if (hasLoadedDataRef.current) return;
+    
     if (currentHospital?.id) {
-      loadReportData(reportDate);
+      hasLoadedDataRef.current = true;
+      
+      // If we have reportId in URL (coming from view mode), load by ID
+      if (reportIdFromUrl) {
+        console.log('Loading by report ID:', reportIdFromUrl);
+        loadReportById(reportIdFromUrl);
+      } else {
+        // Otherwise, load by date as normal
+        console.log('Loading by date:', reportDate, 'hospital:', currentHospital.id);
+        loadReportData(reportDate);
+      }
     } else {
       setLoading(false);
     }
-  }, [currentHospital?.id, reportDate, loadReportData]);
+  }, [currentHospital?.id, reportDate, loadReportData, loadReportById, reportIdFromUrl]);
 
   // Format time for last saved display
   const formatLastSavedTime = () => {
@@ -997,35 +1215,6 @@ function ReportEntry() {
 
   // Check if form is read-only (not draft status)
   const isReadOnly = reportStatus && reportStatus !== 'draft';
-
-  // Debug info component
-  const DebugInfo = () => (
-    <Box sx={{ 
-      position: 'fixed', 
-      bottom: 10, 
-      right: 10, 
-      backgroundColor: 'rgba(0,0,0,0.7)', 
-      color: 'white', 
-      padding: 1, 
-      borderRadius: 1,
-      fontSize: '0.75rem',
-      zIndex: 1000,
-      maxWidth: 300
-    }}>
-      <Typography variant="caption" sx={{ display: 'block' }}>
-        <strong>Current Hospital:</strong> {currentHospital?.id || 'none'}
-      </Typography>
-      <Typography variant="caption" sx={{ display: 'block' }}>
-        <strong>Hospital Name:</strong> {currentHospital?.name || 'none'}
-      </Typography>
-      <Typography variant="caption" sx={{ display: 'block' }}>
-        <strong>URL Hospital:</strong> {urlParams.hospitalId || 'none'}
-      </Typography>
-      <Typography variant="caption" sx={{ display: 'block' }}>
-        <strong>Context Changed:</strong> {hasHospitalChangedFromContext ? 'Yes' : 'No'}
-      </Typography>
-    </Box>
-  );
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
@@ -1049,6 +1238,7 @@ function ReportEntry() {
             isSavingDraft={savingDraft}
             hospitalName={currentHospital?.name}
             readOnly={isReadOnly}
+            isEditingFromView={isEditingFromView}
           />
         }
         content={
@@ -1079,7 +1269,7 @@ function ReportEntry() {
               }}>
                 <CircularProgress size={60} thickness={4} />
                 <Typography sx={{ mt: 2, color: '#666', fontSize: '0.875rem' }}>
-                  データを読み込み中...
+                  {reportIdFromUrl ? 'レポートを読み込み中...' : 'データを読み込み中...'}
                 </Typography>
               </Box>
             )}
@@ -1095,6 +1285,26 @@ function ReportEntry() {
                 }}
               >
                 オフラインモードです。接続回復後に変更が同期されます。
+              </Alert>
+            )}
+            
+            {/* Edit Mode Warning */}
+            {isEditingFromView && (
+              <Alert 
+                severity="info" 
+                sx={{ 
+                  m: 2, 
+                  borderRadius: '8px',
+                  alignItems: 'center'
+                }}
+              >
+                <Typography variant="body2">
+                  {reportIdFromUrl ? 'レポート編集モードです。' : '編集モードです。'}
+                  日付を変更すると新しいレポートが作成されます。
+                  {originalReportDate && reportDate.getTime() !== originalReportDate.getTime() && (
+                    <strong> （日付変更により新規レポート作成）</strong>
+                  )}
+                </Typography>
               </Alert>
             )}
             
@@ -1148,11 +1358,11 @@ function ReportEntry() {
                 }}>
                   <CircularProgress />
                   <Typography sx={{ color: '#666' }}>
-                    レポートデータを読み込み中...
+                    {reportIdFromUrl ? 'レポートデータを読み込み中...' : 'データを読み込み中...'}
                   </Typography>
                 </Box>
               ) : (
-                // Main form - No overlay for read-only status
+                // Main form
                 <React.Suspense fallback={
                   <Box sx={{ 
                     display: 'flex', 
@@ -1201,9 +1411,6 @@ function ReportEntry() {
                 }} 
               />
             )}
-            
-            {/* Debug Info - Only in development */}
-           
           </Container>
         }
       />

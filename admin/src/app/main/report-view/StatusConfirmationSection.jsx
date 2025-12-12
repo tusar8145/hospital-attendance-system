@@ -9,7 +9,7 @@ import {
 import { CheckCircle, Pending, AccessTime } from '@mui/icons-material';
 
 const StatusConfirmationSection = ({ 
-  statusData,
+  statusData = [],
   onStatusChange,
   title = "確認状態一覧",
   showSummary = true,
@@ -37,6 +37,21 @@ const StatusConfirmationSection = ({
     return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日`;
   };
 
+  // Safe date formatting function
+  const formatDateForDisplay = (date) => {
+    if (!date) return '';
+    if (typeof date === 'string') {
+      // Try to parse the date string
+      const dateObj = new Date(date);
+      if (!isNaN(dateObj.getTime())) {
+        // Return only the date part (YYYY-MM-DD format)
+        const dateStr = date.split(' ')[0];
+        return dateStr;
+      }
+    }
+    return date;
+  };
+
   return (
     <Box className="mb-8">
       <Paper elevation={2} className="border border-gray-300 rounded-xl overflow-hidden">
@@ -59,7 +74,7 @@ const StatusConfirmationSection = ({
                 {/* Header - Compact */}
                 <div className={`${item.title === '理事長' ? 'bg-blue-600' : item.title === '専務' ? 'bg-green-600' : 'bg-purple-600'} p-2`}>
                   <Typography variant="caption" className="font-bold text-white text-center block truncate">
-                    {item.title}
+                    {item.title || '未設定'}
                   </Typography>
                 </div>
                 
@@ -68,16 +83,18 @@ const StatusConfirmationSection = ({
                   {/* Checkbox and Person */}
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center min-w-0">
-                      <div className={`${item.color} w-5 h-5 rounded-full flex items-center justify-center mr-1`}>
-                        <span className="text-white text-xs font-bold">{item.avatar}</span>
+                      <div className={`${item.color || 'bg-gray-500'} w-5 h-5 rounded-full flex items-center justify-center mr-1`}>
+                        <span className="text-white text-xs font-bold">
+                          {item.avatar || '?'}
+                        </span>
                       </div>
                       <Typography variant="caption" className="font-medium text-gray-700 truncate">
-                        {item.person.split(' ')[0]}
+                        {item.person ? item.person.split(' ')[0] : '未設定'}
                       </Typography>
                     </div>
                     
                     <Checkbox
-                      checked={item.checked}
+                      checked={item.checked || false}
                       onChange={() => onStatusChange(item.id)}
                       icon={<Pending className="text-gray-400" style={{ fontSize: 14 }} />}
                       checkedIcon={<CheckCircle className="text-green-500" style={{ fontSize: 14 }} />}
@@ -96,14 +113,14 @@ const StatusConfirmationSection = ({
                         <Pending className="text-orange-500 w-3 h-3 mr-1" />
                       )}
                       <Typography variant="caption" className={item.checked ? "text-green-600" : "text-orange-600"}>
-                        {item.status}
+                        {item.status || '未確認'}
                       </Typography>
                     </div>
                     
                     <div className="flex items-center text-gray-500">
                       <AccessTime className="w-3 h-3 mr-1" />
                       <Typography variant="caption" className="truncate">
-                        {item.date.split(' ')[0]}
+                        {formatDateForDisplay(item.date)}
                       </Typography>
                     </div>
                     
@@ -111,7 +128,7 @@ const StatusConfirmationSection = ({
                     {item.checked && item.approver && (
                       <div className="mt-1 pt-1 border-t border-gray-200">
                         <Typography variant="caption" className="text-gray-500 block truncate">
-                          承認者: {item.approver || item.person}
+                          承認者: {item.approver || item.person || '未設定'}
                         </Typography>
                       </div>
                     )}
@@ -121,8 +138,8 @@ const StatusConfirmationSection = ({
             ))}
           </div>
           
-          {/* Summary */}
-          {showSummary && (
+          {/* Summary - Only show if we have data */}
+          {showSummary && statusData.length > 0 && (
             <Paper elevation={0} className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between">
                 <div className="flex items-center space-x-4">
@@ -152,6 +169,19 @@ const StatusConfirmationSection = ({
                   </Typography>
                 )}
               </div>
+            </Paper>
+          )}
+
+          {/* Empty State */}
+          {statusData.length === 0 && (
+            <Paper elevation={0} className="mt-4 p-6 bg-gray-50 border border-gray-200 rounded-lg text-center">
+              <CheckCircle className="text-gray-400 mx-auto mb-2" style={{ fontSize: 32 }} />
+              <Typography variant="body2" className="text-gray-500">
+                承認履歴はまだありません
+              </Typography>
+              <Typography variant="caption" className="text-gray-400">
+                最初の承認が行われるとここに表示されます
+              </Typography>
             </Paper>
           )}
         </div>

@@ -7,7 +7,7 @@ import FusePageSimple from '@fuse/core/FusePageSimple';
 import axios from 'axios';
 import apiConfig from '../../../configs/apiConfig';
 import Alert from '@mui/material/Alert';
-import { Box, Stack, Typography, Paper, CircularProgress } from '@mui/material';
+import { Box, Stack, Typography, Paper, CircularProgress, TextField, IconButton } from '@mui/material';
 import HospitalDataTable from './components/HospitalDataTable';
 import SimpleDutyTable from './components/SimpleDutyTable';
 import MedicalManagementTable from './components/MedicalManagementTable';
@@ -18,6 +18,12 @@ import PatientCountTable from './components/PatientCountTable';
 import HeaderSection from '../HeaderSection';
 import StatusConfirmationSection from '../StatusConfirmationSection';
 import ManagementComments from '../ManagementComments';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SendIcon from '@mui/icons-material/Send';
+import { selectUser } from 'src/app/auth/user/store/userSlice';
+import { useAppSelector } from 'app/store/hooks';
+import { useNavigate } from 'react-router-dom';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
@@ -31,239 +37,656 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-sidebarContent': {}
 }));
 
-function Report({ reportId, initialData, hospitalType }) {
+function Report({ reportId, initialData, hospitalType, onRefresh }) {
   const { t } = useTranslation('shared-components');
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(!initialData);
   const [successAlert, setSuccessAlert] = useState(null);
   const [failAlert, setFailAlert] = useState(null);
   const { theme, toggleTheme } = useTheme();
   const { hospital, toggleHospital } = useTheme();
+  const user = useAppSelector(selectUser);
+  const [newComment, setNewComment] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
 
   // Report data state
-  const [reportData, setReportData] = useState(initialData || {
-    hospitalData: {
-      inpatient: {
-        admission: 0,
-        discharge: 0,
-        current: 0
+  const [reportData, setReportData] = useState(() => {
+    // Initialize with initialData if provided
+    if (initialData) {
+      return initialData;
+    }
+    
+    return {
+      hospitalData: {
+        inpatient: {
+          admission: 0,
+          discharge: 0,
+          current: 0
+        },
+        outpatient: {
+          morning: 0,
+          afternoon: 0,
+          night: 0,
+          total: 0
+        }
       },
-      outpatient: {
-        morning: 0,
-        afternoon: 0,
-        night: 0,
-        total: 0
-      }
-    },
-    emergencyData: {
-      current: 0,
-      hospitalization: 0,
-      monthly: 0,
-      cumulative: 0
-    },
-    nurseData: {
-      quasiNight: [],
-      midnight: []
-    },
-    diagnosisData: {},
-    patientCountData: {},
-    visitCount: 0,
-    monthlyStats: {},
-    report: null,
-    departments: [],
-    doctors: []
+      emergencyData: {
+        current: 0,
+        hospitalization: 0,
+        monthly: 0,
+        cumulative: 0
+      },
+      nurseData: {
+        quasiNight: [],
+        midnight: []
+      },
+      diagnosisData: {},
+      patientCountData: {},
+      visitCount: 0,
+      monthlyStats: {},
+      report: null,
+      departments: [],
+      doctors: [],
+      approvals: [],
+      comments: []
+    };
   });
 
-  // Status confirmation data - this could be fetched from API if available
-  const [statusData, setStatusData] = useState([
-    { 
-      id: 1, 
-      title: '理事長', 
-      checked: true, 
-      status: '確認済み', 
-      date: '7/15 10:30',
-      person: '鈴木一郎',
-      avatar: '鈴',
-      approver: '鈴木一郎',
-      color: 'bg-blue-500'
-    },
-    { 
-      id: 2, 
-      title: '専務', 
-      checked: true, 
-      status: '確認済み', 
-      date: '7/15 11:15',
-      person: '田中次郎',
-      avatar: '田',
-      approver: '田中次郎',
-      color: 'bg-green-500'
-    },
-    { 
-      id: 3, 
-      title: '医師長', 
-      checked: true, 
-      status: '確認済み', 
-      date: '7/15 09:00',
-      person: '山田花子',
-      avatar: '山',
-      approver: '山田花子',
-      color: 'bg-purple-500'
-    },
-    { 
-      id: 4, 
-      title: '看護部', 
-      checked: false, 
-      status: '未確認', 
-      date: '7/15 14:00',
-      person: '佐藤健太',
-      avatar: '佐',
-      approver: '',
-      color: 'bg-orange-500'
-    },
-    { 
-      id: 5, 
-      title: '事務部', 
-      checked: true, 
-      status: '確認済み', 
-      date: '7/15 08:45',
-      person: '高橋美咲',
-      avatar: '高',
-      approver: '高橋美咲',
-      color: 'bg-pink-500'
-    },
-    { 
-      id: 6, 
-      title: '薬剤部', 
-      checked: false, 
-      status: '未確認', 
-      date: '7/15 16:30',
-      person: '伊藤誠',
-      avatar: '伊',
-      approver: '',
-      color: 'bg-red-500'
-    },
-    { 
-      id: 7, 
-      title: '検査部', 
-      checked: true, 
-      status: '確認済み', 
-      date: '7/15 13:20',
-      person: '渡辺さくら',
-      avatar: '渡',
-      approver: '渡辺さくら',
-      color: 'bg-teal-500'
-    },
-    { 
-      id: 8, 
-      title: '管理部', 
-      checked: true, 
-      status: '確認済み', 
-      date: '7/15 12:10',
-      person: '中村大輔',
-      avatar: '中',
-      approver: '中村大輔',
-      color: 'bg-indigo-500'
-    }
-  ]);
-
-  // Management comments data - initialize with report's special_notes
-  const [managementComments, setManagementComments] = useState([]);
-
-  // Fetch report data if not provided via props
+  // Only run initial data setup once
   useEffect(() => {
-    if (!initialData && reportId) {
-      fetchReportData();
-    } else if (initialData) {
-      // Initialize management comments with report's special_notes
-      if (initialData.report?.special_notes) {
-        setManagementComments([
-          {
-            id: 1,
-            text: initialData.report.special_notes,
-            time: initialData.report.updated_at 
-              ? new Date(initialData.report.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-              : '00:00',
-            author: initialData.report.created_by_admin?.name || '作成者',
-            date: initialData.report.report_date 
-              ? new Date(initialData.report.report_date).toISOString().split('T')[0]
-              : new Date().toISOString().split('T')[0]
-          }
-        ]);
-      }
+    if (initialData) {
+      setReportData(initialData);
+      setReportLoading(false);
+    } else if (reportId) {
+      // If we have reportId but no initialData, fetch it
+      fetchReportById();
+    } else {
+      setReportLoading(false);
     }
-  }, [reportId, initialData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array means run once on mount
 
-  const fetchReportData = async () => {
+  // Fetch report by ID (only called if we have reportId but no initialData)
+  const fetchReportById = async () => {
+    if (!reportId) {
+      setReportLoading(false);
+      return;
+    }
+    
     try {
       setReportLoading(true);
-      
       const response = await axios.post(`${apiConfig.baseURL}/report/get-by-id`, {
         report_id: reportId
       });
       
       if (response.data.success) {
-        const data = response.data.data;
-        setReportData({
-          hospitalData: data.tableData?.hospitalData || {
-            inpatient: { admission: 0, discharge: 0, current: 0 },
-            outpatient: { morning: 0, afternoon: 0, night: 0, total: 0 }
-          },
-          emergencyData: data.tableData?.emergencyData || {
-            current: 0, hospitalization: 0, monthly: 0, cumulative: 0
-          },
-          nurseData: data.tableData?.nurseData || {
-            quasiNight: [], midnight: []
-          },
-          diagnosisData: data.tableData?.diagnosisData || {},
-          patientCountData: data.tableData?.patientCountData || {},
-          visitCount: data.tableData?.visitCount || 0,
-          monthlyStats: data.monthlyStats || {},
-          report: data.report,
-          departments: data.departments || [],
-          doctors: data.doctors || []
-        });
-
-        // Initialize management comments with report's special_notes
-        if (data.report?.special_notes) {
-          setManagementComments([
-            {
-              id: 1,
-              text: data.report.special_notes,
-              time: data.report.updated_at 
-                ? new Date(data.report.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-                : '00:00',
-              author: data.report.created_by_admin?.name || '作成者',
-              date: data.report.report_date 
-                ? new Date(data.report.report_date).toISOString().split('T')[0]
-                : new Date().toISOString().split('T')[0]
-            }
-          ]);
+        const reportData = response.data.data;
+        
+        // Process special notes as first comment if it exists
+        if (reportData.report?.special_notes) {
+          const specialNotesComment = {
+            id: -1,
+            comment: reportData.report.special_notes,
+            created_at: reportData.report.created_at,
+            admin: reportData.report.created_by_admin,
+            admin_id: reportData.report.created_by,
+            can_edit: false,
+            is_special_notes: true
+          };
+          
+          if (!reportData.report_comments) {
+            reportData.report_comments = [];
+          }
+          
+          const hasSpecialNotes = reportData.report_comments.some(
+            comment => comment.is_special_notes === true
+          );
+          
+          if (!hasSpecialNotes) {
+            reportData.report_comments.unshift(specialNotesComment);
+          }
         }
+        
+        setReportData(reportData);
+      } else {
+        console.error('Failed to fetch report by ID');
       }
     } catch (error) {
-      console.error('Error fetching report data:', error);
-      setFailAlert('レポートデータの取得に失敗しました');
-      setTimeout(() => setFailAlert(null), 3000);
+      console.error('Error fetching report by ID:', error);
     } finally {
       setReportLoading(false);
+    }
+  };
+
+  // Convert approvals to statusData format
+  const [statusData, setStatusData] = useState([]);
+
+  useEffect(() => {
+    // Always create default status data
+    const createDefaultStatusData = () => {
+      return [
+        { 
+          id: 1, 
+          title: '理事長', 
+          role: 'superAdmin', 
+          checked: false, 
+          status: '未確認', 
+          date: '',
+          person: '',
+          avatar: '?',
+          approver: '',
+          color: 'bg-blue-500',
+          disabled: true
+        },
+        { 
+          id: 2, 
+          title: '専務', 
+          role: 'admin', 
+          checked: false, 
+          status: '未確認', 
+          date: '',
+          person: '',
+          avatar: '?',
+          approver: '',
+          color: 'bg-green-500',
+          disabled: true
+        },
+        { 
+          id: 3, 
+          title: '医師長', 
+          role: 'hospitalAssistant', 
+          checked: false, 
+          status: '未確認', 
+          date: '',
+          person: '',
+          avatar: '?',
+          approver: '',
+          color: 'bg-purple-500',
+          disabled: true
+        },
+        { 
+          id: 4, 
+          title: '看護部', 
+          role: 'staff', 
+          checked: false, 
+          status: '未確認', 
+          date: '',
+          person: '',
+          avatar: '?',
+          approver: '',
+          color: 'bg-orange-500',
+          disabled: true
+        },
+        { 
+          id: 5, 
+          title: '事務部', 
+          role: 'operator', 
+          checked: false, 
+          status: '未確認', 
+          date: '',
+          person: '',
+          avatar: '?',
+          approver: '',
+          color: 'bg-pink-500',
+          disabled: true
+        }
+      ];
+    };
+
+    if (reportData.approvals && reportData.approvals.length > 0) {
+      // Map approvals to status confirmation format
+      const formattedStatusData = reportData.approvals.map(approval => {
+        // Determine title based on role
+        let title = '';
+        switch (approval.admin?.role) {
+          case 'superAdmin':
+            title = '理事長';
+            break;
+          case 'admin':
+            title = '専務';
+            break;
+          case 'hospitalAssistant':
+            title = '医師長';
+            break;
+          case 'staff':
+            title = '看護部';
+            break;
+          case 'operator':
+            title = '事務部';
+            break;
+          default:
+            title = approval.admin?.role || 'Unknown';
+        }
+
+        // Get color based on role
+        const getColorForRole = (role) => {
+          switch (role) {
+            case 'superAdmin': return 'bg-blue-500';
+            case 'admin': return 'bg-green-500';
+            case 'hospitalAssistant': return 'bg-purple-500';
+            case 'staff': return 'bg-orange-500';
+            case 'operator': return 'bg-pink-500';
+            default: return 'bg-gray-500';
+          }
+        };
+
+        // Safely format date
+        const formatDate = (date) => {
+          if (!date) return '';
+          try {
+            const dateObj = new Date(date);
+            if (!isNaN(dateObj.getTime())) {
+              return dateObj.toLocaleDateString('ja-JP') + ' ' + 
+                     dateObj.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            }
+          } catch (error) {
+            console.error('Error formatting date:', error);
+          }
+          return '';
+        };
+
+        return {
+          id: approval.id,
+          title: title,
+          checked: approval.approval_status === 'approved',
+          status: approval.approval_status === 'approved' ? '確認済み' : '未確認',
+          date: formatDate(approval.created_at),
+          person: approval.admin?.name || '',
+          avatar: approval.admin?.name ? approval.admin.name.charAt(0) : '?',
+          approver: approval.admin?.name || '',
+          color: getColorForRole(approval.admin?.role),
+          disabled: true, // Disable checkboxes in view mode
+          bypassed: approval.bypassed_lower_roles,
+          role: approval.admin?.role
+        };
+      });
+
+      // Add missing roles
+      const allRoles = ['superAdmin', 'admin', 'hospitalAssistant', 'staff', 'operator'];
+      const existingRoles = reportData.approvals.map(a => a.admin?.role).filter(Boolean);
+      const missingRoles = allRoles.filter(role => !existingRoles.includes(role));
+
+      const defaultStatusData = [
+        { id: 1, title: '理事長', role: 'superAdmin', checked: false, status: '未確認', date: '', color: 'bg-blue-500', disabled: true },
+        { id: 2, title: '専務', role: 'admin', checked: false, status: '未確認', date: '', color: 'bg-green-500', disabled: true },
+        { id: 3, title: '医師長', role: 'hospitalAssistant', checked: false, status: '未確認', date: '', color: 'bg-purple-500', disabled: true },
+        { id: 4, title: '看護部', role: 'staff', checked: false, status: '未確認', date: '', color: 'bg-orange-500', disabled: true },
+        { id: 5, title: '事務部', role: 'operator', checked: false, status: '未確認', date: '', color: 'bg-pink-500', disabled: true }
+      ];
+
+      missingRoles.forEach(role => {
+        const defaultRole = defaultStatusData.find(d => d.role === role);
+        if (defaultRole && !formattedStatusData.some(s => s.role === role)) {
+          formattedStatusData.push({
+            ...defaultRole,
+            disabled: true
+          });
+        }
+      });
+
+      // Sort by role hierarchy
+      const roleOrder = ['superAdmin', 'admin', 'hospitalAssistant', 'staff', 'operator'];
+      formattedStatusData.sort((a, b) => {
+        const aIndex = roleOrder.indexOf(a.role);
+        const bIndex = roleOrder.indexOf(b.role);
+        return aIndex - bIndex;
+      });
+
+      setStatusData(formattedStatusData);
+    } else {
+      // If no approvals, show default status data
+      setStatusData(createDefaultStatusData());
+    }
+  }, [reportData.approvals]);
+
+  // Format comments for ManagementComments component
+  const [managementComments, setManagementComments] = useState([]);
+
+useEffect(() => {
+  console.log('Raw reportData.report_comments:', reportData.report_comments);
+  console.log('Raw reportData.comments:', reportData.comments);
+  console.log('Raw reportData.report?.special_notes:', reportData.report?.special_notes);
+  
+  // FIXED: Combine both report_comments and comments arrays
+  // Use report_comments from API response if available
+  const reportCommentsData = reportData.report_comments || [];
+  // Use comments from API response if available
+  const commentsData = reportData.comments || [];
+  
+  console.log('Report comments data:', reportCommentsData);
+  console.log('Comments data:', commentsData);
+  
+  // Combine both arrays, starting with report_comments
+  let allComments = [...reportCommentsData, ...commentsData];
+  
+  console.log('Combined comments before deduplication:', allComments);
+  
+  // Remove duplicates by comment ID
+  const uniqueComments = [];
+  const seenIds = new Set();
+  
+  allComments.forEach(comment => {
+    if (!seenIds.has(comment.id)) {
+      seenIds.add(comment.id);
+      uniqueComments.push(comment);
+    }
+  });
+  
+  allComments = uniqueComments;
+  
+  console.log('Unique comments after deduplication:', allComments);
+  
+  // If report has special_notes and it's not already in comments, add it as first comment
+  if (reportData.report?.special_notes) {
+    console.log('Report has special notes:', reportData.report.special_notes);
+    
+    // Check if special notes is already in comments (should be with is_special_notes flag)
+    const specialNotesExists = allComments.some(comment => 
+      comment.is_special_notes === true || 
+      comment.comment === reportData.report.special_notes ||
+      comment.text === reportData.report.special_notes
+    );
+    
+    console.log('Special notes exists in comments:', specialNotesExists);
+    
+    if (!specialNotesExists) {
+      console.log('Adding special notes as comment');
+      const specialNotesComment = {
+        id: -1, // Special ID for special notes
+        text: reportData.report.special_notes,
+        comment: reportData.report.special_notes,
+        time: reportData.report.created_at ? 
+          new Date(reportData.report.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : 
+          '00:00',
+        author: reportData.report.created_by_admin?.name || 'システム',
+        date: reportData.report.created_at ? 
+          new Date(reportData.report.created_at).toISOString().split('T')[0] : 
+          new Date().toISOString().split('T')[0],
+        created_at: reportData.report.created_at,
+        admin_id: reportData.report.created_by,
+        can_edit: false,
+        is_special_notes: true
+      };
+      
+      // Add special notes as first comment
+      allComments.unshift(specialNotesComment);
+    }
+  }
+
+  console.log('All comments after processing:', allComments);
+  console.log('All comments count:', allComments.length);
+
+  if (allComments.length > 0) {
+    const formattedComments = allComments.map((comment, index) => {
+      console.log(`Processing comment ${index}:`, comment);
+      
+      // Safely format time
+      const formatTime = (date) => {
+        if (!date) return '00:00';
+        try {
+          const dateObj = new Date(date);
+          if (!isNaN(dateObj.getTime())) {
+            return dateObj.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+          }
+        } catch (error) {
+          console.error('Error formatting time:', error);
+        }
+        return '00:00';
+      };
+
+      // Safely format date
+      const formatDate = (date) => {
+        if (!date) return new Date().toISOString().split('T')[0];
+        try {
+          const dateObj = new Date(date);
+          if (!isNaN(dateObj.getTime())) {
+            return dateObj.toISOString().split('T')[0];
+          }
+        } catch (error) {
+          console.error('Error formatting date:', error);
+        }
+        return new Date().toISOString().split('T')[0];
+      };
+
+      // Check if comment can be edited
+      const checkCanEdit = () => {
+        if (comment.is_special_notes) return false; // Special notes cannot be edited
+        if (comment.id === -1) return false; // Special notes comment cannot be edited
+        if (!comment.can_edit) return false;
+        if (comment.admin_id !== user?.id) return false;
+        if (!comment.created_at) return false;
+        
+        const createdDate = new Date(comment.created_at);
+        const now = new Date();
+        const sixHoursAgo = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+        
+        return createdDate >= sixHoursAgo;
+      };
+
+      // Get author name
+      const getAuthorName = () => {
+        if (comment.is_special_notes && comment.id === -1) {
+          return reportData.report?.created_by_admin?.name || 'システム';
+        }
+        return comment.admin?.name || comment.author || 'Unknown';
+      };
+
+      // Format the comment object
+      const formattedComment = {
+        id: comment.id || Date.now() + Math.random(),
+        text: comment.text || comment.comment || '',
+        time: formatTime(comment.created_at),
+        author: getAuthorName(),
+        date: formatDate(comment.created_at),
+        created_at: comment.created_at,
+        admin_id: comment.admin_id,
+        can_edit: checkCanEdit(),
+        is_special_notes: comment.is_special_notes || false
+      };
+      
+      console.log(`Formatted comment ${index}:`, formattedComment);
+      return formattedComment;
+    });
+    
+    console.log('Setting managementComments:', formattedComments);
+    setManagementComments(formattedComments);
+  } else {
+    console.log('No comments found, setting empty array');
+    setManagementComments([]);
+  }
+}, [reportData.report_comments, reportData.comments, reportData.report?.special_notes, user]);
+
+  // Handle Edit button click - Navigate to report entry page
+  const handleEdit = () => {
+    if (!reportData.report) return;
+    
+    // Get report date and format it for URL
+    const reportDate = new Date(reportData.report.report_date);
+    const year = reportDate.getFullYear();
+    const month = String(reportDate.getMonth() + 1).padStart(2, '0');
+    const day = String(reportDate.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    
+    // Get medical center ID from report
+    const medicalCenterId = reportData.report.medical_center_id;
+    
+    // Navigate to report entry with parameters
+    navigate(`/report-entry?hospitalId=${medicalCenterId}&type=${hospitalType}&date=${formattedDate}&fromView=true&reportId=${reportId}`);
+  };
+
+  // Handle adding new comment
+  const handleAddComment = async () => {
+    if (!newComment.trim()) {
+      setFailAlert('コメントを入力してください');
+      setTimeout(() => setFailAlert(null), 3000);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.post(`${apiConfig.baseURL}/report/comment`, {
+        report_id: reportId,
+        comment: newComment,
+        is_internal: false
+      });
+      
+      if (response.data.success) {
+        setNewComment('');
+        setSuccessAlert('コメントを追加しました');
+        setTimeout(() => setSuccessAlert(null), 3000);
+        
+        // Refresh report data
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFailAlert(response.data.message || 'コメントの追加に失敗しました');
+        setTimeout(() => setFailAlert(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      setFailAlert(error.response?.data?.message || 'コメントの追加に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle editing a comment
+  const handleEditComment = (comment) => {
+    // Don't allow editing special notes
+    if (comment.is_special_notes) return;
+    
+    setEditingCommentId(comment.id);
+    setEditCommentText(comment.text);
+  };
+
+  // Handle saving edited comment
+  const handleSaveEditedComment = async () => {
+    if (!editCommentText.trim()) {
+      setFailAlert('コメントを入力してください');
+      setTimeout(() => setFailAlert(null), 3000);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.put(`${apiConfig.baseURL}/report/comment/${editingCommentId}`, {
+        comment: editCommentText
+      });
+      
+      if (response.data.success) {
+        setEditingCommentId(null);
+        setEditCommentText('');
+        setSuccessAlert('コメントを更新しました');
+        setTimeout(() => setSuccessAlert(null), 3000);
+        
+        // Refresh report data
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFailAlert(response.data.message || 'コメントの更新に失敗しました');
+        setTimeout(() => setFailAlert(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error editing comment:', error);
+      setFailAlert(error.response?.data?.message || 'コメントの更新に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle deleting a comment
+  const handleDeleteComment = async (commentId) => {
+    // Check if this is special notes comment
+    const comment = managementComments.find(c => c.id === commentId);
+    if (comment?.is_special_notes || commentId === -1) {
+      setFailAlert('特記事項は削除できません');
+      setTimeout(() => setFailAlert(null), 3000);
+      return;
+    }
+    
+    if (!window.confirm('このコメントを削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.delete(`${apiConfig.baseURL}/report/comment/${commentId}`);
+      
+      if (response.data.success) {
+        setSuccessAlert('コメントを削除しました');
+        setTimeout(() => setSuccessAlert(null), 3000);
+        
+        // Refresh report data
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFailAlert(response.data.message || 'コメントの削除に失敗しました');
+        setTimeout(() => setFailAlert(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      setFailAlert(error.response?.data?.message || 'コメントの削除に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle approval
+  const handleApproval = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${apiConfig.baseURL}/report/approve`, {
+        report_id: reportId
+      });
+      
+      if (response.data.success) {
+        setSuccessAlert('レポートを承認しました');
+        setTimeout(() => setSuccessAlert(null), 3000);
+        
+        // Refresh report data
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFailAlert(response.data.message || '承認に失敗しました');
+        setTimeout(() => setFailAlert(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error approving report:', error);
+      setFailAlert(error.response?.data?.message || '承認に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Get report date in Japanese format
   const getReportJapaneseDate = () => {
     if (reportData.report?.report_date) {
-      const date = new Date(reportData.report.report_date);
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const days = ['日', '月', '火', '水', '木', '金', '土'];
-      const dayOfWeek = days[date.getDay()];
-      return `${year}年${month.toString().padStart(2, '0')}月${day.toString().padStart(2, '0')}日（${dayOfWeek}）`;
+      try {
+        const date = new Date(reportData.report.report_date);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        const dayOfWeek = days[date.getDay()];
+        return `${year}年${month.toString().padStart(2, '0')}月${day.toString().padStart(2, '0')}日（${dayOfWeek}）`;
+      } catch (error) {
+        console.error('Error formatting report date:', error);
+      }
     }
     return '日付不明';
   };
 
-  // Get hospital info from report data
+  // Get hospital info
   const getHospitalInfo = () => {
     if (reportData.report?.medical_center) {
       const mc = reportData.report.medical_center;
@@ -272,202 +695,36 @@ function Report({ reportId, initialData, hospitalType }) {
         address: mc.address || '住所情報なし'
       };
     }
-    // Fallback to context if available
-    if (hospital?.name) {
-      return {
-        name: hospital.name,
-        address: hospital.address || '住所情報なし'
-      };
-    }
     return {
       name: '医療機関名',
       address: '住所情報なし'
     };
   };
 
-  // Handle checkbox change for status confirmation
-  const handleStatusChange = (id) => {
-    setStatusData(prev => prev.map(item => 
-      item.id === id ? { 
-        ...item, 
-        checked: !item.checked,
-        status: !item.checked ? '確認済み' : '未確認',
-        approver: !item.checked ? item.person : ''
-      } : item
-    ));
-  };
-
-  // Handle adding new comment
-  const handleAddComment = () => {
-    const newComment = {
-      id: managementComments.length + 1,
-      text: "新しい管理事項が追加されました。",
-      time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-      author: reportData.report?.created_by_admin?.name || 'システム管理者',
-      date: new Date().toISOString().split('T')[0]
-    };
-    setManagementComments(prev => [...prev, newComment]);
-    
-    // Show success alert
-    setSuccessAlert('コメントが追加されました');
-    setTimeout(() => setSuccessAlert(null), 3000);
-  };
-
-  // Handle deleting last comment
-  const handleDeleteLastComment = () => {
-    if (managementComments.length > 0) {
-      setManagementComments(prev => prev.slice(0, -1));
-      setSuccessAlert('最後のコメントを削除しました');
-      setTimeout(() => setSuccessAlert(null), 3000);
+  // Get report status display text
+  const getReportStatusText = () => {
+    const status = reportData.report?.status;
+    switch (status) {
+      case 'approved': return '承認済み';
+      case 'submitted': return '提出済み';
+      case 'draft': return '下書き';
+      default: return '不明';
     }
   };
 
-  // Handle editing a comment
-  const handleEditComment = (index, comment) => {
-    // In a real app, you would open a modal here
-    console.log('Editing comment:', index, comment);
-    setSuccessAlert(`コメント ${index + 1} を編集します`);
-    setTimeout(() => setSuccessAlert(null), 3000);
-  };
-
-  // Handle deleting a specific comment
-  const handleDeleteComment = (index) => {
-    setManagementComments(prev => prev.filter((_, i) => i !== index));
-    setSuccessAlert('コメントを削除しました');
-    setTimeout(() => setSuccessAlert(null), 3000);
-  };
-
-  // Handle approval
-  const handleApproval = async () => {
-    try {
-      setLoading(true);
-      // Call API to approve report
-      if (reportData.report?.id) {
-        const response = await axios.post(`${apiConfig.baseURL}/api/report/update-status`, {
-          report_id: reportData.report.id,
-          status: 'approved'
-        });
-        
-        if (response.data.success) {
-          setSuccessAlert('レポートが承認されました');
-          // Refresh report data
-          if (!initialData) {
-            fetchReportData();
-          } else {
-            // Update local state if we have initialData
-            setReportData(prev => ({
-              ...prev,
-              report: {
-                ...prev.report,
-                status: 'approved',
-                approved_at: new Date().toISOString(),
-                approved_by_admin: { name: '現在のユーザー' }
-              }
-            }));
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error approving report:', error);
-      setFailAlert('承認に失敗しました');
-    } finally {
-      setLoading(false);
-      setTimeout(() => {
-        setSuccessAlert(null);
-        setFailAlert(null);
-      }, 3000);
+  // Get report status color
+  const getReportStatusColor = () => {
+    const status = reportData.report?.status;
+    switch (status) {
+      case 'approved': return 'success';
+      case 'submitted': return 'primary';
+      case 'draft': return 'warning';
+      default: return 'default';
     }
   };
 
-  // Handle save as draft (only for new reports, not viewing existing ones)
-  const handleSaveDraft = async () => {
-    try {
-      setLoading(true);
-      // Prepare report data for submission
-      const reportDataToSubmit = {
-        hospital_id: reportData.report?.medical_center_id || hospital?.id || 10,
-        report_date: reportData.report?.report_date || new Date().toISOString().split('T')[0],
-        admission_count: reportData.hospitalData.inpatient.admission,
-        discharge_count: reportData.hospitalData.inpatient.discharge,
-        external_morning: reportData.hospitalData.outpatient.morning,
-        external_afternoon: reportData.hospitalData.outpatient.afternoon,
-        external_duty: reportData.hospitalData.outpatient.night,
-        emergency_transport: reportData.emergencyData.current,
-        post_transport_admission: reportData.emergencyData.hospitalization,
-        visit_count: reportData.visitCount,
-        special_notes: managementComments[0]?.text || '',
-        is_draft: true
-      };
-      
-      const response = await axios.post(`${apiConfig.baseURL}/api/report/submit`, reportDataToSubmit);
-      
-      if (response.data.success) {
-        setSuccessAlert('下書きとして保存しました');
-        if (!initialData) {
-          fetchReportData();
-        }
-      }
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      setFailAlert('保存に失敗しました');
-    } finally {
-      setLoading(false);
-      setTimeout(() => {
-        setSuccessAlert(null);
-        setFailAlert(null);
-      }, 3000);
-    }
-  };
-
-  // Get creator info
-  const getCreatorInfo = () => {
-    if (reportData.report?.created_by_admin?.name) {
-      return reportData.report.created_by_admin.name;
-    }
-    return '作成者不明';
-  };
-
-  // Get approver info
-  const getApproverInfo = () => {
-    if (reportData.report?.approved_by_admin?.name) {
-      return reportData.report.approved_by_admin.name;
-    }
-    if (reportData.report?.status === 'approved') {
-      return '承認済み';
-    }
-    return '未承認';
-  };
-
-  // Get report status
-  const getReportStatus = () => {
-    if (reportData.report) {
-      const statusMap = {
-        'draft': '下書き',
-        'submitted': '提出済み',
-        'approved': '承認済み',
-        'rejected': '拒否済み'
-      };
-      return statusMap[reportData.report.status] || reportData.report.status;
-    }
-    return '不明';
-  };
-
-  // Get hospital type label
-  const getHospitalTypeLabel = () => {
-    if (reportData.report?.medical_center?.type) {
-      const typeMap = {
-        'large_hospital': '総合病院',
-        'hospital': '病院',
-        'welfare': '福祉施設'
-      };
-      return typeMap[reportData.report.medical_center.type] || '病院';
-    }
-    // Fallback to hospitalType prop
-    if (hospitalType === '1') return '総合病院';
-    if (hospitalType === '2') return '病院';
-    if (hospitalType === '3') return '福祉施設';
-    return '病院';
-  };
+  // Check if report is editable (only draft reports can be edited)
+  const isEditable = reportData.report?.status === 'draft';
 
   const hospitalInfo = getHospitalInfo();
   const reportDate = getReportJapaneseDate();
@@ -481,7 +738,6 @@ function Report({ reportId, initialData, hospitalType }) {
     );
   }
 
-  // Check if report exists
   if (!reportData.report) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -497,14 +753,15 @@ function Report({ reportId, initialData, hospitalType }) {
 
   return (
     <div className="flex flex-col flex-1 w-full p-4 sm:p-6 lg:p-8">
-      {successAlert != null && (
-        <Alert severity="success" className="text-sm mb-4 animate-fade-in">
-          {t(successAlert)}.
+      {/* Alerts */}
+      {successAlert && (
+        <Alert severity="success" className="text-sm mb-4 animate-fade-in" onClose={() => setSuccessAlert(null)}>
+          {successAlert}
         </Alert>
       )}
-      {failAlert != null && (
-        <Alert severity="error" className="text-sm mb-4 animate-fade-in">
-          {t(failAlert)}.
+      {failAlert && (
+        <Alert severity="error" className="text-sm mb-4 animate-fade-in" onClose={() => setFailAlert(null)}>
+          {failAlert}
         </Alert>
       )}
 
@@ -513,47 +770,25 @@ function Report({ reportId, initialData, hospitalType }) {
         title={`管理日誌レポート - ${reportDate}`}
         subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
         primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}
-        secondaryButtonText="コメント追加"
-        tertiaryButtonText="編集"
+        secondaryButtonText={isEditable ? "編集" : "コメント追加"}
         showSecondaryButton={true}
-        showTertiaryButton={!initialData} // Show edit only for new reports
         primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
-        secondaryButtonColor="primary"
-        tertiaryButtonColor="info"
+        secondaryButtonColor={isEditable ? "warning" : "primary"}
         onPrimaryButtonClick={reportData.report?.status === 'approved' ? null : handleApproval}
-        onSecondaryButtonClick={handleAddComment}
-        onTertiaryButtonClick={handleSaveDraft}
+        onSecondaryButtonClick={isEditable ? handleEdit : handleAddComment}
         showDate={true}
         customDate={reportDate}
         variant="gradient"
         loading={loading}
         showReportStatus={true}
-        reportStatus={getReportStatus()}
+        reportStatus={getReportStatusText()}
         reportNo={reportData.report?.report_no}
-      >
-        {/* Additional info */}
-        <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
-          <Typography variant="caption" color="text.secondary">
-            🏥 {getHospitalTypeLabel()}レポート
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            📅 レポート詳細
-          </Typography>
-          <Typography variant="caption" color={reportData.report?.status === 'approved' ? 'success.main' : 'warning.main'}>
-            {reportData.report?.status === 'approved' ? '✓ 承認済み' : '⚠ 承認待ち'}
-          </Typography>
-          {reportData.report?.report_no && (
-            <Typography variant="caption" color="info.main">
-              📋 {reportData.report.report_no}
-            </Typography>
-          )}
-        </Box>
-      </HeaderSection>
+      />
 
       {/* Status Confirmation Section */}
       <StatusConfirmationSection
         statusData={statusData}
-        onStatusChange={handleStatusChange}
+        onStatusChange={() => {}} // Disabled in view mode
         title="確認状態一覧"
         showSummary={true}
         showDate={true}
@@ -669,6 +904,43 @@ function Report({ reportId, initialData, hospitalType }) {
         </div>
       </div>
       
+      {/* Add Comment Section - Only show if not editable (not in draft status) */}
+      {!isEditable && (
+        <Paper elevation={2} className="border border-gray-300 rounded-xl overflow-hidden mt-40">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+            <Typography variant="h6" className="font-bold text-white">
+              コメントを追加
+            </Typography>
+          </div>
+          
+          <div className="p-4">
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="コメントを入力..."
+                variant="outlined"
+                size="small"
+                disabled={loading}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleAddComment}
+                disabled={loading || !newComment.trim()}
+                startIcon={<SendIcon />}
+                sx={{ minWidth: '100px', height: '40px' }}
+              >
+                {loading ? '送信中...' : '追加'}
+              </Button>
+            </Box>
+          </div>
+        </Paper>
+      )}
+      
       {/* Management Comments Section */}
       <div className="mt-40">
         <ManagementComments
@@ -676,17 +948,80 @@ function Report({ reportId, initialData, hospitalType }) {
           title="管理事項"
           showSummary={true}
           summaryMessage={managementComments.length > 0 ? managementComments[0].text : "管理事項はありません。"}
-          showActionButtons={true}
-          onAddComment={handleAddComment}
-          onDeleteLastComment={handleDeleteLastComment}
-          onEditComment={handleEditComment}
-          onDeleteComment={handleDeleteComment}
-          allowAddComment={true}
-          allowDeleteLastComment={true}
-          allowEditComments={true}
-          allowDeleteComments={true}
-          showCommentCount={true}
-          loading={loading}
+          showActionButtons={false}
+          renderComment={(comment, index) => (
+            <Box key={comment.id} className="relative group">
+              {editingCommentId === comment.id ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={2}
+                    value={editCommentText}
+                    onChange={(e) => setEditCommentText(e.target.value)}
+                    variant="outlined"
+                    size="small"
+                    disabled={loading}
+                  />
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                    <Button
+                      size="small"
+                      onClick={() => setEditingCommentId(null)}
+                      disabled={loading}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleSaveEditedComment}
+                      disabled={loading}
+                    >
+                      保存
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <Box>
+                  <Typography variant="body2" className="text-gray-700 leading-relaxed">
+                    {comment.text}
+                    {comment.is_special_notes && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        特記事項
+                      </span>
+                    )}
+                  </Typography>
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <Typography variant="caption" className="text-gray-500">
+                        報告者: {comment.author} | {comment.date} {comment.time}
+                      </Typography>
+                      {comment.can_edit && !comment.is_special_notes && (
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditComment(comment)}
+                            className="text-blue-500 hover:bg-blue-50"
+                            disabled={loading}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="text-red-500 hover:bg-red-50"
+                            disabled={loading}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      )}
+                    </div>
+                  </div>
+                </Box>
+              )}
+            </Box>
+          )}
         />
       </div>
 
@@ -694,13 +1029,19 @@ function Report({ reportId, initialData, hospitalType }) {
       <Paper elevation={1} className="p-4 mt-6 bg-gray-50 border border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500">
           <div>
-            <span className="font-medium">作成者:</span> {getCreatorInfo()}
+            <span className="font-medium">作成者:</span> {reportData.report?.created_by_admin?.name || '不明'}
             <span className="mx-2">|</span>
-            <span className="font-medium">承認者:</span> {getApproverInfo()}
+            <span className="font-medium">承認者:</span> {reportData.report?.approved_by_admin?.name || '未承認'}
             <span className="mx-2">|</span>
             <span className="font-medium">コメント数:</span> {managementComments.length}
             <span className="mx-2">|</span>
-            <span className="font-medium">ステータス:</span> {getReportStatus()}
+            <span className="font-medium">ステータス:</span> {getReportStatusText()}
+            {isEditable && (
+              <>
+                <span className="mx-2">|</span>
+                <span className="font-medium text-orange-600">編集可能</span>
+              </>
+            )}
           </div>
           <div className="mt-2 sm:mt-0">
             最終更新: {reportData.report?.updated_at ? 
