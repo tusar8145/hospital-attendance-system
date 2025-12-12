@@ -61,7 +61,6 @@ const StatusConfirmationSection = ({
             {title}
           </Typography>
         </div>
-        
         <div className="p-4">
           {/* Grid of Confirmation Boxes */}
           <div className="grid grid-cols-4 lg:grid-cols-8 gap-3">

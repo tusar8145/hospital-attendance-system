@@ -1,6 +1,6 @@
 // HeaderSection.jsx
 import React from 'react';
-import PropTypes from 'prop-types'; // Add this import
+import PropTypes from 'prop-types';
 import { Paper, Typography, Button, Stack, Box } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
@@ -53,6 +53,7 @@ const HeaderSection = ({
   customDate,
   variant = 'gradient', // 'gradient', 'solid', 'outlined'
   children,
+  loading = false,
 }) => {
   const getCurrentJapaneseDate = () => {
     const now = new Date();
@@ -112,15 +113,18 @@ const HeaderSection = ({
         </Box>
         
         <Box sx={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-          {showSecondaryButton && secondaryButtonText !='コメント追加' && (
+          {showSecondaryButton && (
             <ActionButton
               variant="contained"
               color={secondaryButtonColor}
               onClick={onSecondaryButtonClick}
+              disabled={loading}
               sx={{ 
-                bgcolor: secondaryButtonColor === 'primary' ? '#2196F3' : undefined,
+                bgcolor: secondaryButtonColor === 'primary' ? '#2196F3' : 
+                        secondaryButtonColor === 'warning' ? '#FF9800' : undefined,
                 '&:hover': {
-                  bgcolor: secondaryButtonColor === 'primary' ? '#1976D2' : undefined,
+                  bgcolor: secondaryButtonColor === 'primary' ? '#1976D2' : 
+                          secondaryButtonColor === 'warning' ? '#F57C00' : undefined,
                 }
               }}
             >
@@ -132,14 +136,17 @@ const HeaderSection = ({
             variant="contained"
             color={primaryButtonColor}
             onClick={onPrimaryButtonClick}
+            disabled={loading || !onPrimaryButtonClick}
             sx={{ 
-              bgcolor: primaryButtonColor === 'success' ? '#4CAF50' : undefined,
+              bgcolor: primaryButtonColor === 'success' ? '#4CAF50' : 
+                      primaryButtonColor === 'secondary' ? '#9E9E9E' : undefined,
               '&:hover': {
-                bgcolor: primaryButtonColor === 'success' ? '#388E3C' : undefined,
+                bgcolor: primaryButtonColor === 'success' ? '#388E3C' : 
+                        primaryButtonColor === 'secondary' ? '#757575' : undefined,
               }
             }}
           >
-            {primaryButtonText}
+            {loading ? '処理中...' : primaryButtonText}
           </ActionButton>
         </Box>
       </Box>
@@ -162,6 +169,7 @@ HeaderSection.propTypes = {
   customDate: PropTypes.string,
   variant: PropTypes.oneOf(['gradient', 'solid', 'outlined']),
   children: PropTypes.node,
+  loading: PropTypes.bool,
 };
 
 export default HeaderSection;

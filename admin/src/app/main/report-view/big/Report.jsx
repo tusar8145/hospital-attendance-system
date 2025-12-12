@@ -247,14 +247,14 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
           case 'admin':
             title = '専務';
             break;
-          case 'hospitalAssistant':
-            title = '医師長';
+          case 'ヘッドマネージャー':
+            title = '部長';
             break;
           case 'staff':
-            title = '看護部';
+            title = 'マネージャー';
             break;
           case 'operator':
-            title = '事務部';
+            title = 'オペレーター';
             break;
           default:
             title = approval.admin?.role || 'Unknown';
@@ -309,11 +309,11 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       const missingRoles = allRoles.filter(role => !existingRoles.includes(role));
 
       const defaultStatusData = [
-        { id: 1, title: '理事長', role: 'superAdmin', checked: false, status: '未確認', date: '', color: 'bg-blue-500', disabled: true },
-        { id: 2, title: '専務', role: 'admin', checked: false, status: '未確認', date: '', color: 'bg-green-500', disabled: true },
-        { id: 3, title: '医師長', role: 'hospitalAssistant', checked: false, status: '未確認', date: '', color: 'bg-purple-500', disabled: true },
-        { id: 4, title: '看護部', role: 'staff', checked: false, status: '未確認', date: '', color: 'bg-orange-500', disabled: true },
-        { id: 5, title: '事務部', role: 'operator', checked: false, status: '未確認', date: '', color: 'bg-pink-500', disabled: true }
+        { id: 1, title: 'システム管理者', role: 'superAdmin', checked: false, status: '未確認', date: '', color: 'bg-blue-500', disabled: true },
+        { id: 2, title: '責任管理者', role: 'admin', checked: false, status: '未確認', date: '', color: 'bg-green-500', disabled: true },
+        { id: 3, title: '主任管理者', role: 'hospitalAssistant', checked: false, status: '未確認', date: '', color: 'bg-purple-500', disabled: true },
+        { id: 4, title: 'マネージャー', role: 'staff', checked: false, status: '未確認', date: '', color: 'bg-orange-500', disabled: true },
+        { id: 5, title: 'データ入力者', role: 'operator', checked: false, status: '未確認', date: '', color: 'bg-pink-500', disabled: true }
       ];
 
       missingRoles.forEach(role => {
@@ -497,6 +497,30 @@ useEffect(() => {
     setManagementComments([]);
   }
 }, [reportData.report_comments, reportData.comments, reportData.report?.special_notes, user]);
+
+  // Get report status display text
+  const getReportStatusText = () => {
+    const status = reportData.report?.status;
+    switch (status) {
+      case 'approved': return '承認済み';
+      case 'submitted': return '提出済み';
+      case 'draft': return '下書き';
+      case 'rejected': return '却下済み';
+      default: return '不明';
+    }
+  };
+
+  // Get report status color class
+  const getReportStatusColor = () => {
+    const status = reportData.report?.status;
+    switch (status) {
+      case 'approved': return 'success';
+      case 'submitted': return 'primary';
+      case 'draft': return 'warning';
+      case 'rejected': return 'error';
+      default: return 'default';
+    }
+  };
 
   // Handle Edit button click - Navigate to report entry page
   const handleEdit = () => {
@@ -701,30 +725,28 @@ useEffect(() => {
     };
   };
 
-  // Get report status display text
-  const getReportStatusText = () => {
-    const status = reportData.report?.status;
-    switch (status) {
-      case 'approved': return '承認済み';
-      case 'submitted': return '提出済み';
-      case 'draft': return '下書き';
-      default: return '不明';
-    }
-  };
+  // Create status badge component
+  const StatusBadge = ({ status }) => {
+    const getStatusColorClass = (status) => {
+      switch (status) {
+        case 'approved': return 'bg-green-100 text-green-800 border-green-300';
+        case 'submitted': return 'bg-blue-100 text-blue-800 border-blue-300';
+        case 'draft': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        case 'rejected': return 'bg-red-100 text-red-800 border-red-300';
+        default: return 'bg-gray-100 text-gray-800 border-gray-300';
+      }
+    };
 
-  // Get report status color
-  const getReportStatusColor = () => {
-    const status = reportData.report?.status;
-    switch (status) {
-      case 'approved': return 'success';
-      case 'submitted': return 'primary';
-      case 'draft': return 'warning';
-      default: return 'default';
-    }
+    const statusText = getReportStatusText();
+    const colorClass = getStatusColorClass(reportData.report?.status);
+    
+    return (
+      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${colorClass}`}>
+        <span className="mr-2">ステータス:</span>
+        <span className="font-bold">{statusText}</span>
+      </div>
+    );
   };
-
-  // Check if report is editable (only draft reports can be edited)
-  const isEditable = reportData.report?.status === 'draft';
 
   const hospitalInfo = getHospitalInfo();
   const reportDate = getReportJapaneseDate();
@@ -765,25 +787,28 @@ useEffect(() => {
         </Alert>
       )}
 
-      {/* Header Section */}
+      {/* Header Section with Status Badge as children */}
       <HeaderSection
         title={`管理日誌レポート - ${reportDate}`}
         subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
         primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}
-        secondaryButtonText={isEditable ? "編集" : "コメント追加"}
+        secondaryButtonText="編集"
         showSecondaryButton={true}
         primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
-        secondaryButtonColor={isEditable ? "warning" : "primary"}
+        secondaryButtonColor="warning"
         onPrimaryButtonClick={reportData.report?.status === 'approved' ? null : handleApproval}
-        onSecondaryButtonClick={isEditable ? handleEdit : handleAddComment}
+        onSecondaryButtonClick={handleEdit}
         showDate={true}
         customDate={reportDate}
         variant="gradient"
         loading={loading}
-        showReportStatus={true}
-        reportStatus={getReportStatusText()}
         reportNo={reportData.report?.report_no}
-      />
+      >
+        {/* Status Badge displayed inside HeaderSection */}
+        <div className="mt-2">
+          <StatusBadge status={reportData.report?.status} />
+        </div>
+      </HeaderSection>
 
       {/* Status Confirmation Section */}
       <StatusConfirmationSection
@@ -904,42 +929,40 @@ useEffect(() => {
         </div>
       </div>
       
-      {/* Add Comment Section - Only show if not editable (not in draft status) */}
-      {!isEditable && (
-        <Paper elevation={2} className="border border-gray-300 rounded-xl overflow-hidden mt-40">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
-            <Typography variant="h6" className="font-bold text-white">
-              コメントを追加
-            </Typography>
-          </div>
-          
-          <div className="p-4">
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="コメントを入力..."
-                variant="outlined"
-                size="small"
-                disabled={loading}
-              />
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleAddComment}
-                disabled={loading || !newComment.trim()}
-                startIcon={<SendIcon />}
-                sx={{ minWidth: '100px', height: '40px' }}
-              >
-                {loading ? '送信中...' : '追加'}
-              </Button>
-            </Box>
-          </div>
-        </Paper>
-      )}
+      {/* Add Comment Section */}
+      <Paper elevation={2} className="border border-gray-300 rounded-xl overflow-hidden mt-40">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+          <Typography variant="h6" className="font-bold text-white">
+            コメントを追加
+          </Typography>
+        </div>
+        
+        <div className="p-4">
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            <TextField
+              fullWidth
+              multiline
+              rows={2}
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="コメントを入力..."
+              variant="outlined"
+              size="small"
+              disabled={loading}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAddComment}
+              disabled={loading || !newComment.trim()}
+              startIcon={<SendIcon />}
+              sx={{ minWidth: '100px', height: '40px' }}
+            >
+              {loading ? '送信中...' : '追加'}
+            </Button>
+          </Box>
+        </div>
+      </Paper>
       
       {/* Management Comments Section */}
       <div className="mt-40">
@@ -1036,12 +1059,6 @@ useEffect(() => {
             <span className="font-medium">コメント数:</span> {managementComments.length}
             <span className="mx-2">|</span>
             <span className="font-medium">ステータス:</span> {getReportStatusText()}
-            {isEditable && (
-              <>
-                <span className="mx-2">|</span>
-                <span className="font-medium text-orange-600">編集可能</span>
-              </>
-            )}
           </div>
           <div className="mt-2 sm:mt-0">
             最終更新: {reportData.report?.updated_at ? 

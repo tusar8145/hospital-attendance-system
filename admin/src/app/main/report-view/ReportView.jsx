@@ -245,6 +245,8 @@ function ReportView() {
 							{t(failAlert)}
 						</Alert>
 					)}
+
+					
 					<div className="flex flex-col lg:flex-row gap-6">
 						<Suspense fallback={<CircularProgress />}>
 							{reportData?.report?.hospital_type === 'large_hospital' ? (
