@@ -49,6 +49,7 @@ import ja from 'date-fns/locale/ja';
 import { useAppSelector } from 'app/store/hooks';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 
+
 // Lazy load the main report component
 const FrameScreen = React.lazy(() => import('./big/FrameScreen'));
 
@@ -96,6 +97,8 @@ const ReportEntryHeader = ({
   // Get user data from Redux
   const user = useAppSelector(selectUser);
   const userRole = user?.role || '';
+
+ 
   
   // Format date for display
   const formatJapaneseDate = (date) => {
@@ -558,6 +561,7 @@ function ReportEntry() {
   const [reportStatus, setReportStatus] = useState(null);
   const [reportExists, setReportExists] = useState(false);
   const [reportId, setReportId] = useState(null);
+  const [hospital_type, sethospital_type] = useState(null);
   const [snackbar, setSnackbar] = useState({ 
     open: false, 
     message: '', 
@@ -630,6 +634,8 @@ function ReportEntry() {
     };
   }, []);
 
+    const { hospital, toggleHospital } = useTheme();
+
   // Format date for display
   const formatJapaneseDate = (date) => {
     const year = date.getFullYear();
@@ -696,7 +702,7 @@ function ReportEntry() {
             duty_staff: report.duty_staff || [],
             report_details: report.report_details || []
           };
-          
+          sethospital_type(report.hospital_type)
           setFormData(formattedReport);
           setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
           setReportStatus(report.status);
@@ -704,6 +710,8 @@ function ReportEntry() {
           setHasUnsavedChanges(false);
           
           showSnackbar(`${formatJapaneseDate(new Date(report.report_date))}のレポートを読み込みました`, 'info');
+        }else{
+          sethospital_type(null)
         }
         
         setValidationErrors({});
@@ -769,7 +777,7 @@ function ReportEntry() {
             duty_staff: report.duty_staff || [],
             report_details: report.report_details || []
           };
-          
+          sethospital_type(report.hospital_type)
           setFormData(formattedReport);
           setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
           setReportStatus(report.status);
@@ -780,6 +788,7 @@ function ReportEntry() {
             showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
           }
         } else {
+          sethospital_type(null)
           // Reset form for new entry when report is null
           const emptyForm = {
             admission_count: 0,
@@ -1378,6 +1387,12 @@ function ReportEntry() {
                     </Typography>
                   </Box>
                 }>
+                  
+{/*hospital_type}?
+{JSON.stringify(hospital)*/}
+
+
+              {hospital_type === 'large_hospital' ? (
                   <FrameScreen
                     formData={formData}
                     departments={departments}
@@ -1395,6 +1410,43 @@ function ReportEntry() {
                     reportStatus={reportStatus}
                     readOnly={isReadOnly}
                   />
+              ) : hospital_type === 'hospital' ? (
+                <Alert severity="warning">Hospital</Alert>
+              ) : hospital_type === 'welfare' ? (
+                 <Alert severity="warning">Welfare</Alert>
+              ) :hospital?.type=== 'large_hospital' ? (
+                  <FrameScreen
+                    formData={formData}
+                    departments={departments}
+                    doctors={doctors}
+                    hospitalId={currentHospital?.id}
+                    onFormDataChange={handleFormDataChange}
+                    loading={loadingReport}
+                    reportDate={reportDate}
+                    onDateChange={handleDateChange}
+                    onSaveDraft={handleSaveDraft}
+                    onSubmit={handleSubmit}
+                    onValidate={handleValidate}
+                    isSubmitting={submitting}
+                    isSavingDraft={savingDraft}
+                    reportStatus={reportStatus}
+                    readOnly={isReadOnly}
+                  />
+              ) : hospital?.type === 'hospital' ? (
+                <Alert severity="warning">Hospital</Alert>
+              ) : hospital?.type === 'welfare' ? (
+                 <Alert severity="warning">Welfare</Alert>
+              ) :
+              
+              
+              (
+                <Alert severity="warning">医療機関タイプが指定されていません</Alert>
+              )}
+
+
+
+
+                  
                 </React.Suspense>
               )}
             </Box>

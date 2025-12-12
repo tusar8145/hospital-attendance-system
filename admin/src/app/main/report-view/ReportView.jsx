@@ -38,6 +38,7 @@ function ReportView() {
 	const [reportData, setReportData] = useState(null);
 	const { theme, toggleTheme } = useTheme();
 	const { hospital, toggleHospital } = useTheme();
+	const [hospital_type, sethospital_type] = useState(null);
 
 	// Get parameters from URL
 	const reportId = searchParams.get('id');
@@ -246,21 +247,21 @@ function ReportView() {
 					)}
 					<div className="flex flex-col lg:flex-row gap-6">
 						<Suspense fallback={<CircularProgress />}>
-							{type === '1' ? (
+							{reportData?.report?.hospital_type === 'large_hospital' ? (
 								<ReportB 
 									reportId={reportId}
 									initialData={reportData}
 									hospitalType={type}
 									onRefresh={fetchReportById}
 								/>
-							) : type === '2' ? (
+							) : reportData?.report?.hospital_type === 'hospital' ? (
 								<ReportM 
 									reportId={reportId}
 									initialData={reportData}
 									hospitalType={type}
 									onRefresh={fetchReportById}
 								/>
-							) : type === '3' ? (
+							) : reportData?.report?.hospital_type === 'welfare' ? (
 								<ReportS 
 									reportId={reportId}
 									initialData={reportData}

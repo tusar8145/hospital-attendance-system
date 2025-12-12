@@ -289,7 +289,8 @@ export const getReportByDateTable = async (req, res, next) => {
         emergency_transport: true,
         post_transport_admission: true,
         admission_count: true,
-        discharge_count: true
+        discharge_count: true,
+        hospital_type: true // Added hospital_type
       }
     });
 
@@ -332,7 +333,8 @@ export const getReportByDateTable = async (req, res, next) => {
                  (existingReport?.external_duty || 0)
         }
       },
-      visitCount: existingReport?.visit_count || 0
+      visitCount: existingReport?.visit_count || 0,
+      hospitalType: existingReport?.hospital_type || null // Added hospital_type
     };
 
     response.success({
@@ -444,7 +446,8 @@ export const getReportById = async (req, res, next) => {
         emergency_transport: true,
         post_transport_admission: true,
         admission_count: true,
-        discharge_count: true
+        discharge_count: true,
+        hospital_type: true // Added hospital_type
       }
     });
 
@@ -487,7 +490,8 @@ export const getReportById = async (req, res, next) => {
                  (report.external_duty || 0)
         }
       },
-      visitCount: report.visit_count || 0
+      visitCount: report.visit_count || 0,
+      hospitalType: report.hospital_type || null // Added hospital_type
     };
 
     // Get departments and doctors
@@ -549,7 +553,8 @@ export const submitReport = async (req, res, next) => {
         shift_nurses,
         duty_staff,
         report_details,
-        is_draft = false
+        is_draft = false,
+        hospital_type,
       } = req.body;
 
       const userId = user_id;
@@ -582,6 +587,7 @@ export const submitReport = async (req, res, next) => {
         emergency_transport: parseInt(emergency_transport) || 0,
         post_transport_admission: parseInt(post_transport_admission) || 0,
         visit_count: parseInt(visit_count) || 0,
+        hospital_type: hospital_type, // Added hospital_type
         updated_by: userId,
         updated_at: new Date(),
       };
@@ -760,7 +766,8 @@ export const getReportStatus = async (req, res, next) => {
         status: true,
         report_no: true,
         submitted_at: true,
-        approved_at: true
+        approved_at: true,
+        hospital_type: true // Added hospital_type
       }
     });
 
@@ -769,7 +776,8 @@ export const getReportStatus = async (req, res, next) => {
       status: report?.status || 'not_found',
       report_no: report?.report_no,
       submitted_at: report?.submitted_at,
-      approved_at: report?.approved_at
+      approved_at: report?.approved_at,
+      hospital_type: report?.hospital_type || null // Added hospital_type
     }, res);
   } catch (error) {
     response.error(error, res, next);
@@ -966,7 +974,8 @@ export const getReportList = async (req, res, next) => {
         medical_center_type: report.medical_center?.type,
         submitted_at: report.submitted_at,
         approved_at: report.approved_at,
-        special_notes: report.special_notes
+        special_notes: report.special_notes,
+        hospital_type: report.hospital_type || null, // Added hospital_type
       };
     });
 
@@ -1081,7 +1090,7 @@ export const exportReports = async (req, res, next) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Reports');
 
-    // Define columns
+    // Define columns (added hospital_type column)
     worksheet.columns = [
       { header: '通番', key: 'sequence', width: 10 },
       { header: '医療機関名', key: 'hospital_name', width: 30 },
@@ -1089,6 +1098,7 @@ export const exportReports = async (req, res, next) => {
       { header: '報告日', key: 'report_date', width: 15 },
       { header: '報告番号', key: 'report_no', width: 20 },
       { header: 'ステータス', key: 'status', width: 15 },
+      { header: '病院タイプ', key: 'hospital_type_detail', width: 15 }, // New column for hospital_type
       { header: '入院数', key: 'admission_count', width: 10 },
       { header: '退院数', key: 'discharge_count', width: 10 },
       { header: '入院患者数', key: 'inpatient_count', width: 10 },
@@ -1123,11 +1133,18 @@ export const exportReports = async (req, res, next) => {
         'rejected': '拒否済み'
       };
 
-      // Hospital type mapping
+      // Hospital type mapping (medical center type)
       const typeMap = {
         'large_hospital': '大病院',
         'hospital': '病院',
         'welfare': '福祉施設'
+      };
+
+      // Hospital type detail mapping (report hospital_type)
+      const hospitalTypeDetailMap = {
+        'large_hospital': '病院：大',
+        'hospital': '病院',
+        'welfare': '福祉'
       };
 
       worksheet.addRow({
@@ -1137,6 +1154,7 @@ export const exportReports = async (req, res, next) => {
         report_date: formatJapaneseDate(report.report_date),
         report_no: report.report_no,
         status: statusMap[report.status] || report.status,
+        hospital_type_detail: hospitalTypeDetailMap[report.hospital_type] || report.hospital_type || '--', // New column
         admission_count: report.admission_count || 0,
         discharge_count: report.discharge_count || 0,
         inpatient_count: inpatientTotal,
@@ -1253,7 +1271,8 @@ export const getReportView = async (req, res, next) => {
       report,
       formatted_date: formatJapaneseDate(report.report_date),
       submitted_date: report.submitted_at ? formatJapaneseDate(report.submitted_at) : null,
-      approved_date: report.approved_at ? formatJapaneseDate(report.approved_at) : null
+      approved_date: report.approved_at ? formatJapaneseDate(report.approved_at) : null,
+      hospital_type: report.hospital_type || null, // Added hospital_type
     }, res);
 
   } catch (error) {
@@ -1300,7 +1319,8 @@ export const updateReportStatus = async (req, res, next) => {
     response.success({
       success: true,
       message: `Report ${status === 'approved' ? 'approved' : 'rejected'} successfully`,
-      report: updatedReport
+      report: updatedReport,
+      hospital_type: updatedReport.hospital_type // Added hospital_type
     }, res);
 
   } catch (error) {
@@ -1363,7 +1383,8 @@ export const getReportStatistics = async (req, res, next) => {
     const reports = await prisma.report.findMany({
       where,
       select: {
-        status: true
+        status: true,
+        hospital_type: true // Added hospital_type
       }
     });
 
@@ -1374,7 +1395,8 @@ export const getReportStatistics = async (req, res, next) => {
       approved: 0,
       rejected: 0,
       total: 0,
-      pending: 0 // draft + submitted
+      pending: 0, // draft + submitted
+      by_hospital_type: {} // Statistics by hospital type
     };
 
     reports.forEach(report => {
@@ -1382,6 +1404,21 @@ export const getReportStatistics = async (req, res, next) => {
       stats.total++;
       if (report.status === 'draft' || report.status === 'submitted') {
         stats.pending++;
+      }
+      
+      // Count by hospital type
+      if (report.hospital_type) {
+        if (!stats.by_hospital_type[report.hospital_type]) {
+          stats.by_hospital_type[report.hospital_type] = {
+            count: 0,
+            draft: 0,
+            submitted: 0,
+            approved: 0,
+            rejected: 0
+          };
+        }
+        stats.by_hospital_type[report.hospital_type].count++;
+        stats.by_hospital_type[report.hospital_type][report.status]++;
       }
     });
 
@@ -1396,7 +1433,6 @@ export const getReportStatistics = async (req, res, next) => {
     response.error(error.message, res, next);
   }
 };
-
 
 // Add comment to report
 export const addComment = async (req, res, next) => {
@@ -1619,9 +1655,6 @@ export const getComments = async (req, res, next) => {
   }
 };
 
-
-
-
 // Add this function to handle approval hierarchy check
 const checkApprovalHierarchy = async (reportId, currentUserRole, currentUserId, prisma) => {
   // Get all approvals for this report
@@ -1707,7 +1740,12 @@ export const approveReport = async (req, res, next) => {
 
     // Get the report
     const report = await prisma.report.findUnique({
-      where: { id: parseInt(report_id) }
+      where: { id: parseInt(report_id) },
+      select: {
+        id: true,
+        status: true,
+        hospital_type: true // Added hospital_type
+      }
     });
 
     if (!report) {
@@ -1756,7 +1794,8 @@ export const approveReport = async (req, res, next) => {
       message: "Report approved successfully",
       approval: approval,
       report_updated: reportUpdated,
-      bypassed_lower_roles: hierarchyCheck.bypassedLowerRoles
+      bypassed_lower_roles: hierarchyCheck.bypassedLowerRoles,
+      hospital_type: report.hospital_type // Added hospital_type
     }, res);
 
   } catch (error) {

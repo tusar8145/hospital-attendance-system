@@ -176,7 +176,7 @@ function ReportList() {
     } finally {
       setLoadingStats(false);
     }
-  }, [filters.month, filters.year, hospital?.id]);
+  }, [filters,filters.month, filters.year, hospital?.id]);
 
   // Initial load
   useEffect(() => {
@@ -195,6 +195,7 @@ function ReportList() {
   // Fetch data when filters change
   useEffect(() => {
     fetchReports();
+	fetchStatistics();
     // Only fetch statistics when month/year changes, not when status changes
   }, [filters.month, filters.year, filters.status]);
 
