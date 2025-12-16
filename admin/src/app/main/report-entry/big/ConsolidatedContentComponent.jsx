@@ -735,7 +735,7 @@ const ConsolidatedContentComponent = ({
                 color: "#2c3e50",
                 minWidth: '100px'
               }}>
-                小計
+                合計
               </TableCell>
               <TableCell sx={{ 
                 backgroundColor: "#F9FAFB",

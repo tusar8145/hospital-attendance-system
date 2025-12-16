@@ -63,35 +63,80 @@ export const MainContentSection = ({
             }}
           />
         );
-      case 'approved':
-        return (
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="caption" fontWeight={500} color="primary">
-              確認済み
-            </Typography>
-            <Box
-              sx={{
-                width: 16,
-                height: 16,
-                bgcolor: "primary.main",
-                borderRadius: "4.8px",
-                border: 0.8,
-                borderColor: "primary.main",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <CheckCircle
-                sx={{
-                  width: "70%",
-                  height: "70%",
-                  color: "white",
-                }}
-              />
-            </Box>
-          </Stack>
-        );
+case 'approved':
+  return (
+    <Box sx={{ position: 'relative' }}>
+      <Stack 
+        direction="row" 
+        spacing={1} 
+        alignItems="center"
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+
+                  <Chip
+            label="確認済み"
+            size="small"
+            sx={{
+              bgcolor: "#0bb53014",
+              color: "#0bb530ff",
+              border: 1,
+              borderColor: "#0bb530ff",
+              fontWeight: 500,
+              fontSize: "0.75rem",
+            }}
+          />
+
+ 
+        <Box
+          sx={{
+            width: 18,
+            height: 18,
+            bgcolor: "primary.main",
+            borderRadius: "4px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: 'relative',
+            overflow: 'visible',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: '4px',
+              border: '2px solid',
+              borderColor: 'primary.main',
+              animation: 'ripple 2s infinite',
+              zIndex: -1,
+            },
+            '@keyframes ripple': {
+              '0%': {
+                transform: 'scale(1)',
+                opacity: 1,
+              },
+              '100%': {
+                transform: 'scale(1.8)',
+                opacity: 0,
+              },
+            },
+          }}
+        >
+          <CheckCircle
+            sx={{
+              width: "75%",
+              height: "75%",
+              color: "white",
+            }}
+          />
+        </Box>
+      </Stack>
+    </Box>
+  );
       case 'rejected':
         return (
           <Chip

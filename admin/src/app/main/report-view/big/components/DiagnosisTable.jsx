@@ -7,7 +7,7 @@ const DiagnosisTable = ({ diagnosisData = {} }) => {
   // Generate additional empty columns
   const additionalColumns = Array.from({ length: 25 }, (_, i) => ({
     id: i + 1,
-    label: `C${i + 5}`,
+    label: `${i}`,
     data: { morning: [], afternoon: [], night: [] }
   }));
 
@@ -45,9 +45,9 @@ const DiagnosisTable = ({ diagnosisData = {} }) => {
                   </div>
                 </td>
                 
-                {/* Empty column */}
+                {/* Empty column - WHITE BACKGROUND, BLACK TEXT */}
                 <td 
-                  className="border border-gray-200 bg-gray-100 p-1"
+                  className="border border-gray-200 bg-white text-black p-1"
                   rowSpan="2"
                   style={{ width: '40px' }}
                 >
@@ -56,35 +56,35 @@ const DiagnosisTable = ({ diagnosisData = {} }) => {
                   </div>
                 </td>
                 
-                {/* Department headers */}
+                {/* Department headers - WHITE BACKGROUND, BLACK TEXT */}
                 {departments.slice(0, 2).map((dept, index) => (
                   <td 
                     key={`dept-${index}`}
-                    className={`border border-gray-200 ${getColorClass(index)} text-white font-bold p-1`}
+                    className="border border-gray-200 bg-white text-black font-bold p-1"
                     style={{ width: '40px' }}
                   >
-                    <div className="text-[10px]">{dept}</div>
+                    <div className="text-[10px]">1</div>
                   </td>
                 ))}
                 
-                {/* Additional columns */}
+                {/* Additional columns - WHITE BACKGROUND, BLACK TEXT */}
                 {additionalColumns.map((col) => (
                   <td
                     key={`header-${col.id}`}
-                    className="border border-gray-200 bg-purple-600 text-white font-bold p-1"
+                    className="border border-gray-200 bg-white text-black font-bold p-1"
                     style={{ width: '30px' }}
                   >
-                    <div className="text-[10px]">{col.label}</div>
+                    <div className="text-[10px]">{col.id + 1}</div>
                   </td>
                 ))}
               </tr>
               
-              {/* Row 2 - Sub-headers */}
+              {/* Row 2 - Sub-headers - GRAY BACKGROUND */}
               <tr className="text-center">
                 {departments.slice(0, 2).map((dept, index) => (
                   <td 
                     key={`subheader-${dept}`}
-                    className={`border border-gray-200 ${getLightColorClass(index)} text-white font-semibold p-1`}
+                    className="border border-gray-200 bg-gray-400 font-semibold p-1"
                     style={{ width: '40px' }}
                   >
                     <div className="text-[10px]">{dept}</div>
@@ -94,7 +94,7 @@ const DiagnosisTable = ({ diagnosisData = {} }) => {
                 {additionalColumns.map((col) => (
                   <td
                     key={`subheader-${col.id}`}
-                    className="border border-gray-200 bg-purple-500 text-white font-semibold p-1"
+                    className="border border-gray-200 bg-gray-400 font-semibold p-1"
                     style={{ width: '30px' }}
                   >
                     <div className="text-[10px]">-</div>

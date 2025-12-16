@@ -28,6 +28,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
 import ConsolidatedContentComponent from './ConsolidatedContentComponent';
 import ShiftNursesSection from './ShiftNursesSection';
+import axios from 'axios';
+import apiConfig from '../../../configs/apiConfig';
 
 const FrameScreen = React.memo(({
   formData = null,
@@ -77,6 +79,15 @@ const FrameScreen = React.memo(({
   const [specialNotes, setSpecialNotes] = useState("");
   const [consolidatedData, setConsolidatedData] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
+  
+  // New states for read-only stats (for morning, afternoon, duty)
+  const [monthlyCumulativeStats, setMonthlyCumulativeStats] = useState({
+    morningClinic: 0,
+    afternoonClinic: 0,
+    onDuty: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState(null);
 
   // Field configuration for duty staff section
   const fieldData = [
@@ -118,6 +129,79 @@ const FrameScreen = React.memo(({
     },
   ];
 
+  // Fetch read-only stats when date or hospitalId changes
+  useEffect(() => {
+    if (hospitalId && date) {
+      fetchReadOnlyStats();
+    }
+  }, [hospitalId, date]);
+
+  // Format date for API (YYYY-MM-DD)
+  const formatDateForAPI = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Fetch read-only statistics from API
+  const fetchReadOnlyStats = async () => {
+    if (!hospitalId) return;
+    
+    setStatsLoading(true);
+    setStatsError(null);
+    
+    try {
+      const response = await axios.post(`${apiConfig.baseURL}/report/read-only-stats`, {
+        date: formatDateForAPI(date),
+        hospital_id: hospitalId
+      });
+
+      if (response.data.success) {
+        const { monthlyCumulative } = response.data.data;
+        
+        // Update the read-only fields with monthly cumulative values
+        setMonthlyCumulativeStats({
+          morningClinic: monthlyCumulative.morningClinic || 0,
+          afternoonClinic: monthlyCumulative.afternoonClinic || 0,
+          onDuty: monthlyCumulative.onDuty || 0
+        });
+        
+        // Set the external doctors fields to display monthly cumulative values
+        setExternalDoctors({
+          morning: monthlyCumulative.morningClinic?.toString() || "0",
+          afternoon: monthlyCumulative.afternoonClinic?.toString() || "0",
+          duty: monthlyCumulative.onDuty?.toString() || "0"
+        });
+        
+        // Notify parent component of form data change
+        if (onFormDataChange) {
+          const currentFormData = prepareFormData();
+          onFormDataChange(currentFormData);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching read-only stats:', error);
+      setStatsError('統計データの取得に失敗しました');
+      
+      // Reset to 0 on error
+      setExternalDoctors({
+        morning: "0",
+        afternoon: "0",
+        duty: "0"
+      });
+      
+      setMonthlyCumulativeStats({
+        morningClinic: 0,
+        afternoonClinic: 0,
+        onDuty: 0
+      });
+    } finally {
+      setStatsLoading(false);
+    } 
+  };
+
   // Initialize form when formData changes
   useEffect(() => {
     if (formData) {
@@ -133,14 +217,17 @@ const FrameScreen = React.memo(({
     setAdmissionCount(data.admission_count?.toString() || "0");
     setDischargeCount(data.discharge_count?.toString() || "0");
     
-    // External doctors
-    setExternalDoctors({
-      morning: data.external_morning?.toString() || "0",
-      afternoon: data.external_afternoon?.toString() || "0",
-      duty: data.external_duty?.toString() || "0"
-    });
+    // External doctors - DO NOT override with form data when we have monthly stats
+    // Only set from form data if we haven't fetched stats yet
+    if (!statsLoading && monthlyCumulativeStats.morningClinic === 0) {
+      setExternalDoctors({
+        morning: data.external_morning?.toString() || "0",
+        afternoon: data.external_afternoon?.toString() || "0",
+        duty: data.external_duty?.toString() || "0"
+      });
+    }
     
-    // External consultation
+    // External consultation (now free text fields)
     setExternalConsultation({
       emergencyTransport: data.emergency_transport?.toString() || "0",
       postTransportAdmission: data.post_transport_admission?.toString() || "0",
@@ -225,8 +312,12 @@ const FrameScreen = React.memo(({
   const resetForm = () => {
     setAdmissionCount("0");
     setDischargeCount("0");
-    setExternalDoctors({ morning: "0", afternoon: "0", duty: "0" });
-    setExternalConsultation({ emergencyTransport: "0", postTransportAdmission: "0", visit: "0" });
+    // Don't reset external doctors as they are read-only
+    setExternalConsultation({ 
+      emergencyTransport: "0", 
+      postTransportAdmission: "0", 
+      visit: "0" 
+    });
     setShiftNurses({ 
       earlyNight: [{ id: Date.now() + Math.random(), name: "" }],
       lateNight: [{ id: Date.now() + Math.random(), name: "" }]
@@ -283,12 +374,17 @@ const FrameScreen = React.memo(({
       errors.dischargeCount = "Valid discharge count is required";
     }
     
+    // External consultation validation (now free text)
     if (!externalConsultation.emergencyTransport || isNaN(parseInt(externalConsultation.emergencyTransport))) {
       errors.emergencyTransport = "Valid emergency transport count is required";
     }
     
     if (!externalConsultation.postTransportAdmission || isNaN(parseInt(externalConsultation.postTransportAdmission))) {
-      errors.postTransportAdmission = "Valid post-transport admission count is required";
+      errors.postTransportAdmission = "Valid post transport admission count is required";
+    }
+    
+    if (!externalConsultation.visit || isNaN(parseInt(externalConsultation.visit))) {
+      errors.visit = "Valid visit count is required";
     }
     
     // Validate shift nurses (at least one per shift)
@@ -374,7 +470,8 @@ const FrameScreen = React.memo(({
       special_notes: specialNotes.trim(),
       shift_nurses: shiftNursesData,
       duty_staff: dutyStaffData,
-      report_details: filteredConsolidatedData
+      report_details: filteredConsolidatedData,
+      hospital_type: 'large_hospital',
     };
   };
 
@@ -394,7 +491,7 @@ const FrameScreen = React.memo(({
     }
   };
 
-  // Handler functions for form fields
+  // Handler functions for form fields with select all on focus
   const handleAdmissionChange = (e) => {
     const value = e.target.value;
     if (/^\d*$/.test(value)) {
@@ -406,6 +503,11 @@ const FrameScreen = React.memo(({
         setValidationErrors(newErrors);
       }
     }
+  };
+
+  // Handle focus event to select all text
+  const handleFocusSelect = (e) => {
+    e.target.select();
   };
 
   const handleDischargeChange = (e) => {
@@ -427,10 +529,14 @@ const FrameScreen = React.memo(({
     }
   };
 
+  // Handle external consultation change (now free text)
   const handleEmergencyTransportChange = (e) => {
     const value = e.target.value;
     if (/^\d*$/.test(value)) {
-      setExternalConsultation(prev => ({ ...prev, emergencyTransport: value }));
+      setExternalConsultation(prev => ({ 
+        ...prev, 
+        emergencyTransport: value 
+      }));
       // Clear error if fixed
       if (validationErrors.emergencyTransport && value && !isNaN(parseInt(value))) {
         const newErrors = { ...validationErrors };
@@ -443,7 +549,10 @@ const FrameScreen = React.memo(({
   const handlePostTransportAdmissionChange = (e) => {
     const value = e.target.value;
     if (/^\d*$/.test(value)) {
-      setExternalConsultation(prev => ({ ...prev, postTransportAdmission: value }));
+      setExternalConsultation(prev => ({ 
+        ...prev, 
+        postTransportAdmission: value 
+      }));
       // Clear error if fixed
       if (validationErrors.postTransportAdmission && value && !isNaN(parseInt(value))) {
         const newErrors = { ...validationErrors };
@@ -456,7 +565,16 @@ const FrameScreen = React.memo(({
   const handleVisitChange = (e) => {
     const value = e.target.value;
     if (/^\d*$/.test(value)) {
-      setExternalConsultation(prev => ({ ...prev, visit: value }));
+      setExternalConsultation(prev => ({ 
+        ...prev, 
+        visit: value 
+      }));
+      // Clear error if fixed
+      if (validationErrors.visit && value && !isNaN(parseInt(value))) {
+        const newErrors = { ...validationErrors };
+        delete newErrors.visit;
+        setValidationErrors(newErrors);
+      }
     }
   };
 
@@ -755,6 +873,43 @@ const FrameScreen = React.memo(({
           </Alert>
         )}
 
+        {/* Stats Loading Indicator */}
+        {statsLoading && (
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mb: 2,
+              '& .MuiAlert-message': {
+                width: '100%'
+              }
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={20} />
+              <Typography sx={{ fontSize: fontSize.small }}>
+                統計データを読み込み中...
+              </Typography>
+            </Box>
+          </Alert>
+        )}
+
+        {/* Stats Error */}
+        {statsError && !statsLoading && (
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              mb: 2,
+              '& .MuiAlert-message': {
+                width: '100%'
+              }
+            }}
+          >
+            <Typography sx={{ fontSize: fontSize.small }}>
+              {statsError}
+            </Typography>
+          </Alert>
+        )}
+
         {/* Emergency Statistics Section */}
         <Paper
           elevation={0}
@@ -787,7 +942,7 @@ const FrameScreen = React.memo(({
                   backgroundColor: '#3498db',
                   borderRadius: '2px'
                 }} />
-                緊急統計
+                入院
               </Typography>
               <Tooltip title="入院・退院に関する統計情報">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
@@ -814,6 +969,7 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={admissionCount}
                     onChange={handleAdmissionChange}
+                    onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -859,6 +1015,7 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={dischargeCount}
                     onChange={handleDischargeChange}
+                    onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -887,7 +1044,7 @@ const FrameScreen = React.memo(({
           </Stack>
         </Paper>
 
-        {/* External Doctors Section */}
+        {/* External Doctors Section - NOW READ-ONLY */}
         <Paper
           elevation={0}
           sx={{
@@ -919,18 +1076,18 @@ const FrameScreen = React.memo(({
                   backgroundColor: '#2ecc71',
                   borderRadius: '2px'
                 }} />
-                外来診療
+                外来
               </Typography>
-              <Tooltip title="外来診療の患者数">
+              <Tooltip title="外来診療の患者数（月間累積・読み取り専用）">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>
 
             <Grid container spacing={isMobile ? 2 : 3}>
               {[
-                { field: 'morning', label: '午前診', color: '#3498db' },
-                { field: 'afternoon', label: '午後診', color: '#9b59b6' },
-                { field: 'duty', label: '当直', color: '#e74c3c' }
+                { field: 'morning', label: '午前診', color: '#3498db', apiField: 'morningClinic' },
+                { field: 'afternoon', label: '午後診', color: '#9b59b6', apiField: 'afternoonClinic' },
+                { field: 'duty', label: '当直', color: '#e74c3c', apiField: 'onDuty' }
               ].map((item, index) => (
                 <Grid item xs={12} sm={4} key={item.field}>
                   <Stack spacing={1}>
@@ -940,7 +1097,7 @@ const FrameScreen = React.memo(({
                       color: "#6b7280",
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 1
+                      gap: 0.5
                     }}>
                       <Box sx={{ 
                         width: 12, 
@@ -949,31 +1106,49 @@ const FrameScreen = React.memo(({
                         backgroundColor: item.color
                       }} />
                       {item.label}
+                      <Typography component="span" sx={{ color: "#666", fontSize: fontSize.small, fontWeight: 400 }}>
+                        (月間累積)
+                      </Typography>
                     </Typography>
                     <TextField
                       value={externalDoctors[item.field]}
-                      onChange={(e) => handleExternalDoctorChange(item.field, e.target.value)}
                       variant="outlined"
                       fullWidth
                       size="small"
-                      InputProps={{
-                        sx: {
+                      disabled
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
                           borderRadius: "8px",
-                          bgcolor: "#f8f9fa",
+                          bgcolor: "#f5f5f5",
                           height: textFieldHeight,
-                          "& .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#dfe1e7",
+                          "& fieldset": { 
+                            borderColor: "#e0e0e0",
                           },
                           "& input": {
                             fontSize: fontSize.medium,
                             textAlign: 'right',
                             paddingRight: 2,
                             fontWeight: 600,
-                            color: "#2c3e50"
+                            color: "#2c3e50",
                           },
+                          "&.Mui-disabled": {
+                            "& input": {
+                              color: "#2c3e50",
+                              WebkitTextFillColor: "#2c3e50",
+                            }
+                          }
                         },
                       }}
                     />
+                    {statsLoading ? (
+                      <Typography sx={{ fontSize: fontSize.small, color: '#666', fontStyle: 'italic' }}>
+                        データ読み込み中...
+                      </Typography>
+                    ) : (
+                      <Typography sx={{ fontSize: fontSize.small, color: '#666', fontStyle: 'italic' }}>
+                        月間累積: {monthlyCumulativeStats[item.apiField] || 0}件
+                      </Typography>
+                    )}
                   </Stack>
                 </Grid>
               ))}
@@ -981,7 +1156,7 @@ const FrameScreen = React.memo(({
           </Stack>
         </Paper>
 
-        {/* External Consultation Section */}
+        {/* External Consultation Section - NOW FREE TEXT */}
         <Paper
           elevation={0}
           sx={{
@@ -1013,7 +1188,7 @@ const FrameScreen = React.memo(({
                   backgroundColor: '#e74c3c',
                   borderRadius: '2px'
                 }} />
-                緊急・訪問診療
+                緊急
               </Typography>
               <Tooltip title="緊急搬入・訪問診療に関する情報">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
@@ -1021,7 +1196,7 @@ const FrameScreen = React.memo(({
             </Box>
 
             <Grid container spacing={isMobile ? 2 : 3}>
-              {/* Emergency Transport */}
+              {/* Emergency Transport - FREE TEXT */}
               <Grid item xs={12} sm={6} md={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
@@ -1038,26 +1213,28 @@ const FrameScreen = React.memo(({
                     </Typography>
                   </Typography>
                   <TextField
-                    fullWidth
                     value={externalConsultation.emergencyTransport}
                     onChange={handleEmergencyTransportChange}
+                    onFocus={handleFocusSelect}
                     variant="outlined"
+                    fullWidth
                     size="small"
                     error={!!validationErrors.emergencyTransport}
                     helperText={validationErrors.emergencyTransport}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        bgcolor: "#ffffff",
+                    InputProps={{
+                      sx: {
                         borderRadius: "8px",
+                        bgcolor: "#ffffff",
                         height: textFieldHeight,
-                        "& fieldset": { 
-                          borderColor: validationErrors.emergencyTransport ? "#df1c41" : "#dfe1e7" 
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: validationErrors.emergencyTransport ? "#df1c41" : "#dfe1e7",
                         },
                         "& input": {
                           fontSize: fontSize.medium,
                           textAlign: 'right',
                           paddingRight: 2,
-                          fontWeight: 500
+                          fontWeight: 500,
+                          color: "#2c3e50",
                         },
                       },
                     }}
@@ -1065,7 +1242,7 @@ const FrameScreen = React.memo(({
                 </Stack>
               </Grid>
 
-              {/* Post Transport Admission */}
+              {/* Post Transport Admission - FREE TEXT */}
               <Grid item xs={12} sm={6} md={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
@@ -1082,26 +1259,28 @@ const FrameScreen = React.memo(({
                     </Typography>
                   </Typography>
                   <TextField
-                    fullWidth
                     value={externalConsultation.postTransportAdmission}
                     onChange={handlePostTransportAdmissionChange}
+                    onFocus={handleFocusSelect}
                     variant="outlined"
+                    fullWidth
                     size="small"
                     error={!!validationErrors.postTransportAdmission}
                     helperText={validationErrors.postTransportAdmission}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        bgcolor: "#ffffff",
+                    InputProps={{
+                      sx: {
                         borderRadius: "8px",
+                        bgcolor: "#ffffff",
                         height: textFieldHeight,
-                        "& fieldset": { 
-                          borderColor: validationErrors.postTransportAdmission ? "#df1c41" : "#dfe1e7" 
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: validationErrors.postTransportAdmission ? "#df1c41" : "#dfe1e7",
                         },
                         "& input": {
                           fontSize: fontSize.medium,
                           textAlign: 'right',
                           paddingRight: 2,
-                          fontWeight: 500
+                          fontWeight: 500,
+                          color: "#2c3e50",
                         },
                       },
                     }}
@@ -1109,33 +1288,45 @@ const FrameScreen = React.memo(({
                 </Stack>
               </Grid>
 
-              {/* Visit */}
+              {/* Visit - FREE TEXT */}
               <Grid item xs={12} sm={12} md={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
                     fontSize: fontSize.medium,
                     fontWeight: 600, 
-                    color: "#6b6f82"
+                    color: "#36394a",
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5
                   }}>
-                    訪問診療
+                    訪問 
+                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
+                      *
+                    </Typography>
                   </Typography>
                   <TextField
-                    fullWidth
                     value={externalConsultation.visit}
                     onChange={handleVisitChange}
+                    onFocus={handleFocusSelect}
                     variant="outlined"
+                    fullWidth
                     size="small"
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        bgcolor: "#ffffff",
+                    error={!!validationErrors.visit}
+                    helperText={validationErrors.visit}
+                    InputProps={{
+                      sx: {
                         borderRadius: "8px",
+                        bgcolor: "#ffffff",
                         height: textFieldHeight,
-                        "& fieldset": { borderColor: "#dfe1e7" },
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: validationErrors.visit ? "#df1c41" : "#dfe1e7",
+                        },
                         "& input": {
                           fontSize: fontSize.medium,
                           textAlign: 'right',
                           paddingRight: 2,
-                          fontWeight: 500
+                          fontWeight: 500,
+                          color: "#2c3e50",
                         },
                       },
                     }}
@@ -1190,7 +1381,7 @@ const FrameScreen = React.memo(({
                   backgroundColor: '#3498db',
                   borderRadius: '2px'
                 }} />
-                当直スタッフ
+                当直
               </Typography>
               <Tooltip title="部署別の当直スタッフ配置">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
@@ -1435,7 +1626,7 @@ const FrameScreen = React.memo(({
               color="primary"
               startIcon={isSavingDraft ? <CircularProgress size={20} /> : <SaveIcon />}
               onClick={handleSaveDraftClick}
-              disabled={isSavingDraft || isSubmitting || loading}
+              disabled={isSavingDraft || isSubmitting || loading || statsLoading}
               size="large"
               sx={{
                 minWidth: isMobile ? '100%' : '140px',
@@ -1454,7 +1645,7 @@ const FrameScreen = React.memo(({
               color="primary"
               startIcon={isSubmitting ? <CircularProgress size={20} /> : <SendIcon />}
               onClick={handleSubmitClick}
-              disabled={isSubmitting || isSavingDraft || loading}
+              disabled={isSubmitting || isSavingDraft || loading || statsLoading}
               size="large"
               sx={{
                 minWidth: isMobile ? '100%' : '160px',

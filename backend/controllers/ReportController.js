@@ -1803,3 +1803,195 @@ export const approveReport = async (req, res, next) => {
     response.error(error.message, res, next);
   }
 };
+
+// Update the getReadOnlyStats function in ReportController.js
+export const getReadOnlyStats = async (req, res, next) => {
+  try {
+    const { date, hospital_id } = req.body;
+    
+    if (!date || !hospital_id) {
+      return response.error("Date and hospital_id are required", res, next);
+    }
+
+    const reportDate = new Date(date);
+    const hospitalId = parseInt(hospital_id);
+    
+    // Get the start and end of the month for the given date
+    const startOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
+    const endOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
+    
+    // Calculate the start and end of the year
+    const startOfYear = new Date(reportDate.getFullYear(), 0, 1);
+    const endOfYear = new Date(reportDate.getFullYear(), 11, 31);
+    
+    // Fetch all reports for this hospital for the current month (excluding draft/rejected)
+    const monthlyReports = await prisma.report.findMany({
+      where: {
+        medical_center_id: hospitalId,
+        report_date: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        },
+        status: {
+          notIn: ['draft', 'rejected']
+        }
+      },
+      include: {
+        report_details: {
+          where: {
+            consultation_type: {
+              in: ['morning', 'afternoon', 'night']
+            }
+          },
+          select: {
+            consultation_type: true,
+            patient_count: true
+          }
+        }
+      }
+    });
+    
+    // Fetch all reports for this hospital for the current year (excluding draft/rejected)
+    const yearlyReports = await prisma.report.findMany({
+      where: {
+        medical_center_id: hospitalId,
+        report_date: {
+          gte: startOfYear,
+          lte: endOfYear
+        },
+        status: {
+          notIn: ['draft', 'rejected']
+        }
+      },
+      include: {
+        report_details: {
+          where: {
+            consultation_type: {
+              in: ['morning', 'afternoon', 'night']
+            }
+          },
+          select: {
+            consultation_type: true,
+            patient_count: true
+          }
+        }
+      }
+    });
+    
+    // Helper function to calculate statistics
+    const calculateStats = (reports, excludeCurrentDate = false, currentDate = null) => {
+      const stats = {
+        morningClinic: 0, // 緊急搬入数 (sum of morning patient_count)
+        afternoonClinic: 0, // 搬入後入院件数 (sum of afternoon patient_count)
+        onDuty: 0, // 訪問診療 (sum of night patient_count)
+        totalPatientCount: 0
+      };
+      
+      reports.forEach(report => {
+        // If excludeCurrentDate is true, skip the report for the current date
+        if (excludeCurrentDate && currentDate && 
+            report.report_date.getDate() === currentDate.getDate() &&
+            report.report_date.getMonth() === currentDate.getMonth() &&
+            report.report_date.getFullYear() === currentDate.getFullYear()) {
+          return; // Skip this report (current day)
+        }
+        
+        if (report.report_details && report.report_details.length > 0) {
+          report.report_details.forEach(detail => {
+            const patientCount = detail.patient_count || 0;
+            stats.totalPatientCount += patientCount;
+            
+            switch(detail.consultation_type) {
+              case 'morning':
+                stats.morningClinic += patientCount;
+                break;
+              case 'afternoon':
+                stats.afternoonClinic += patientCount;
+                break;
+              case 'night':
+                stats.onDuty += patientCount;
+                break;
+            }
+          });
+        }
+      });
+      
+      return stats;
+    };
+    
+    // Calculate monthly cumulative stats (from start of month up to previous day)
+    const monthlyCumulativeStats = calculateStats(monthlyReports, true, reportDate);
+    
+    // Calculate full month stats (including current day if it exists)
+    const monthlyStats = calculateStats(monthlyReports);
+    
+    // Calculate yearly stats
+    const yearlyStats = calculateStats(yearlyReports);
+    
+    // Also get the existing report for this specific date (if it exists and is not draft/rejected)
+    const existingReport = await prisma.report.findFirst({
+      where: {
+        medical_center_id: hospitalId,
+        report_date: reportDate,
+        status: {
+          notIn: ['draft', 'rejected']
+        }
+      },
+      include: {
+        report_details: {
+          where: {
+            consultation_type: {
+              in: ['morning', 'afternoon', 'night']
+            }
+          },
+          select: {
+            consultation_type: true,
+            patient_count: true
+          }
+        }
+      }
+    });
+    
+    // Calculate daily stats from the existing report
+    let dailyStats = {
+      morningClinic: 0,
+      afternoonClinic: 0,
+      onDuty: 0
+    };
+    
+    if (existingReport && existingReport.report_details.length > 0) {
+      existingReport.report_details.forEach(detail => {
+        const patientCount = detail.patient_count || 0;
+        switch(detail.consultation_type) {
+          case 'morning':
+            dailyStats.morningClinic = patientCount;
+            break;
+          case 'afternoon':
+            dailyStats.afternoonClinic = patientCount;
+            break;
+          case 'night':
+            dailyStats.onDuty = patientCount;
+            break;
+        }
+      });
+    }
+    
+    response.success({
+      success: true,
+      data: {
+        daily: dailyStats,
+        monthlyCumulative: monthlyCumulativeStats, // Cumulative up to previous day
+        monthlyTotal: monthlyStats, // Full month including current day
+        yearly: yearlyStats,
+        hasExistingReport: !!existingReport,
+        reportDate: reportDate.toISOString().split('T')[0],
+        month: reportDate.getMonth() + 1,
+        year: reportDate.getFullYear()
+      }
+    }, res);
+
+  } catch (error) {
+    console.error('Error in getReadOnlyStats:', error);
+    response.error(error.message, res, next);
+  }
+};

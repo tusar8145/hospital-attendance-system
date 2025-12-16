@@ -23,4 +23,6 @@ router.put("/report/comment/:id", auth, ReportController.editComment);
 router.delete("/report/comment/:id", auth, ReportController.deleteComment);
 router.post("/report/comments", auth, ReportController.getComments);
 
+router.post("/report/read-only-stats", auth, ReportController.getReadOnlyStats);
+
 export { router as ReportRoute };

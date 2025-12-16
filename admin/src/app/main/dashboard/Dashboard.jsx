@@ -112,7 +112,18 @@ function Report() {
 				/>
 			}
 			content={
-				<div className="flex flex-col p-16 sm:p-24 container">
+			
+			<></> }
+
+			 
+		/>
+	);
+}
+
+export default Report;
+
+
+				{/*<div className="flex flex-col p-16 sm:p-24 container">
 					{successAlert != null && <Alert severity="success" className="text-sm">{t(successAlert)}.</Alert>}
 					{failAlert != null && <Alert severity="error" className="text-sm">{t(failAlert)}.</Alert>}
 
@@ -169,18 +180,18 @@ function Report() {
 
 
 					<div className="flex flex-col lg:flex-row gap-0 mt-40">
-						{/* 左侧区域 - 40% */}
+						{/* 左侧区域 - 40% * /}
 						<div className="lg:w-4/12">
 							<div className=" p-0 h-full">
 								<div className="flex flex-col h-full gap-4">
-									{/* 第一行: 管理日誌标题 */}
+									{/* 第一行: 管理日誌标题 * /}
 									<div className=" p-0  bg-transparent mb-20">
 										<h3 className="text-3xl font-bold text-gray-800">令和〇〇年○○月○○日（曜日）</h3>
 										<p className="text-xl font-bold text-gray-800">施設名</p>
 										<hr />
 									</div>
 
-									{/* 第二行: 空区域 */}
+									{/* 第二行: 空区域 * /}
 									<div className=" p-0  bg-transparent flex-1">
 										<div className="h-full flex justify-center">
 											<div className="text-center w-full">
@@ -192,7 +203,7 @@ function Report() {
 							</div>
 						</div>
 
-						{/* 中间区域 - 20% */}
+						{/* 中间区域 - 20% * /}
 						<div className="lg:w-2/12">
 							<div className="p-0   h-full">
 								<div className="h-full flex justify-center">
@@ -203,11 +214,11 @@ function Report() {
 							</div>
 						</div>
 						<div className="lg:w-1/12"></div>
-						{/* 右侧区域 - 40% */}
+						{/* 右侧区域 - 40% * /}
 						<div className="lg:w-5/12">
 							<div className="p-0 h-full ml-0">
 								<div className="flex flex-col h-full gap-4">
-									{/* 第一行: 单个区域 */}
+									{/* 第一行: 单个区域 * /}
 									<div className="p-0  bg-transparent h-1/2">
 										<div className="h-full flex justify-center">
 											<div className="text-center w-full">
@@ -216,9 +227,9 @@ function Report() {
 										</div>
 									</div>
 
-									{/* 第二行: 两个50%的并排区域 */}
+									{/* 第二行: 两个50%的并排区域 * /}
 									<div className="flex gap-4 h-1/2">
-										{/* 左侧50% */}
+										{/* 左侧50% * /}
 										<div className="w-2/6 p-0  bg-transparent">
 											<div className="h-full flex justify-left">
 												<div className="text-center w-full">
@@ -228,7 +239,7 @@ function Report() {
 										</div>
 										<div className="w-3/6 p-0  bg-transparent">
 										</div>
-										{/* 右侧50% */}
+										{/* 右侧50% * /}
 										<div className="w-1/6 p-0  bg-transparent">
 											<div className="h-full flex justify-end">
 												<div className="text-center w-full">
@@ -246,11 +257,11 @@ function Report() {
 
 
 					<div className="flex flex-col lg:flex-row gap-0 mt-40">
-						{/* 左侧区域 - 40% */}
+						{/* 左侧区域 - 40% * /}
 						<div className="lg:w-12/12">
 							<div className=" p-0 h-full">
 								<div className="flex flex-col h-full gap-4">
-									{/* 第二行: 空区域 */}
+									{/* 第二行: 空区域 * /}
 									<div className=" p-0  bg-transparent flex-1">
 										<div className="h-full flex justify-center">
 											<div className="text-center w-full">
@@ -266,11 +277,11 @@ function Report() {
 
 
 					<div className="flex flex-col lg:flex-row gap-0 mt-40">
-						{/* 左侧区域 - 40% */}
+						{/* 左侧区域 - 40% * /}
 						<div className="lg:w-12/12">
 							<div className=" p-0 h-full">
 								<div className="flex flex-col h-full gap-4">
-									{/* 第二行: 空区域 */}
+									{/* 第二行: 空区域 * /}
 									<div className=" p-0  bg-transparent flex-1">
 										<div className="h-full flex justify-center">
 											<div className="text-center w-full">
@@ -285,10 +296,4 @@ function Report() {
 					</div>
 
 
-				</div>
-			}
-		/>
-	);
-}
-
-export default Report;
+				</div>*/}

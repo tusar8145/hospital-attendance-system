@@ -77,11 +77,13 @@ const PatientCountTable = ({ patientData = {} }) => {
                   ></td>
                 ))}
                 
-                {/* Last empty column */}
+                {/* Last column header - 合計 */}
                 <td 
-                  className="border border-gray-200 bg-gray-100 p-1"
+                  className="border border-gray-200 bg-purple-600 text-white font-bold p-1"
                   style={{ width: '30px' }}
-                ></td>
+                >
+                  <div className="text-[10px]">合計</div>
+                </td>
               </tr>
               
               {/* Row 2: Morning Patients */}

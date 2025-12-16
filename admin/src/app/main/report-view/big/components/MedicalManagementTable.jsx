@@ -197,7 +197,7 @@ const MedicalManagementTable = () => {
                       <span className="block text-[10px] xs:text-xs sm:text-sm text-gray-600 mb-1">
                         当月緊急搬入数
                       </span>
-                      <span className="block text-base sm:text-lg lg:text-xl font-bold text-red-700">
+                      <span className="block text-base text-center sm:text-lg lg:text-xl font-bold text-red-700">
                         {emergencyData.monthly}
                       </span>
                     </div>
