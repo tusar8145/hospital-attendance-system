@@ -14,7 +14,8 @@ import {
   IconButton,
   Paper,
   Alert,
-  Tooltip
+  Tooltip,
+  Snackbar
 } from "@mui/material";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
@@ -91,10 +92,17 @@ const FrameScreen = React.memo(({
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
 
-  // NEW: Refs to track loading states and prevent flickering
+  // Refs to track loading states and prevent flickering
   const formDataLoadedRef = useRef(false);
   const statsLoadedRef = useRef(false);
-  const initialLoadCompleteRef = useRef(false);
+  const currentDateRef = useRef(date.toISOString().split('T')[0]);
+
+  // Local state for snackbar
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Format date for API (YYYY-MM-DD)
   const formatDateForAPI = (date) => {
@@ -109,9 +117,9 @@ const FrameScreen = React.memo(({
   const fetchReadOnlyStats = async () => {
     if (!hospitalId) return;
     
-    // Don't fetch stats if we already have form data loaded
+    // Don't fetch stats if we already have form data loaded for this date
     if (formDataLoadedRef.current) {
-      console.log('Skipping stats fetch - form data already loaded');
+      console.log('Skipping stats fetch - form data already loaded for date:', currentDateRef.current);
       return;
     }
     
@@ -144,6 +152,7 @@ const FrameScreen = React.memo(({
         }
         
         statsLoadedRef.current = true;
+        console.log('Stats loaded for date:', currentDateRef.current);
       }
     } catch (error) {
       console.error('Error fetching read-only stats:', error);
@@ -170,33 +179,48 @@ const FrameScreen = React.memo(({
 
   // Initialize form when formData changes - FIXED VERSION
   useEffect(() => {
-    console.log('FrameScreen: formData changed', formData, 'loading:', loading);
+    console.log('FrameScreen: formData changed for date:', currentDateRef.current, 'formData:', formData);
     
-    if (formData && Object.keys(formData).length > 0 && !initialLoadCompleteRef.current) {
-      console.log('Loading form data into FrameScreen');
+    const dateChanged = currentDateRef.current !== date.toISOString().split('T')[0];
+    
+    if (dateChanged) {
+      // Date has changed, reset everything
+      console.log('Date changed, resetting form');
+      resetForm();
+      currentDateRef.current = date.toISOString().split('T')[0];
+      formDataLoadedRef.current = false;
+      statsLoadedRef.current = false;
+    }
+    
+    if (formData && Object.keys(formData).length > 0) {
+      console.log('Loading form data into FrameScreen for date:', currentDateRef.current);
       loadFormData(formData);
       formDataLoadedRef.current = true;
-      initialLoadCompleteRef.current = true;
-    } else if (!formData && !initialLoadCompleteRef.current) {
-      console.log('No form data, initializing empty form');
-      resetForm();
-      initialLoadCompleteRef.current = true;
+    } else if (formData === null || Object.keys(formData).length === 0) {
+      console.log('No form data for date:', currentDateRef.current, 'resetting form');
+      if (!formDataLoadedRef.current) {
+        resetForm();
+      }
     }
-  }, [formData, loading]);
+  }, [formData, date]);
 
   // Fetch stats on mount - but only if we don't have form data
   useEffect(() => {
-    if (hospitalId && date && !formDataLoadedRef.current) {
-      console.log('Fetching read-only stats (no form data yet)');
-      fetchReadOnlyStats();
+    if (hospitalId && date) {
+      const currentDateKey = date.toISOString().split('T')[0];
+      
+      if (!formDataLoadedRef.current && currentDateKey === currentDateRef.current) {
+        console.log('Fetching read-only stats (no form data yet) for date:', currentDateKey);
+        fetchReadOnlyStats();
+      }
     }
-  }, [hospitalId, date]);
+  }, [hospitalId, date, formDataLoadedRef.current]);
 
   // Load form data from existing report - COMPLETE VERSION
   const loadFormData = (data) => {
-    console.log('Loading form data:', data);
+    console.log('Loading form data for date:', currentDateRef.current, 'data:', data);
     
-    // Mark that we've loaded form data
+    // Mark that we've loaded form data for this date
     formDataLoadedRef.current = true;
     
     // Basic stats - always load from form data
@@ -204,7 +228,6 @@ const FrameScreen = React.memo(({
     setDischargeCount(data.discharge_count?.toString() || "0");
     
     // External doctors - ALWAYS load from form data when we have it
-    // This overrides any stats data
     setExternalDoctors({
       morning: data.external_morning?.toString() || "0",
       afternoon: data.external_afternoon?.toString() || "0",
@@ -302,44 +325,65 @@ const FrameScreen = React.memo(({
     setSpecialNotes(data.special_notes || "");
     
     // Consolidated data from report_details
-    // IMPORTANT: Only update if we have data, otherwise keep existing
     if (data.report_details && Array.isArray(data.report_details) && data.report_details.length > 0) {
-      console.log('Setting consolidated data:', data.report_details);
+      console.log('Setting consolidated data from form data:', data.report_details.length, 'items');
       setConsolidatedData(data.report_details);
     } else {
-      console.log('No consolidated data in form data');
-      // Keep existing consolidated data
+      console.log('No consolidated data in form data - setting empty array');
+      setConsolidatedData([]);
     }
     
     // Clear validation errors when loading data
     setValidationErrors({});
     
-    console.log('Form data loading complete');
+    console.log('Form data loading complete for date:', currentDateRef.current);
   };
 
-  // Reset form to initial state (only basic fields, not consolidated data)
+  // Reset form to initial state (complete reset)
   const resetForm = () => {
-    console.log('Resetting form');
+    console.log('Resetting form completely for date:', currentDateRef.current);
     setAdmissionCount("0");
     setDischargeCount("0");
-    // External doctors will be set by stats fetch
+    
+    // Reset external doctors
+    setExternalDoctors({
+      morning: "0",
+      afternoon: "0",
+      duty: "0"
+    });
+    
     setExternalConsultation({ 
       emergencyTransport: "0", 
       postTransportAdmission: "0", 
       visit: "0" 
     });
+    
     setShiftNurses({ 
       earlyNight: [{ id: Date.now() + 1, name: "" }],
       lateNight: [{ id: Date.now() + 2, name: "" }]
     });
+    
     setCurrentStatus({ 
       firstRow: Array(21).fill(""), 
       secondRow: Array(21).fill(""),
       thirdRow: Array(21).fill("")
     });
+    
     setSpecialNotes("");
-    // IMPORTANT: DO NOT reset consolidatedData here
+    
+    // IMPORTANT: Reset consolidated data to empty array
+    setConsolidatedData([]);
+    
     setValidationErrors({});
+    
+    // Reset monthly stats too
+    setMonthlyCumulativeStats({
+      morningClinic: 0,
+      afternoonClinic: 0,
+      onDuty: 0
+    });
+    
+    console.log('Form reset complete for date:', currentDateRef.current);
   };
 
   // Format date for display
@@ -354,73 +398,98 @@ const FrameScreen = React.memo(({
   const handlePreviousDay = () => { 
     const newDate = new Date(date);
     newDate.setDate(newDate.getDate() - 1);
+    
+    if (shouldDisableDate(newDate)) {
+      setSnackbar({
+        open: true,
+        message: '過去の日付に移動できません',
+        severity: 'warning'
+      });
+      return;
+    }
+    
     setDate(newDate);
     onDateChange(newDate);
-    
-    // Reset refs for new date
-    formDataLoadedRef.current = false;
-    statsLoadedRef.current = false;
-    initialLoadCompleteRef.current = false;
   };
 
   const handleNextDay = () => {
     const newDate = new Date(date);
     newDate.setDate(newDate.getDate() + 1);
+    
+    if (shouldDisableDate(newDate)) {
+      setSnackbar({
+        open: true,
+        message: '未来の日付は選択できません',
+        severity: 'warning'
+      });
+      return;
+    }
+    
     setDate(newDate);
     onDateChange(newDate);
-    
-    // Reset refs for new date
-    formDataLoadedRef.current = false;
-    statsLoadedRef.current = false;
-    initialLoadCompleteRef.current = false;
   };
 
+  // Handle date picker change
+  const handleDatePickerChange = (newDate) => {
+    if (!newDate) return;
+    
+    if (shouldDisableDate(newDate)) {
+      setSnackbar({
+        open: true,
+        message: '未来の日付は選択できません',
+        severity: 'warning'
+      });
+      return;
+    }
+    
+    // Check if date is actually changing
+    if (newDate.toISOString().split('T')[0] === date.toISOString().split('T')[0]) {
+      return;
+    }
+    
+    setDate(newDate);
+    onDateChange(newDate);
+  };
 
-  // In handleDatePickerChange function, add validation
-const handleDatePickerChange = (newDate) => {
-  if (shouldDisableDate(newDate)) {
-    // Show error or prevent change
-    showSnackbar('未来の日付は選択できません', 'warning');
-    return;
-  }
-  
-  setDate(newDate);
-  onDateChange(newDate);
-  
-  // Reset refs for new date
-  formDataLoadedRef.current = false;
-  statsLoadedRef.current = false;
-  initialLoadCompleteRef.current = false;
-};
+  // Validate if date should be disabled (future dates)
+  const shouldDisableDate = (date) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    const selectedDate = new Date(date);
+    selectedDate.setHours(23, 59, 59, 999);
+    
+    // Disable dates after today (future dates)
+    return selectedDate > today;
+  };
 
   // Validate form
-  const validateForm = () => {
+const validateForm = () => {
     const errors = {};
     
     // Required fields validation
     if (!hospitalId) {
-      errors.hospital = "Hospital selection is required";
+      errors.hospital = "病院の選択が必要です";
     }
     
     if (!admissionCount || isNaN(parseInt(admissionCount))) {
-      errors.admissionCount = "Valid admission count is required";
+      errors.admissionCount = "有効な入院数が必要です";
     }
     
     if (!dischargeCount || isNaN(parseInt(dischargeCount))) {
-      errors.dischargeCount = "Valid discharge count is required";
+      errors.dischargeCount = "有効な退院数が必要です";
     }
     
     // External consultation validation (now free text)
     if (!externalConsultation.emergencyTransport || isNaN(parseInt(externalConsultation.emergencyTransport))) {
-      errors.emergencyTransport = "Valid emergency transport count is required";
+      errors.emergencyTransport = "有効な緊急搬送数が必要です";
     }
     
     if (!externalConsultation.postTransportAdmission || isNaN(parseInt(externalConsultation.postTransportAdmission))) {
-      errors.postTransportAdmission = "Valid post transport admission count is required";
+      errors.postTransportAdmission = "有効な搬送後入院数が必要です";
     }
     
     if (!externalConsultation.visit || isNaN(parseInt(externalConsultation.visit))) {
-      errors.visit = "Valid visit count is required";
+      errors.visit = "有効な訪問数が必要です";
     }
     
     // Validate shift nurses (at least one per shift)
@@ -428,11 +497,11 @@ const handleDatePickerChange = (newDate) => {
     const hasLateNight = shiftNurses.lateNight.some(nurse => nurse.name.trim() !== "");
     
     if (!hasEarlyNight) {
-      errors.earlyNight = "At least one early night nurse is required";
+      errors.earlyNight = "早夜勤看護師は少なくとも1人必要です";
     }
     
     if (!hasLateNight) {
-      errors.lateNight = "At least one late night nurse is required";
+      errors.lateNight = "遅夜勤看護師は少なくとも1人必要です";
     }
     
     // Validate duty staff - 21 fields are now OPTIONAL
@@ -443,31 +512,37 @@ const handleDatePickerChange = (newDate) => {
       const thirdRowValue = currentStatus.thirdRow[i];
       
       if (firstRowValue !== undefined && typeof firstRowValue !== 'string') {
-        errors[`dutyStaff_field_group_${i + 1}_1`] = "1人目は文字列である必要があります";
+        errors[`dutyStaff_field_group_${i + 1}_1`] = "当直部署は有効である必要があります";
       }
       if (secondRowValue !== undefined && typeof secondRowValue !== 'string') {
-        errors[`dutyStaff_field_group_${i + 1}_2`] = "2人目は文字列である必要があります";
+        errors[`dutyStaff_field_group_${i + 1}_2`] = "当直医師1は有効である必要があります";
       }
       if (thirdRowValue !== undefined && typeof thirdRowValue !== 'string') {
-        errors[`dutyStaff_field_group_${i + 1}_3`] = "3人目は文字列である必要があります";
+        errors[`dutyStaff_field_group_${i + 1}_3`] = "当直医師2は有効である必要があります";
       }
     }
     
     // Validate consolidated data
     if (consolidatedData.length === 0) {
-      errors.consolidatedData = "At least one department entry is required";
+      errors.consolidatedData = "少なくとも1つの診療科エントリが必要です";
     } else {
       consolidatedData.forEach((item, index) => {
         if (!item.department_id) {
-          errors[`department_${index}`] = "Department selection is required";
+          errors[`department_${index}`] = "診療科の選択が必要です";
         }
         if (!item.patient_count && item.patient_count !== 0) {
-          errors[`patientCount_${index}`] = "Patient count is required";
+          errors[`patientCount_${index}`] = "患者数が必要です";
         }
       });
     }
     
     setValidationErrors(errors);
+    
+    // Scroll to top when there are errors
+    if (Object.keys(errors).length > 0) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
     return Object.keys(errors).length === 0;
   };
 
@@ -558,17 +633,6 @@ const handleDatePickerChange = (newDate) => {
       }
     }
   };
-
-const shouldDisableDate = (date) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const selectedDate = new Date(date);
-  selectedDate.setHours(0, 0, 0, 0);
-  
-  // Disable dates after today (future dates)
-  return selectedDate > today;
-};
-
 
   // Handle focus event to select all text
   const handleFocusSelect = (e) => {
@@ -681,9 +745,9 @@ const shouldDisableDate = (date) => {
     }
   };
 
-  // Notify parent of form data changes - but only after initial load
+  // Notify parent of form data changes
   useEffect(() => {
-    if (onFormDataChange && initialLoadCompleteRef.current) {
+    if (onFormDataChange) {
       const currentFormData = prepareFormData();
       onFormDataChange(currentFormData);
     }
@@ -697,6 +761,10 @@ const shouldDisableDate = (date) => {
     specialNotes,
     consolidatedData
   ]);
+
+  const handleSnackbarClose = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
 
   // Responsive values
   const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;
@@ -808,6 +876,22 @@ const shouldDisableDate = (date) => {
           pb: 4
         }}
       >
+        {/* Snackbar */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleSnackbarClose}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={handleSnackbarClose} 
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+
         {/* Header with Date Navigation */}
         <Paper
           elevation={0}
@@ -836,7 +920,7 @@ const shouldDisableDate = (date) => {
               <DatePicker
                 value={date}
                 onChange={handleDatePickerChange}
-                 shouldDisableDate={shouldDisableDate} // Add this line
+                shouldDisableDate={shouldDisableDate}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -862,7 +946,7 @@ const shouldDisableDate = (date) => {
               <IconButton 
                 onClick={handleNextDay}
                 size="small"
-                disabled={shouldDisableDate(new Date(date.getTime() + 24 * 60 * 60 * 1000))} 
+                disabled={shouldDisableDate(new Date(date.getTime() + 24 * 60 * 60 * 1000))}
                 sx={{ border: '1px solid #e0e0e0' }}
               >
                 <ArrowForwardIosIcon fontSize="small" />
@@ -1606,7 +1690,7 @@ const shouldDisableDate = (date) => {
                 このレポートは既に提出済みです。編集はできません。
               </Typography>
               <Typography sx={{ fontSize: fontSize.small, mt: 0.5 }}>
-                提出日: {reportDate ? formatJapaneseDate(reportDate) : '不明'}
+                提出日: {date ? formatJapaneseDate(date) : '不明'}
               </Typography>
             </Alert>
           </Paper>

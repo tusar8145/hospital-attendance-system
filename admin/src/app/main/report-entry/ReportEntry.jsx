@@ -717,133 +717,136 @@ function ReportEntry() {
     }
   }, []);
 
-  // Load report data for selected date (normal flow)
-  const loadReportData = useCallback(async (date, forceReload = false) => {
-    const hospitalId = currentHospitalRef.current?.id;
+  // Load report data for selected date (normal flow) - FIXED VERSION
+// Load report data for selected date (normal flow) - FIXED VERSION
+const loadReportData = useCallback(async (date, forceReload = false) => {
+  const hospitalId = currentHospitalRef.current?.id;
+  
+  if (!hospitalId) {
+    showSnackbar('病院が選択されていません', 'warning');
+    setLoading(false);
+    return;
+  }
+
+  setLoadingReport(true);
+  try {
+    const response = await axios.post(`${apiConfig.baseURL}/report/get-by-date-table`, {
+      date: formatDateForAPI(date),
+      hospital_id: hospitalId
+    });
+
+    const { data } = response.data;
     
-    if (!hospitalId) {
-      showSnackbar('病院が選択されていません', 'warning');
-      setLoading(false);
-      return;
-    }
-
-    setLoadingReport(true);
-    try {
-      const response = await axios.post(`${apiConfig.baseURL}/report/get-by-date-table`, {
-        date: formatDateForAPI(date),
-        hospital_id: hospitalId // Ensure it's a number
-      });
-
-      const { data } = response.data;
+    if (data && data.success !== false) {
+      const { report, departments: depts, doctors: docs, exists } = data;
       
-      if (data && data.success !== false) {
-        const { report, departments: depts, doctors: docs, exists } = data;
+      // Always update departments and doctors
+      setDepartments(depts || []);
+      setDoctors(docs || []);
+      setReportExists(exists);
+      
+      if (exists && report) {
+        // Format the report data for the form
+        const formattedReport = {
+          id: report.id,
+          report_no: report.report_no,
+          status: report.status,
+          special_notes: report.special_notes || '',
+          admission_count: report.admission_count || 0,
+          discharge_count: report.discharge_count || 0,
+          external_morning: report.external_morning || 0,
+          external_afternoon: report.external_afternoon || 0,
+          external_duty: report.external_duty || 0,
+          emergency_transport: report.emergency_transport || 0,
+          post_transport_admission: report.post_transport_admission || 0,
+          visit_count: report.visit_count || 0,
+          shift_nurses: report.shift_nurses || [],
+          duty_staff: report.duty_staff || [],
+          report_details: report.report_details || []
+        };
+        sethospital_type(report.hospital_type)
+        setFormData(formattedReport);
+        setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
+        setReportStatus(report.status);
+        setReportId(report.id);
+        setHasUnsavedChanges(false);
         
-        // Always update departments and doctors
-        setDepartments(depts || []);
-        setDoctors(docs || []);
-        setReportExists(exists);
-        
-        if (exists && report) {
-          // Format the report data for the form
-          const formattedReport = {
-            id: report.id,
-            report_no: report.report_no,
-            status: report.status,
-            special_notes: report.special_notes || '',
-            admission_count: report.admission_count || 0,
-            discharge_count: report.discharge_count || 0,
-            external_morning: report.external_morning || 0,
-            external_afternoon: report.external_afternoon || 0,
-            external_duty: report.external_duty || 0,
-            emergency_transport: report.emergency_transport || 0,
-            post_transport_admission: report.post_transport_admission || 0,
-            visit_count: report.visit_count || 0,
-            shift_nurses: report.shift_nurses || [],
-            duty_staff: report.duty_staff || [],
-            report_details: report.report_details || []
-          };
-          sethospital_type(report.hospital_type)
-          setFormData(formattedReport);
-          setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
-          setReportStatus(report.status);
-          setReportId(report.id);
-          setHasUnsavedChanges(false);
-          
-          // Store consolidated data
-          if (report.report_details) {
-            previousConsolidatedDataRef.current = report.report_details;
-          }
-          
-          if (!forceReload) {
-            showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
-          }
-        } else {
-          sethospital_type(null)
-          // Reset form for new entry when report is null
-          // BUT preserve consolidated data from previous state
-          const emptyForm = {
-            admission_count: 0,
-            discharge_count: 0,
-            external_morning: 0,
-            external_afternoon: 0,
-            external_duty: 0,
-            emergency_transport: 0,
-            post_transport_admission: 0,
-            visit_count: 0,
-            special_notes: '',
-            shift_nurses: [],
-            duty_staff: [],
-            // IMPORTANT: Keep previous consolidated data, don't reset it
-            report_details: previousConsolidatedDataRef.current || []
-          };
-          
-          setFormData(emptyForm);
-          setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
-          setReportStatus(null);
-          setReportId(null);
-          setReportExists(false);
-          setHasUnsavedChanges(false);
-          
-          if (!forceReload) {
-            showSnackbar('新しいレポートを作成できます', 'info');
-          }
+        // Store consolidated data
+        if (report.report_details) {
+          previousConsolidatedDataRef.current = report.report_details;
         }
         
-        setValidationErrors({});
+        if (!forceReload) {
+          showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
+        }
+      } else {
+        sethospital_type(null)
+        // IMPORTANT FIX: Reset ALL form data when report is null
+        const emptyForm = {
+          admission_count: 0,
+          discharge_count: 0,
+          external_morning: 0,
+          external_afternoon: 0,
+          external_duty: 0,
+          emergency_transport: 0,
+          post_transport_admission: 0,
+          visit_count: 0,
+          special_notes: '',
+          shift_nurses: [],
+          duty_staff: [],
+          // IMPORTANT: Reset consolidated data to empty array
+          report_details: []
+        };
+        
+        setFormData(emptyForm);
+        setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
+        setReportStatus(null);
+        setReportId(null);
+        setReportExists(false);
+        setHasUnsavedChanges(false);
+        
+        // Reset the consolidated data ref
+        previousConsolidatedDataRef.current = [];
+        
+        if (!forceReload) {
+          showSnackbar('新しいレポートを作成できます', 'info');
+        }
       }
-    } catch (error) {
-      console.error('Error loading report:', error);
-      const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
       
-      // Initialize empty form on error, but preserve consolidated data
-      const emptyForm = {
-        admission_count: 0,
-        discharge_count: 0,
-        external_morning: 0,
-        external_afternoon: 0,
-        external_duty: 0,
-        emergency_transport: 0,
-        post_transport_admission: 0,
-        visit_count: 0,
-        special_notes: '',
-        shift_nurses: [],
-        duty_staff: [],
-        // Preserve consolidated data
-        report_details: previousConsolidatedDataRef.current || []
-      };
-      setFormData(emptyForm);
-      setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
-      setReportStatus(null);
-      setReportId(null);
-      setReportExists(false);
-      showSnackbar(errorMessage, 'error');
-    } finally {
-      setLoadingReport(false);
-      setLoading(false);
+      setValidationErrors({});
     }
-  }, []);
-
+  } catch (error) {
+    console.error('Error loading report:', error);
+    const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
+    
+    // Initialize empty form on error
+    const emptyForm = {
+      admission_count: 0,
+      discharge_count: 0,
+      external_morning: 0,
+      external_afternoon: 0,
+      external_duty: 0,
+      emergency_transport: 0,
+      post_transport_admission: 0,
+      visit_count: 0,
+      special_notes: '',
+      shift_nurses: [],
+      duty_staff: [],
+      // Reset consolidated data on error too
+      report_details: []
+    };
+    setFormData(emptyForm);
+    setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
+    setReportStatus(null);
+    setReportId(null);
+    setReportExists(false);
+    previousConsolidatedDataRef.current = [];
+    showSnackbar(errorMessage, 'error');
+  } finally {
+    setLoadingReport(false);
+    setLoading(false);
+  }
+}, []);
   // Handle date change
   const handleDateChange = async (newDate) => {
     // Check if date is actually changing
@@ -952,7 +955,7 @@ function ReportEntry() {
     try {
       const response = await axios.post(`${apiConfig.baseURL}/report/submit`, {
         ...formData,
-        hospital_id: hospitalId, // Use current hospital ID from ref
+        hospital_id: hospitalId,
         report_date: formatDateForAPI(reportDate),
         is_draft: true
       });
@@ -1032,7 +1035,7 @@ function ReportEntry() {
     try {
       const response = await axios.post(`${apiConfig.baseURL}/report/submit`, {
         ...data,
-        hospital_id: hospitalId, // Use current hospital ID from ref
+        hospital_id: hospitalId,
         report_date: formatDateForAPI(reportDate),
         is_draft: false
       });
@@ -1191,7 +1194,7 @@ function ReportEntry() {
     }
   };
 
-  // Load initial data - MAIN FIX: Only load once when component mounts
+  // Load initial data
   useEffect(() => {
     // Prevent duplicate loads
     if (hasLoadedDataRef.current) return;

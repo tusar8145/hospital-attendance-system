@@ -50,9 +50,6 @@ const ConsolidatedContentComponent = ({
   const [doctorOptions, setDoctorOptions] = useState({});
   const [departmentStats, setDepartmentStats] = useState({});
   const [doctorCache, setDoctorCache] = useState({});
-  
-  // NEW: Track if we've initialized from data
-  const [hasInitializedFromData, setHasInitializedFromData] = useState(false);
 
   // Consultation types
   const consultationTypes = [
@@ -70,15 +67,11 @@ const ConsolidatedContentComponent = ({
 
   // Initialize rows when data or departments change
   useEffect(() => {
-    // Only initialize if we have data AND haven't initialized from data yet
-    if (data && data.length > 0 && !hasInitializedFromData) {
+    if (data && data.length > 0) {
       initializeRowsFromData(data);
-      setHasInitializedFromData(true);
-    } else if (data && data.length === 0 && rows.length === 0 && departmentOptions.length > 0) {
-      // Only initialize empty rows if we have no rows and no data
+    } else if (departmentOptions.length > 0) {
       initializeRowsFromDepartments();
     }
-    // If data is empty array but we already have rows, don't reset
   }, [data, departmentOptions]);
 
   const loadDepartmentsWithDoctors = async () => {
@@ -183,8 +176,8 @@ const ConsolidatedContentComponent = ({
   };
 
   const initializeRowsFromDepartments = () => {
-    // Only initialize if we have no rows
-    if (rows.length === 0 && departmentOptions.length > 0) {
+    // Start with one empty row if no data
+    if (departmentOptions.length > 0) {
       const initialRow = {
         id: `new-${Date.now()}`,
         sequence_no: 1,
@@ -653,24 +646,24 @@ const ConsolidatedContentComponent = ({
         <Table sx={{ minWidth: isMobile ? '1000px' : '1200px' }}>
           <TableHead>
             <TableRow>
-              <TableCell
-                sx={{  
-                  backgroundColor: "#F9FAFB",
-                  border: "1px solid #e0e0e0",
-                  padding: cellPadding,
-                  textAlign: 'center',
-                  fontWeight: 700,
-                  fontSize: fontSize.medium,
-                  color: "#2c3e50",
-                  minWidth: '80px',
-                  maxWidth: '30px',
-                  position: 'sticky',
-                  left: 0,
-                  zIndex: 2
-                }}
-              >
-                通番
-              </TableCell>
+<TableCell
+  sx={{  
+    backgroundColor: "#F9FAFB",
+    border: "1px solid #e0e0e0",
+    padding: cellPadding,
+    textAlign: 'center',
+    fontWeight: 700,
+    fontSize: fontSize.medium,
+    color: "#2c3e50",
+    minWidth: '80px', // Changed here
+    maxWidth: '30px',
+    position: 'sticky',
+    left: 0,
+    zIndex: 2
+  }}
+>
+  通番
+</TableCell>
 
               <TableCell sx={{ 
                 backgroundColor: "#F9FAFB",

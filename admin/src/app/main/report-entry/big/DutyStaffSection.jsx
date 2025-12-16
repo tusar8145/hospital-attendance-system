@@ -124,12 +124,6 @@ const DutyStaffSection = ({
           </Tooltip>
         </Box>
 
-        {validationErrors?.consolidatedData && (
-          <Alert severity="error" sx={{ mb: 2, fontSize: largeFontSize.small }}>
-            {validationErrors.consolidatedData}
-          </Alert>
-        )}
-
         <Box sx={{ 
           overflowX: isMobile ? 'auto' : 'visible',
           pb: 1
