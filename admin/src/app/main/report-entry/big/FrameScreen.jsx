@@ -28,6 +28,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
 import ConsolidatedContentComponent from './ConsolidatedContentComponent';
 import ShiftNursesSection from './ShiftNursesSection';
+import DutyStaffSection from './DutyStaffSection'; // NEW: Import the component
 import axios from 'axios';
 import apiConfig from '../../../configs/apiConfig';
 
@@ -72,9 +73,11 @@ const FrameScreen = React.memo(({
     lateNight: [{ id: Date.now() + 2, name: "" }]
   });
 
+  // UPDATED: Now 3 rows (3 people) for each of the 21 fields
   const [currentStatus, setCurrentStatus] = useState({
-    firstRow: Array(6).fill(""),
-    secondRow: Array(6).fill("")
+    firstRow: Array(21).fill(""),   // 1人目
+    secondRow: Array(21).fill(""),  // 2人目
+    thirdRow: Array(21).fill("")    // 3人目
   });
   const [specialNotes, setSpecialNotes] = useState("");
   const [consolidatedData, setConsolidatedData] = useState([]);
@@ -88,46 +91,6 @@ const FrameScreen = React.memo(({
   });
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
-
-  // Field configuration for duty staff section
-  const fieldData = [
-    { 
-      label: "保安", 
-      position: "security", 
-      required: true,
-      description: "Security staff on duty"
-    },
-    { 
-      label: "医事", 
-      position: "medical_affairs", 
-      required: true,
-      description: "Medical affairs staff (primary)"
-    },
-    { 
-      label: "医事", 
-      position: "medical_affairs_2", 
-      required: true,
-      description: "Medical affairs staff (secondary)"
-    },
-    { 
-      label: "保安", 
-      position: "security_2", 
-      required: true,
-      description: "Additional security staff"
-    },
-    { 
-      label: "医事", 
-      position: "medical_affairs_3", 
-      required: true,
-      description: "Additional medical affairs staff"
-    },
-    { 
-      label: "内科", 
-      position: "internal_medicine", 
-      required: true,
-      description: "Internal medicine duty staff"
-    },
-  ];
 
   // Fetch read-only stats when date or hospitalId changes
   useEffect(() => {
@@ -269,18 +232,38 @@ const FrameScreen = React.memo(({
       lateNight
     });
     
-    // Duty staff - map to fieldData positions
+    // Duty staff - map to field positions
+    // Field configuration for duty staff section - 21 fields total
+    const fieldData = [
+      { position: "field_group_1" },
+      { position: "field_group_2" },
+      { position: "field_group_3" },
+      { position: "field_group_4" },
+      { position: "field_group_5" },
+      { position: "field_group_6" },
+      { position: "field_group_7" },
+    ];
+    
     if (data.duty_staff && Array.isArray(data.duty_staff)) {
-      const firstRow = [];
-      const secondRow = [];
+      const firstRow = Array(21).fill("");
+      const secondRow = Array(21).fill("");
+      const thirdRow = Array(21).fill("");
       
       fieldData.forEach((field, index) => {
         const staff = data.duty_staff.find(s => s.position === field.position);
         firstRow[index] = staff?.staff_name_1 || "";
         secondRow[index] = staff?.staff_name_2 || "";
+        thirdRow[index] = staff?.staff_name_3 || "";
       });
       
-      setCurrentStatus({ firstRow, secondRow });
+      setCurrentStatus({ firstRow, secondRow, thirdRow });
+    } else {
+      // Initialize with empty arrays if no data
+      setCurrentStatus({ 
+        firstRow: Array(21).fill(""), 
+        secondRow: Array(21).fill(""),
+        thirdRow: Array(21).fill("")
+      });
     }
     
     // Special notes
@@ -322,7 +305,11 @@ const FrameScreen = React.memo(({
       earlyNight: [{ id: Date.now() + Math.random(), name: "" }],
       lateNight: [{ id: Date.now() + Math.random(), name: "" }]
     });
-    setCurrentStatus({ firstRow: Array(6).fill(""), secondRow: Array(6).fill("") });
+    setCurrentStatus({ 
+      firstRow: Array(21).fill(""), 
+      secondRow: Array(21).fill(""),
+      thirdRow: Array(21).fill("")
+    });
     setSpecialNotes("");
     setConsolidatedData([]);
     setValidationErrors({});
@@ -357,7 +344,7 @@ const FrameScreen = React.memo(({
     onDateChange(newDate);
   };
 
-  // Validate form
+  // Validate form - UPDATED: Make 21 fields optional
   const validateForm = () => {
     const errors = {};
     
@@ -399,17 +386,23 @@ const FrameScreen = React.memo(({
       errors.lateNight = "At least one late night nurse is required";
     }
     
-    // Validate duty staff
-    fieldData.forEach((field, index) => {
-      if (field.required) {
-        if (!currentStatus.firstRow[index]?.trim()) {
-          errors[`dutyStaff_${field.position}_1`] = `${field.label} (first name) is required`;
-        }
-        if (!currentStatus.secondRow[index]?.trim()) {
-          errors[`dutyStaff_${field.position}_2`] = `${field.label} (second name) is required`;
-        }
+    // Validate duty staff - 21 fields are now OPTIONAL
+    // Only validate if fields exist, they are strings
+    for (let i = 0; i < 21; i++) {
+      const firstRowValue = currentStatus.firstRow[i];
+      const secondRowValue = currentStatus.secondRow[i];
+      const thirdRowValue = currentStatus.thirdRow[i];
+      
+      if (firstRowValue !== undefined && typeof firstRowValue !== 'string') {
+        errors[`dutyStaff_field_group_${i + 1}_1`] = "1人目は文字列である必要があります";
       }
-    });
+      if (secondRowValue !== undefined && typeof secondRowValue !== 'string') {
+        errors[`dutyStaff_field_group_${i + 1}_2`] = "2人目は文字列である必要があります";
+      }
+      if (thirdRowValue !== undefined && typeof thirdRowValue !== 'string') {
+        errors[`dutyStaff_field_group_${i + 1}_3`] = "3人目は文字列である必要があります";
+      }
+    }
     
     // Validate consolidated data
     if (consolidatedData.length === 0) {
@@ -446,11 +439,23 @@ const FrameScreen = React.memo(({
         }))
     ];
 
-    // Prepare duty staff
+    // Field configuration for duty staff section - 21 fields total
+    const fieldData = [
+      { position: "field_group_1", label: "保安" },
+      { position: "field_group_2", label: "医事" },
+      { position: "field_group_3", label: "医事" },
+      { position: "field_group_4", label: "保安" },
+      { position: "field_group_5", label: "医事" },
+      { position: "field_group_6", label: "内科" },
+      { position: "field_group_7", label: "外科" },
+    ];
+
+    // Prepare duty staff - all 21 fields with 3 people each
     const dutyStaffData = fieldData.map((field, index) => ({
       position: field.position,
       staff_name_1: (currentStatus.firstRow[index] || "").trim(),
-      staff_name_2: (currentStatus.secondRow[index] || "").trim()
+      staff_name_2: (currentStatus.secondRow[index] || "").trim(),
+      staff_name_3: (currentStatus.thirdRow[index] || "").trim()
     }));
 
     // Filter out empty consolidated data
@@ -597,25 +602,9 @@ const FrameScreen = React.memo(({
     setValidationErrors(newErrors);
   };
 
-  const handleCurrentStatusChange = (row, index, value) => {
-    const field = fieldData[index];
-    const errorKey1 = `dutyStaff_${field.position}_1`;
-    const errorKey2 = `dutyStaff_${field.position}_2`;
-    
-    setCurrentStatus(prev => ({
-      ...prev,
-      [row]: prev[row].map((item, i) => i === index ? value : item)
-    }));
-    
-    // Clear errors if fixed
-    const newErrors = { ...validationErrors };
-    if (row === 'firstRow' && validationErrors[errorKey1] && value.trim() !== "") {
-      delete newErrors[errorKey1];
-    }
-    if (row === 'secondRow' && validationErrors[errorKey2] && value.trim() !== "") {
-      delete newErrors[errorKey2];
-    }
-    setValidationErrors(newErrors);
+  // Handle current status change from the child component
+  const handleCurrentStatusChange = (newStatus) => {
+    setCurrentStatus(newStatus);
   };
 
   const handleSpecialNotesChange = (e) => {
@@ -649,9 +638,9 @@ const FrameScreen = React.memo(({
     consolidatedData
   ]);
 
-  // Responsive values - INCREASED FONT SIZES
+  // Responsive values
   const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;
-  const textFieldHeight = isMobile ? 44 : isTablet ? 48 : 52;
+  const textFieldHeight = isMobile ? 40 : isTablet ? 44 : 48;
   const fontSize = {
     small: isMobile ? '0.875rem' : isTablet ? '0.9375rem' : '1rem',
     medium: isMobile ? '1rem' : isTablet ? '1.125rem' : '1.25rem',
@@ -1349,161 +1338,18 @@ const FrameScreen = React.memo(({
           sectionPadding={sectionPadding}
         />
 
-        {/* Duty Staff Section */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Stack spacing={3}>
-            {/* Section Header */}
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              mb: 2
-            }}>
-              <Typography sx={{ 
-                fontWeight: 700, 
-                fontSize: fontSize.large,
-                color: "#2c3e50",
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <Box component="span" sx={{ 
-                  width: 4, 
-                  height: 20, 
-                  backgroundColor: '#3498db',
-                  borderRadius: '2px'
-                }} />
-                当直
-              </Typography>
-              <Tooltip title="部署別の当直スタッフ配置">
-                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-              </Tooltip>
-            </Box>
-
-            {validationErrors.consolidatedData && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {validationErrors.consolidatedData}
-              </Alert>
-            )}
-
-            <Box sx={{ overflowX: 'auto', pb: 1 }}>
-              <Box sx={{ minWidth: isMobile ? "600px" : "800px" }}>
-                <Grid container spacing={1.5}>
-                  {fieldData.map((field, index) => {
-                    const errorKey1 = `dutyStaff_${field.position}_1`;
-                    const errorKey2 = `dutyStaff_${field.position}_2`;
-                    
-                    return (
-                      <Grid item xs={6} sm={4} md={2} key={index}>
-                        <Box sx={{ 
-                          border: '1px solid #e0e0e0',
-                          borderRadius: '8px',
-                          p: 2,
-                          textAlign: 'center',
-                          bgcolor: '#fafafa',
-                          height: '100%'
-                        }}>
-                          <Typography sx={{ 
-                            fontSize: fontSize.medium,
-                            fontWeight: 600, 
-                            color: "#36394a",
-                            mb: 1.5,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 0.5
-                          }}>
-                            {field.label}
-                            {field.required && (
-                              <Typography component="span" sx={{ color: "#df1c41", fontSize: fontSize.small, fontWeight: 600 }}>
-                                *
-                              </Typography>
-                            )}
-                            <Tooltip title={field.description}>
-                              <InfoOutlinedIcon sx={{ 
-                                color: '#7f8c8d', 
-                                fontSize: 14,
-                                cursor: 'help'
-                              }} />
-                            </Tooltip>
-                          </Typography>
-                          
-                          <Stack spacing={1.5}>
-                            <Box>
-                              <TextField
-                                placeholder="氏名（1人目）"
-                                value={currentStatus.firstRow[index]}
-                                onChange={(e) => handleCurrentStatusChange('firstRow', index, e.target.value)}
-                                variant="outlined"
-                                size="small"
-                                fullWidth
-                                error={!!validationErrors[errorKey1]}
-                                helperText={validationErrors[errorKey1]}
-                                sx={{
-                                  "& .MuiOutlinedInput-root": {
-                                    height: textFieldHeight,
-                                    bgcolor: "#ffffff",
-                                    borderRadius: "6px",
-                                    "& fieldset": { 
-                                      borderColor: validationErrors[errorKey1] ? "#df1c41" : "#dfe1e7" 
-                                    },
-                                    "& input": {
-                                      fontSize: fontSize.medium,
-                                      fontWeight: 500,
-                                      color: "#2c3e50",
-                                      textAlign: 'center'
-                                    },
-                                  },
-                                }}
-                              />
-                            </Box>
-                            
-                            <Box>
-                              <TextField
-                                placeholder="氏名（2人目）"
-                                value={currentStatus.secondRow[index]}
-                                onChange={(e) => handleCurrentStatusChange('secondRow', index, e.target.value)}
-                                variant="outlined"
-                                size="small"
-                                fullWidth
-                                error={!!validationErrors[errorKey2]}
-                                helperText={validationErrors[errorKey2]}
-                                sx={{
-                                  "& .MuiOutlinedInput-root": {
-                                    height: textFieldHeight,
-                                    bgcolor: "#ffffff",
-                                    borderRadius: "6px",
-                                    "& fieldset": { 
-                                      borderColor: validationErrors[errorKey2] ? "#df1c41" : "#dfe1e7" 
-                                    },
-                                    "& input": {
-                                      fontSize: fontSize.medium,
-                                      fontWeight: 500,
-                                      color: "#2c3e50",
-                                      textAlign: 'center'
-                                    },
-                                  },
-                                }}
-                              />
-                            </Box>
-                          </Stack>
-                        </Box>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              </Box>
-            </Box>
-          </Stack>
-        </Paper>
+        {/* NEW: Duty Staff Section - Separate Component */}
+        <DutyStaffSection
+          currentStatus={currentStatus}
+          onCurrentStatusChange={handleCurrentStatusChange}
+          validationErrors={validationErrors}
+          textFieldHeight={textFieldHeight}
+          fontSize={fontSize}
+          isMobile={isMobile}
+          isTablet={isTablet}
+          readOnly={readOnly}
+          sectionPadding={sectionPadding}
+        />
 
         {/* Consolidated Content Component */}
         <Paper

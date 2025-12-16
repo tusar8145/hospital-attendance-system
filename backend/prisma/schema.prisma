@@ -458,6 +458,7 @@ model report_duty_staff {
   position                String      // Position name (保安, 医事, etc.)
   staff_name_1            String?     // First staff name
   staff_name_2            String?     // Second staff name
+  staff_name_3            String?     // Third staff name - NEW
   
   // Relations
   report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)

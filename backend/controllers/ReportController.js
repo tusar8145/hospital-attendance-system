@@ -139,6 +139,55 @@ function organizeNurseData(shiftNurses) {
   return organized;
 }
 
+// Define all 21 duty staff positions
+const ALL_DUTY_STAFF_POSITIONS = [
+  'field_group_1',
+  'field_group_2',
+  'field_group_3',
+  'field_group_4',
+  'field_group_5',
+  'field_group_6',
+  'field_group_7'
+];
+
+// Helper function to ensure all 21 duty staff positions exist in data
+function ensureAllDutyStaffPositions(dutyStaffData) {
+  const result = [];
+  
+  // Create a map of existing positions for quick lookup
+  const existingPositions = {};
+  if (dutyStaffData && Array.isArray(dutyStaffData)) {
+    dutyStaffData.forEach(staff => {
+      if (staff.position) {
+        existingPositions[staff.position] = staff;
+      }
+    });
+  }
+  
+  // Ensure all 21 positions exist
+  ALL_DUTY_STAFF_POSITIONS.forEach(position => {
+    if (existingPositions[position]) {
+      // Use existing data
+      result.push({
+        position: position,
+        staff_name_1: existingPositions[position].staff_name_1 || "",
+        staff_name_2: existingPositions[position].staff_name_2 || "",
+        staff_name_3: existingPositions[position].staff_name_3 || ""
+      });
+    } else {
+      // Create empty entry for missing position
+      result.push({
+        position: position,
+        staff_name_1: "",
+        staff_name_2: "",
+        staff_name_3: ""
+      });
+    }
+  });
+  
+  return result;
+}
+
 // Get report by date and hospital
 export const getReportByDate = async (req, res, next) => {
   try {
@@ -176,6 +225,11 @@ export const getReportByDate = async (req, res, next) => {
         medical_center: true
       }
     });
+
+    // Ensure all 21 duty staff positions exist
+    if (existingReport && existingReport.duty_staff) {
+      existingReport.duty_staff = ensureAllDutyStaffPositions(existingReport.duty_staff);
+    }
 
     // Get related data for the form
     const departments = await prisma.department.findMany({
@@ -249,6 +303,11 @@ export const getReportByDateTable = async (req, res, next) => {
         medical_center: true
       }
     });
+
+    // Ensure all 21 duty staff positions exist
+    if (existingReport && existingReport.duty_staff) {
+      existingReport.duty_staff = ensureAllDutyStaffPositions(existingReport.duty_staff);
+    }
 
     // Get related data for the form
     const departments = await prisma.department.findMany({
@@ -430,6 +489,11 @@ export const getReportById = async (req, res, next) => {
       return response.error("Report not found", res, next);
     }
 
+    // Ensure all 21 duty staff positions exist
+    if (report.duty_staff) {
+      report.duty_staff = ensureAllDutyStaffPositions(report.duty_staff);
+    }
+
     // Calculate monthly statistics
     const startOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth(), 1);
     const endOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth() + 1, 0);
@@ -587,7 +651,7 @@ export const submitReport = async (req, res, next) => {
         emergency_transport: parseInt(emergency_transport) || 0,
         post_transport_admission: parseInt(post_transport_admission) || 0,
         visit_count: parseInt(visit_count) || 0,
-        hospital_type: hospital_type, // Added hospital_type
+        hospital_type: hospital_type,
         updated_by: userId,
         updated_at: new Date(),
       };
@@ -654,15 +718,33 @@ export const submitReport = async (req, res, next) => {
         });
       }
 
-      // Create duty staff
+      // Create duty staff - ensure all 21 positions with 3 staff names each
+      // If duty_staff is not provided or incomplete, create all 21 positions
+      let staffData = [];
+      
       if (duty_staff && duty_staff.length > 0) {
-        const staffData = duty_staff.map(staff => ({
+        // Use provided data and ensure all positions
+        const allStaffData = ensureAllDutyStaffPositions(duty_staff);
+        
+        staffData = allStaffData.map(staff => ({
           report_id: report.id,
           position: staff.position,
-          staff_name_1: staff.staff_name_1,
-          staff_name_2: staff.staff_name_2
+          staff_name_1: staff.staff_name_1 || "",
+          staff_name_2: staff.staff_name_2 || "",
+          staff_name_3: staff.staff_name_3 || "" // NEW: third staff name
         }));
+      } else {
+        // Create empty entries for all 21 positions
+        staffData = ALL_DUTY_STAFF_POSITIONS.map(position => ({
+          report_id: report.id,
+          position: position,
+          staff_name_1: "",
+          staff_name_2: "",
+          staff_name_3: ""
+        }));
+      }
 
+      if (staffData.length > 0) {
         await tx.report_duty_staff.createMany({
           data: staffData
         });
@@ -681,10 +763,15 @@ export const submitReport = async (req, res, next) => {
             }
           },
           shift_nurses: true,
-          duty_staff: true,
+          duty_staff: true, // UPDATED: Now includes staff_name_3
           medical_center: true
         }
       });
+
+      // Ensure all 21 duty staff positions exist in the response
+      if (completeReport.duty_staff) {
+        completeReport.duty_staff = ensureAllDutyStaffPositions(completeReport.duty_staff);
+      }
 
       return {
         success: true,
@@ -1265,6 +1352,11 @@ export const getReportView = async (req, res, next) => {
 
     if (!report) {
       return response.error("Report not found", res, next);
+    }
+
+    // Ensure all 21 duty staff positions exist
+    if (report.duty_staff) {
+      report.duty_staff = ensureAllDutyStaffPositions(report.duty_staff);
     }
 
     response.success({
