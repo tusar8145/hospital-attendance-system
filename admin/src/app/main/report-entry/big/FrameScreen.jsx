@@ -48,7 +48,8 @@ const FrameScreen = React.memo(({
   isSubmitting = false,
   isSavingDraft = false,
   reportStatus = null,
-  readOnly = false
+  readOnly = false,
+  showSnackbar // New prop for showing snackbar from parent
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -92,13 +93,14 @@ const FrameScreen = React.memo(({
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
 
-  // Refs to track loading states and prevent flickering
+  // Refs to track form state and prevent flickering
+  const isInitialMountRef = useRef(true);
   const formDataLoadedRef = useRef(false);
-  const statsLoadedRef = useRef(false);
-  const currentDateRef = useRef(date.toISOString().split('T')[0]);
+  const previousFormDataRef = useRef(null);
+  const loadingRef = useRef(false);
 
   // Local state for snackbar
-  const [snackbar, setSnackbar] = useState({
+  const [localSnackbar, setLocalSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
@@ -115,13 +117,7 @@ const FrameScreen = React.memo(({
 
   // Fetch read-only statistics from API - ONLY when there's no existing form data
   const fetchReadOnlyStats = async () => {
-    if (!hospitalId) return;
-    
-    // Don't fetch stats if we already have form data loaded for this date
-    if (formDataLoadedRef.current) {
-      console.log('Skipping stats fetch - form data already loaded for date:', currentDateRef.current);
-      return;
-    }
+    if (!hospitalId || formDataLoadedRef.current) return;
     
     setStatsLoading(true);
     setStatsError(null);
@@ -150,9 +146,6 @@ const FrameScreen = React.memo(({
             duty: monthlyCumulative.onDuty?.toString() || "0"
           });
         }
-        
-        statsLoadedRef.current = true;
-        console.log('Stats loaded for date:', currentDateRef.current);
       }
     } catch (error) {
       console.error('Error fetching read-only stats:', error);
@@ -177,50 +170,53 @@ const FrameScreen = React.memo(({
     } 
   };
 
-  // Initialize form when formData changes - FIXED VERSION
+  // Initialize form when formData changes - FIXED to prevent flickering
   useEffect(() => {
-    console.log('FrameScreen: formData changed for date:', currentDateRef.current, 'formData:', formData);
-    
-    const dateChanged = currentDateRef.current !== date.toISOString().split('T')[0];
-    
-    if (dateChanged) {
-      // Date has changed, reset everything
-      console.log('Date changed, resetting form');
-      resetForm();
-      currentDateRef.current = date.toISOString().split('T')[0];
-      formDataLoadedRef.current = false;
-      statsLoadedRef.current = false;
+    // Skip if loading
+    if (loading) {
+      loadingRef.current = true;
+      return;
     }
     
-    if (formData && Object.keys(formData).length > 0) {
-      console.log('Loading form data into FrameScreen for date:', currentDateRef.current);
+    // If we were loading and now we're not, reset the loading flag
+    if (loadingRef.current && !loading) {
+      loadingRef.current = false;
+    }
+    
+    // Check if formData has actually changed
+    const formDataChanged = previousFormDataRef.current !== formData && 
+      JSON.stringify(previousFormDataRef.current) !== JSON.stringify(formData);
+    
+    if (formData && formDataChanged && !loadingRef.current) {
+      console.log('Loading form data into FrameScreen');
       loadFormData(formData);
+      previousFormDataRef.current = formData;
       formDataLoadedRef.current = true;
-    } else if (formData === null || Object.keys(formData).length === 0) {
-      console.log('No form data for date:', currentDateRef.current, 'resetting form');
-      if (!formDataLoadedRef.current) {
-        resetForm();
-      }
+    } else if ((formData === null || Object.keys(formData).length === 0) && !formDataLoadedRef.current) {
+      console.log('No form data, initializing empty form');
+      resetForm();
+      formDataLoadedRef.current = false;
     }
-  }, [formData, date]);
-
-  // Fetch stats on mount - but only if we don't have form data
-  useEffect(() => {
-    if (hospitalId && date) {
-      const currentDateKey = date.toISOString().split('T')[0];
-      
-      if (!formDataLoadedRef.current && currentDateKey === currentDateRef.current) {
-        console.log('Fetching read-only stats (no form data yet) for date:', currentDateKey);
-        fetchReadOnlyStats();
-      }
-    }
-  }, [hospitalId, date, formDataLoadedRef.current]);
-
-  // Load form data from existing report - COMPLETE VERSION
-  const loadFormData = (data) => {
-    console.log('Loading form data for date:', currentDateRef.current, 'data:', data);
     
-    // Mark that we've loaded form data for this date
+    // Fetch stats on initial mount if no form data
+    if (isInitialMountRef.current && hospitalId && !formDataLoadedRef.current) {
+      fetchReadOnlyStats();
+      isInitialMountRef.current = false;
+    }
+  }, [formData, loading, hospitalId]);
+
+  // Fetch stats when date changes (if no form data loaded)
+  useEffect(() => {
+    if (hospitalId && !formDataLoadedRef.current) {
+      fetchReadOnlyStats();
+    }
+  }, [date, hospitalId]);
+
+  // Load form data from existing report - FIXED to prevent flickering
+  const loadFormData = (data) => {
+    console.log('Loading form data:', data);
+    
+    // Mark that we've loaded form data
     formDataLoadedRef.current = true;
     
     // Basic stats - always load from form data
@@ -336,12 +332,12 @@ const FrameScreen = React.memo(({
     // Clear validation errors when loading data
     setValidationErrors({});
     
-    console.log('Form data loading complete for date:', currentDateRef.current);
+    console.log('Form data loading complete');
   };
 
   // Reset form to initial state (complete reset)
   const resetForm = () => {
-    console.log('Resetting form completely for date:', currentDateRef.current);
+    console.log('Resetting form completely');
     setAdmissionCount("0");
     setDischargeCount("0");
     
@@ -371,7 +367,7 @@ const FrameScreen = React.memo(({
     
     setSpecialNotes("");
     
-    // IMPORTANT: Reset consolidated data to empty array
+    // Reset consolidated data to empty array
     setConsolidatedData([]);
     
     setValidationErrors({});
@@ -383,7 +379,7 @@ const FrameScreen = React.memo(({
       onDuty: 0
     });
     
-    console.log('Form reset complete for date:', currentDateRef.current);
+    console.log('Form reset complete');
   };
 
   // Format date for display
@@ -400,11 +396,7 @@ const FrameScreen = React.memo(({
     newDate.setDate(newDate.getDate() - 1);
     
     if (shouldDisableDate(newDate)) {
-      setSnackbar({
-        open: true,
-        message: '過去の日付に移動できません',
-        severity: 'warning'
-      });
+      showLocalSnackbar('過去の日付に移動できません', 'warning');
       return;
     }
     
@@ -417,11 +409,7 @@ const FrameScreen = React.memo(({
     newDate.setDate(newDate.getDate() + 1);
     
     if (shouldDisableDate(newDate)) {
-      setSnackbar({
-        open: true,
-        message: '未来の日付は選択できません',
-        severity: 'warning'
-      });
+      showLocalSnackbar('未来の日付は選択できません', 'warning');
       return;
     }
     
@@ -434,11 +422,7 @@ const FrameScreen = React.memo(({
     if (!newDate) return;
     
     if (shouldDisableDate(newDate)) {
-      setSnackbar({
-        open: true,
-        message: '未来の日付は選択できません',
-        severity: 'warning'
-      });
+      showLocalSnackbar('未来の日付は選択できません', 'warning');
       return;
     }
     
@@ -462,8 +446,8 @@ const FrameScreen = React.memo(({
     return selectedDate > today;
   };
 
-  // Validate form
-const validateForm = () => {
+  // Validate form - FIXED to work with both top and bottom buttons
+  const validateForm = () => {
     const errors = {};
     
     // Required fields validation
@@ -604,19 +588,35 @@ const validateForm = () => {
     };
   };
 
-  // Handle save draft
+  // Handle save draft - FIXED to show snackbar from parent
   const handleSaveDraftClick = () => {
     if (validateForm()) {
       const data = prepareFormData();
+      // Call parent's onSaveDraft which will show snackbar
       onSaveDraft(data);
+    } else {
+      // Show error snackbar using parent's function
+      if (showSnackbar) {
+        showSnackbar('フォームにエラーがあります。確認してください。', 'error');
+      } else {
+        showLocalSnackbar('フォームにエラーがあります。確認してください。', 'error');
+      }
     }
   };
 
-  // Handle submit
+  // Handle submit - FIXED to show snackbar from parent
   const handleSubmitClick = () => {
     if (validateForm()) {
       const data = prepareFormData();
+      // Call parent's onSubmit which will show snackbar
       onSubmit(data);
+    } else {
+      // Show error snackbar using parent's function
+      if (showSnackbar) {
+        showSnackbar('フォームにエラーがあります。確認してください。', 'error');
+      } else {
+        showLocalSnackbar('フォームにエラーがあります。確認してください。', 'error');
+      }
     }
   };
 
@@ -745,9 +745,23 @@ const validateForm = () => {
     }
   };
 
+  // Show local snackbar (for date navigation warnings)
+  const showLocalSnackbar = (message, severity = 'success') => {
+    setLocalSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  };
+
+  // Handle local snackbar close
+  const handleLocalSnackbarClose = () => {
+    setLocalSnackbar({ ...localSnackbar, open: false });
+  };
+
   // Notify parent of form data changes
   useEffect(() => {
-    if (onFormDataChange) {
+    if (onFormDataChange && !loadingRef.current) {
       const currentFormData = prepareFormData();
       onFormDataChange(currentFormData);
     }
@@ -761,10 +775,6 @@ const validateForm = () => {
     specialNotes,
     consolidatedData
   ]);
-
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
 
   // Responsive values
   const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;
@@ -876,19 +886,19 @@ const validateForm = () => {
           pb: 4
         }}
       >
-        {/* Snackbar */}
+        {/* Local Snackbar (for date warnings only) */}
         <Snackbar
-          open={snackbar.open}
+          open={localSnackbar.open}
           autoHideDuration={6000}
-          onClose={handleSnackbarClose}
+          onClose={handleLocalSnackbarClose}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
           <Alert 
-            onClose={handleSnackbarClose} 
-            severity={snackbar.severity}
+            onClose={handleLocalSnackbarClose} 
+            severity={localSnackbar.severity}
             sx={{ width: '100%' }}
           >
-            {snackbar.message}
+            {localSnackbar.message}
           </Alert>
         </Snackbar>
 
