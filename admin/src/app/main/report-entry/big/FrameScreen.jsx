@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   Button, 
@@ -28,7 +28,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
 import ConsolidatedContentComponent from './ConsolidatedContentComponent';
 import ShiftNursesSection from './ShiftNursesSection';
-import DutyStaffSection from './DutyStaffSection'; // NEW: Import the component
+import DutyStaffSection from './DutyStaffSection';
 import axios from 'axios';
 import apiConfig from '../../../configs/apiConfig';
 
@@ -73,7 +73,6 @@ const FrameScreen = React.memo(({
     lateNight: [{ id: Date.now() + 2, name: "" }]
   });
 
-  // UPDATED: Now 3 rows (3 people) for each of the 21 fields
   const [currentStatus, setCurrentStatus] = useState({
     firstRow: Array(21).fill(""),   // 1人目
     secondRow: Array(21).fill(""),  // 2人目
@@ -92,12 +91,10 @@ const FrameScreen = React.memo(({
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
 
-  // Fetch read-only stats when date or hospitalId changes
-  useEffect(() => {
-    if (hospitalId && date) {
-      fetchReadOnlyStats();
-    }
-  }, [hospitalId, date]);
+  // NEW: Refs to track loading states and prevent flickering
+  const formDataLoadedRef = useRef(false);
+  const statsLoadedRef = useRef(false);
+  const initialLoadCompleteRef = useRef(false);
 
   // Format date for API (YYYY-MM-DD)
   const formatDateForAPI = (date) => {
@@ -108,9 +105,15 @@ const FrameScreen = React.memo(({
     return `${year}-${month}-${day}`;
   };
 
-  // Fetch read-only statistics from API
+  // Fetch read-only statistics from API - ONLY when there's no existing form data
   const fetchReadOnlyStats = async () => {
     if (!hospitalId) return;
+    
+    // Don't fetch stats if we already have form data loaded
+    if (formDataLoadedRef.current) {
+      console.log('Skipping stats fetch - form data already loaded');
+      return;
+    }
     
     setStatsLoading(true);
     setStatsError(null);
@@ -131,64 +134,89 @@ const FrameScreen = React.memo(({
           onDuty: monthlyCumulative.onDuty || 0
         });
         
-        // Set the external doctors fields to display monthly cumulative values
-        setExternalDoctors({
-          morning: monthlyCumulative.morningClinic?.toString() || "0",
-          afternoon: monthlyCumulative.afternoonClinic?.toString() || "0",
-          duty: monthlyCumulative.onDuty?.toString() || "0"
-        });
-        
-        // Notify parent component of form data change
-        if (onFormDataChange) {
-          const currentFormData = prepareFormData();
-          onFormDataChange(currentFormData);
+        // Only set external doctors if we haven't loaded form data yet
+        if (!formDataLoadedRef.current) {
+          setExternalDoctors({
+            morning: monthlyCumulative.morningClinic?.toString() || "0",
+            afternoon: monthlyCumulative.afternoonClinic?.toString() || "0",
+            duty: monthlyCumulative.onDuty?.toString() || "0"
+          });
         }
+        
+        statsLoadedRef.current = true;
       }
     } catch (error) {
       console.error('Error fetching read-only stats:', error);
       setStatsError('統計データの取得に失敗しました');
       
-      // Reset to 0 on error
-      setExternalDoctors({
-        morning: "0",
-        afternoon: "0",
-        duty: "0"
-      });
-      
-      setMonthlyCumulativeStats({
-        morningClinic: 0,
-        afternoonClinic: 0,
-        onDuty: 0
-      });
+      // Only reset to 0 if we don't have form data
+      if (!formDataLoadedRef.current) {
+        setExternalDoctors({
+          morning: "0",
+          afternoon: "0",
+          duty: "0"
+        });
+        
+        setMonthlyCumulativeStats({
+          morningClinic: 0,
+          afternoonClinic: 0,
+          onDuty: 0
+        });
+      }
     } finally {
       setStatsLoading(false);
     } 
   };
 
-  // Initialize form when formData changes
+  // Initialize form when formData changes - FIXED VERSION
   useEffect(() => {
-    if (formData) {
+    console.log('FrameScreen: formData changed', formData, 'loading:', loading);
+    
+    if (formData && Object.keys(formData).length > 0 && !initialLoadCompleteRef.current) {
+      console.log('Loading form data into FrameScreen');
       loadFormData(formData);
-    } else {
+      formDataLoadedRef.current = true;
+      initialLoadCompleteRef.current = true;
+    } else if (!formData && !initialLoadCompleteRef.current) {
+      console.log('No form data, initializing empty form');
       resetForm();
+      initialLoadCompleteRef.current = true;
     }
-  }, [formData]);
+  }, [formData, loading]);
 
-  // Load form data from existing report
+  // Fetch stats on mount - but only if we don't have form data
+  useEffect(() => {
+    if (hospitalId && date && !formDataLoadedRef.current) {
+      console.log('Fetching read-only stats (no form data yet)');
+      fetchReadOnlyStats();
+    }
+  }, [hospitalId, date]);
+
+  // Load form data from existing report - COMPLETE VERSION
   const loadFormData = (data) => {
-    // Basic stats
+    console.log('Loading form data:', data);
+    
+    // Mark that we've loaded form data
+    formDataLoadedRef.current = true;
+    
+    // Basic stats - always load from form data
     setAdmissionCount(data.admission_count?.toString() || "0");
     setDischargeCount(data.discharge_count?.toString() || "0");
     
-    // External doctors - DO NOT override with form data when we have monthly stats
-    // Only set from form data if we haven't fetched stats yet
-    if (!statsLoading && monthlyCumulativeStats.morningClinic === 0) {
-      setExternalDoctors({
-        morning: data.external_morning?.toString() || "0",
-        afternoon: data.external_afternoon?.toString() || "0",
-        duty: data.external_duty?.toString() || "0"
-      });
-    }
+    // External doctors - ALWAYS load from form data when we have it
+    // This overrides any stats data
+    setExternalDoctors({
+      morning: data.external_morning?.toString() || "0",
+      afternoon: data.external_afternoon?.toString() || "0",
+      duty: data.external_duty?.toString() || "0"
+    });
+    
+    // Update monthly stats display (read-only info)
+    setMonthlyCumulativeStats({
+      morningClinic: data.external_morning || 0,
+      afternoonClinic: data.external_afternoon || 0,
+      onDuty: data.external_duty || 0
+    });
     
     // External consultation (now free text fields)
     setExternalConsultation({
@@ -206,34 +234,34 @@ const FrameScreen = React.memo(({
       earlyNight = data.shift_nurses
         .filter(nurse => nurse.shift_type === 0 || nurse.shift_type === "0")
         .map((nurse, index) => ({ 
-          id: nurse.id || Date.now() + Math.random(),
+          id: nurse.id || Date.now() + index + 1000,
           name: nurse.nurse_name || "" 
         }));
       
       lateNight = data.shift_nurses
         .filter(nurse => nurse.shift_type === 1 || nurse.shift_type === "1")
         .map((nurse, index) => ({ 
-          id: nurse.id || Date.now() + Math.random(),
+          id: nurse.id || Date.now() + index + 2000,
           name: nurse.nurse_name || "" 
         }));
     }
     
     // Ensure at least one field exists
     if (earlyNight.length === 0) {
-      earlyNight = [{ id: Date.now() + Math.random(), name: "" }];
+      earlyNight = [{ id: Date.now() + 1000, name: "" }];
     }
     
     if (lateNight.length === 0) {
-      lateNight = [{ id: Date.now() + Math.random(), name: "" }];
+      lateNight = [{ id: Date.now() + 2000, name: "" }];
     }
     
+    console.log('Setting shift nurses:', { earlyNight, lateNight });
     setShiftNurses({ 
       earlyNight,
       lateNight
     });
     
     // Duty staff - map to field positions
-    // Field configuration for duty staff section - 21 fields total
     const fieldData = [
       { position: "field_group_1" },
       { position: "field_group_2" },
@@ -251,14 +279,18 @@ const FrameScreen = React.memo(({
       
       fieldData.forEach((field, index) => {
         const staff = data.duty_staff.find(s => s.position === field.position);
-        firstRow[index] = staff?.staff_name_1 || "";
-        secondRow[index] = staff?.staff_name_2 || "";
-        thirdRow[index] = staff?.staff_name_3 || "";
+        if (staff) {
+          firstRow[index] = staff.staff_name_1 || "";
+          secondRow[index] = staff.staff_name_2 || "";
+          thirdRow[index] = staff.staff_name_3 || "";
+        }
       });
       
+      console.log('Setting duty staff:', { firstRow, secondRow, thirdRow });
       setCurrentStatus({ firstRow, secondRow, thirdRow });
     } else {
       // Initialize with empty arrays if no data
+      console.log('No duty staff data, initializing empty');
       setCurrentStatus({ 
         firstRow: Array(21).fill(""), 
         secondRow: Array(21).fill(""),
@@ -270,40 +302,35 @@ const FrameScreen = React.memo(({
     setSpecialNotes(data.special_notes || "");
     
     // Consolidated data from report_details
-    if (data.report_details && Array.isArray(data.report_details)) {
-      const consolidated = [];
-      data.report_details.forEach(detail => {
-        consolidated.push({
-          sequence_no: detail.sequence_no,
-          department_id: detail.department_id,
-          department_name: detail.department?.name,
-          consultation_type: detail.consultation_type,
-          doctor_id_1: detail.doctor_id_1,
-          doctor_id_2: detail.doctor_id_2,
-          doctor_id_3: detail.doctor_id_3,
-          patient_count: detail.patient_count
-        });
-      });
-      setConsolidatedData(consolidated);
+    // IMPORTANT: Only update if we have data, otherwise keep existing
+    if (data.report_details && Array.isArray(data.report_details) && data.report_details.length > 0) {
+      console.log('Setting consolidated data:', data.report_details);
+      setConsolidatedData(data.report_details);
+    } else {
+      console.log('No consolidated data in form data');
+      // Keep existing consolidated data
     }
     
     // Clear validation errors when loading data
     setValidationErrors({});
+    
+    console.log('Form data loading complete');
   };
 
-  // Reset form to initial state
+  // Reset form to initial state (only basic fields, not consolidated data)
   const resetForm = () => {
+    console.log('Resetting form');
     setAdmissionCount("0");
     setDischargeCount("0");
-    // Don't reset external doctors as they are read-only
+    // External doctors will be set by stats fetch
     setExternalConsultation({ 
       emergencyTransport: "0", 
       postTransportAdmission: "0", 
       visit: "0" 
     });
     setShiftNurses({ 
-      earlyNight: [{ id: Date.now() + Math.random(), name: "" }],
-      lateNight: [{ id: Date.now() + Math.random(), name: "" }]
+      earlyNight: [{ id: Date.now() + 1, name: "" }],
+      lateNight: [{ id: Date.now() + 2, name: "" }]
     });
     setCurrentStatus({ 
       firstRow: Array(21).fill(""), 
@@ -311,7 +338,7 @@ const FrameScreen = React.memo(({
       thirdRow: Array(21).fill("")
     });
     setSpecialNotes("");
-    setConsolidatedData([]);
+    // IMPORTANT: DO NOT reset consolidatedData here
     setValidationErrors({});
   };
 
@@ -329,6 +356,11 @@ const FrameScreen = React.memo(({
     newDate.setDate(newDate.getDate() - 1);
     setDate(newDate);
     onDateChange(newDate);
+    
+    // Reset refs for new date
+    formDataLoadedRef.current = false;
+    statsLoadedRef.current = false;
+    initialLoadCompleteRef.current = false;
   };
 
   const handleNextDay = () => {
@@ -336,15 +368,32 @@ const FrameScreen = React.memo(({
     newDate.setDate(newDate.getDate() + 1);
     setDate(newDate);
     onDateChange(newDate);
+    
+    // Reset refs for new date
+    formDataLoadedRef.current = false;
+    statsLoadedRef.current = false;
+    initialLoadCompleteRef.current = false;
   };
 
-  // Handle date picker change
-  const handleDatePickerChange = (newDate) => {
-    setDate(newDate);
-    onDateChange(newDate);
-  };
 
-  // Validate form - UPDATED: Make 21 fields optional
+  // In handleDatePickerChange function, add validation
+const handleDatePickerChange = (newDate) => {
+  if (shouldDisableDate(newDate)) {
+    // Show error or prevent change
+    showSnackbar('未来の日付は選択できません', 'warning');
+    return;
+  }
+  
+  setDate(newDate);
+  onDateChange(newDate);
+  
+  // Reset refs for new date
+  formDataLoadedRef.current = false;
+  statsLoadedRef.current = false;
+  initialLoadCompleteRef.current = false;
+};
+
+  // Validate form
   const validateForm = () => {
     const errors = {};
     
@@ -510,6 +559,17 @@ const FrameScreen = React.memo(({
     }
   };
 
+const shouldDisableDate = (date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selectedDate = new Date(date);
+  selectedDate.setHours(0, 0, 0, 0);
+  
+  // Disable dates after today (future dates)
+  return selectedDate > today;
+};
+
+
   // Handle focus event to select all text
   const handleFocusSelect = (e) => {
     e.target.select();
@@ -621,9 +681,9 @@ const FrameScreen = React.memo(({
     }
   };
 
-  // Notify parent of form data changes
+  // Notify parent of form data changes - but only after initial load
   useEffect(() => {
-    if (onFormDataChange) {
+    if (onFormDataChange && initialLoadCompleteRef.current) {
       const currentFormData = prepareFormData();
       onFormDataChange(currentFormData);
     }
@@ -776,6 +836,7 @@ const FrameScreen = React.memo(({
               <DatePicker
                 value={date}
                 onChange={handleDatePickerChange}
+                 shouldDisableDate={shouldDisableDate} // Add this line
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -801,6 +862,7 @@ const FrameScreen = React.memo(({
               <IconButton 
                 onClick={handleNextDay}
                 size="small"
+                disabled={shouldDisableDate(new Date(date.getTime() + 24 * 60 * 60 * 1000))} 
                 sx={{ border: '1px solid #e0e0e0' }}
               >
                 <ArrowForwardIosIcon fontSize="small" />
@@ -964,7 +1026,7 @@ const FrameScreen = React.memo(({
                     size="small"
                     error={!!validationErrors.admissionCount}
                     helperText={validationErrors.admissionCount}
-                    disabled={readOnly} 
+                    disabled={readOnly || reportStatus === 'submitted'} 
                     InputProps={{
                       sx: {
                         borderRadius: "8px",
@@ -1010,6 +1072,7 @@ const FrameScreen = React.memo(({
                     size="small"
                     error={!!validationErrors.dischargeCount}
                     helperText={validationErrors.dischargeCount}
+                    disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
                       sx: {
                         borderRadius: "8px",
@@ -1210,6 +1273,7 @@ const FrameScreen = React.memo(({
                     size="small"
                     error={!!validationErrors.emergencyTransport}
                     helperText={validationErrors.emergencyTransport}
+                    disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
                       sx: {
                         borderRadius: "8px",
@@ -1256,6 +1320,7 @@ const FrameScreen = React.memo(({
                     size="small"
                     error={!!validationErrors.postTransportAdmission}
                     helperText={validationErrors.postTransportAdmission}
+                    disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
                       sx: {
                         borderRadius: "8px",
@@ -1302,6 +1367,7 @@ const FrameScreen = React.memo(({
                     size="small"
                     error={!!validationErrors.visit}
                     helperText={validationErrors.visit}
+                    disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
                       sx: {
                         borderRadius: "8px",
@@ -1336,9 +1402,10 @@ const FrameScreen = React.memo(({
           isMobile={isMobile}
           isTablet={isTablet}
           sectionPadding={sectionPadding}
+          readOnly={readOnly || reportStatus === 'submitted'}
         />
 
-        {/* NEW: Duty Staff Section - Separate Component */}
+        {/* Duty Staff Section - Separate Component */}
         <DutyStaffSection
           currentStatus={currentStatus}
           onCurrentStatusChange={handleCurrentStatusChange}
@@ -1347,7 +1414,7 @@ const FrameScreen = React.memo(({
           fontSize={fontSize}
           isMobile={isMobile}
           isTablet={isTablet}
-          readOnly={readOnly}
+          readOnly={readOnly || reportStatus === 'submitted'}
           sectionPadding={sectionPadding}
         />
 
@@ -1368,6 +1435,7 @@ const FrameScreen = React.memo(({
             hospitalId={hospitalId}
             onDataChange={handleConsolidatedDataChange}
             validationErrors={validationErrors}
+            readOnly={readOnly || reportStatus === 'submitted'}
           />
         </Paper>
 
@@ -1429,6 +1497,7 @@ const FrameScreen = React.memo(({
                 multiline
                 rows={4}
                 placeholder="特記事項があれば入力してください..."
+                disabled={readOnly || reportStatus === 'submitted'}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     bgcolor: "#ffffff",
@@ -1447,68 +1516,101 @@ const FrameScreen = React.memo(({
           </Stack>
         </Paper>
 
-        {/* Action Buttons */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-            position: 'sticky',
-            bottom: 0,
-            mt: 'auto',
-            zIndex: 10
-          }}
-        >{!readOnly && (
-          <Box sx={{ 
-            display: 'flex', 
-            gap: 2, 
-            justifyContent: 'flex-end',
-            flexWrap: 'wrap'
-          }}>
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={isSavingDraft ? <CircularProgress size={20} /> : <SaveIcon />}
-              onClick={handleSaveDraftClick}
-              disabled={isSavingDraft || isSubmitting || loading || statsLoading}
-              size="large"
-              sx={{
-                minWidth: isMobile ? '100%' : '140px',
-                py: 1.5,
-                borderRadius: '8px',
-                borderWidth: '2px',
-                fontWeight: 600,
-                fontSize: fontSize.medium
-              }}
-            >
-              {isSavingDraft ? '保存中...' : '下書き保存'}
-            </Button>
-            
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={isSubmitting ? <CircularProgress size={20} /> : <SendIcon />}
-              onClick={handleSubmitClick}
-              disabled={isSubmitting || isSavingDraft || loading || statsLoading}
-              size="large"
-              sx={{
-                minWidth: isMobile ? '100%' : '160px',
-                py: 1.5,
-                borderRadius: '8px',
-                fontWeight: 600,
-                backgroundColor: '#0A6AE3',
-                fontSize: fontSize.medium,
-                '&:hover': {
-                  backgroundColor: '#0856b8'
+        {/* Action Buttons - Only show if not submitted */}
+        {reportStatus !== 'submitted' && !readOnly && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: sectionPadding,
+              borderRadius: '12px',
+              border: '1px solid #e0e0e0',
+              backgroundColor: '#ffffff',
+              position: 'sticky',
+              bottom: 0,
+              mt: 'auto',
+              zIndex: 10
+            }}
+          >
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2, 
+              justifyContent: 'flex-end',
+              flexWrap: 'wrap'
+            }}>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={isSavingDraft ? <CircularProgress size={20} /> : <SaveIcon />}
+                onClick={handleSaveDraftClick}
+                disabled={isSavingDraft || isSubmitting || loading || statsLoading}
+                size="large"
+                sx={{
+                  minWidth: isMobile ? '100%' : '140px',
+                  py: 1.5,
+                  borderRadius: '8px',
+                  borderWidth: '2px',
+                  fontWeight: 600,
+                  fontSize: fontSize.medium
+                }}
+              >
+                {isSavingDraft ? '保存中...' : '下書き保存'}
+              </Button>
+              
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={isSubmitting ? <CircularProgress size={20} /> : <SendIcon />}
+                onClick={handleSubmitClick}
+                disabled={isSubmitting || isSavingDraft || loading || statsLoading}
+                size="large"
+                sx={{
+                  minWidth: isMobile ? '100%' : '160px',
+                  py: 1.5,
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  backgroundColor: '#0A6AE3',
+                  fontSize: fontSize.medium,
+                  '&:hover': {
+                    backgroundColor: '#0856b8'
+                  }
+                }}
+              >
+                {isSubmitting ? '提出中...' : 'レポート提出'}
+              </Button>
+            </Box>
+          </Paper>
+        )}
+        
+        {/* Read-only warning for submitted reports */}
+        {reportStatus === 'submitted' && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: sectionPadding,
+              borderRadius: '12px',
+              border: '1px solid #e0e0e0',
+              backgroundColor: '#f8f9fa',
+              mt: 'auto'
+            }}
+          >
+            <Alert 
+              severity="info" 
+              sx={{ 
+                alignItems: 'center',
+                '& .MuiAlert-message': {
+                  width: '100%'
                 }
               }}
             >
-              {isSubmitting ? '提出中...' : 'レポート提出'}
-            </Button>
-          </Box>)}
-        </Paper>
+              <Typography sx={{ fontWeight: 600, fontSize: fontSize.medium }}>
+                このレポートは既に提出済みです。編集はできません。
+              </Typography>
+              <Typography sx={{ fontSize: fontSize.small, mt: 0.5 }}>
+                提出日: {reportDate ? formatJapaneseDate(reportDate) : '不明'}
+              </Typography>
+            </Alert>
+          </Paper>
+        )}
       </Box>
     </LocalizationProvider>
   );

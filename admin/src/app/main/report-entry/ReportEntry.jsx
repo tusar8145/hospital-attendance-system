@@ -49,7 +49,6 @@ import ja from 'date-fns/locale/ja';
 import { useAppSelector } from 'app/store/hooks';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 
-
 // Lazy load the main report component
 const FrameScreen = React.lazy(() => import('./big/FrameScreen'));
 
@@ -98,8 +97,6 @@ const ReportEntryHeader = ({
   const user = useAppSelector(selectUser);
   const userRole = user?.role || '';
 
- 
-  
   // Format date for display
   const formatJapaneseDate = (date) => {
     const year = date.getFullYear();
@@ -392,7 +389,6 @@ const ReportEntryHeader = ({
 
 // Validation helper function
 const validateReportData = (formData) => {
-  console.log(formData,'<<<<<<<<<<>>>>>>>>>')
   const errors = {};
   
   if (!formData || Object.keys(formData).length === 0) {
@@ -565,6 +561,9 @@ function ReportEntry() {
   const reportDateRef = useRef(reportDate);
   const currentHospitalRef = useRef(currentHospital);
   
+  // NEW: Ref to track previous consolidated data
+  const previousConsolidatedDataRef = useRef([]);
+  
   // Track if we've already loaded data
   const hasLoadedDataRef = useRef(false);
   
@@ -576,6 +575,11 @@ function ReportEntry() {
     formDataRef.current = formData;
     reportDateRef.current = reportDate;
     currentHospitalRef.current = currentHospital;
+    
+    // Track previous consolidated data
+    if (formData?.report_details) {
+      previousConsolidatedDataRef.current = formData.report_details;
+    }
   }, [formData, reportDate, currentHospital]);
 
   // Check if we're coming from view mode
@@ -611,7 +615,7 @@ function ReportEntry() {
     };
   }, []);
 
-    const { hospital, toggleHospital } = useTheme();
+  const { hospital, toggleHospital } = useTheme();
 
   // Format date for display
   const formatJapaneseDate = (date) => {
@@ -686,8 +690,13 @@ function ReportEntry() {
           setReportId(report.id);
           setHasUnsavedChanges(false);
           
+          // Store consolidated data
+          if (report.report_details) {
+            previousConsolidatedDataRef.current = report.report_details;
+          }
+          
           showSnackbar(`${formatJapaneseDate(new Date(report.report_date))}のレポートを読み込みました`, 'info');
-        }else{
+        } else {
           sethospital_type(null)
         }
         
@@ -761,12 +770,18 @@ function ReportEntry() {
           setReportId(report.id);
           setHasUnsavedChanges(false);
           
+          // Store consolidated data
+          if (report.report_details) {
+            previousConsolidatedDataRef.current = report.report_details;
+          }
+          
           if (!forceReload) {
             showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
           }
         } else {
           sethospital_type(null)
           // Reset form for new entry when report is null
+          // BUT preserve consolidated data from previous state
           const emptyForm = {
             admission_count: 0,
             discharge_count: 0,
@@ -779,7 +794,8 @@ function ReportEntry() {
             special_notes: '',
             shift_nurses: [],
             duty_staff: [],
-            report_details: []
+            // IMPORTANT: Keep previous consolidated data, don't reset it
+            report_details: previousConsolidatedDataRef.current || []
           };
           
           setFormData(emptyForm);
@@ -800,7 +816,7 @@ function ReportEntry() {
       console.error('Error loading report:', error);
       const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
       
-      // Initialize empty form on error
+      // Initialize empty form on error, but preserve consolidated data
       const emptyForm = {
         admission_count: 0,
         discharge_count: 0,
@@ -813,7 +829,8 @@ function ReportEntry() {
         special_notes: '',
         shift_nurses: [],
         duty_staff: [],
-        report_details: []
+        // Preserve consolidated data
+        report_details: previousConsolidatedDataRef.current || []
       };
       setFormData(emptyForm);
       setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
@@ -948,6 +965,11 @@ function ReportEntry() {
         setHasUnsavedChanges(false);
         setLastSaved(new Date());
         
+        // Store consolidated data
+        if (formData.report_details) {
+          previousConsolidatedDataRef.current = formData.report_details;
+        }
+        
         // If editing from view with changed date, update original date
         if (isEditingFromView && originalReportDate && 
             reportDate.getTime() !== originalReportDate.getTime()) {
@@ -1023,6 +1045,11 @@ function ReportEntry() {
         setHasUnsavedChanges(false);
         setValidationErrors({});
         
+        // Store consolidated data
+        if (data.report_details) {
+          previousConsolidatedDataRef.current = data.report_details;
+        }
+        
         // If editing from view with changed date, update original date
         if (isEditingFromView && originalReportDate && 
             reportDate.getTime() !== originalReportDate.getTime()) {
@@ -1066,12 +1093,17 @@ function ReportEntry() {
       setFormData(newData);
       formDataRef.current = newData;
       
+      // Store consolidated data
+      if (newData.report_details) {
+        previousConsolidatedDataRef.current = newData.report_details;
+      }
+      
       // Check if there are changes from initial data
       if (initialFormData) {
         const changesFromInitial = JSON.stringify(newData) !== JSON.stringify(initialFormData);
-        setHasUnsavedChanges(false);
+        setHasUnsavedChanges(changesFromInitial);
       } else {
-        setHasUnsavedChanges(false);
+        setHasUnsavedChanges(true);
       }
     }
   }, [initialFormData]);
@@ -1364,66 +1396,53 @@ function ReportEntry() {
                     </Typography>
                   </Box>
                 }>
-                  
-{/*hospital_type}?
-{JSON.stringify(hospital)*/}
-
-
-              {hospital_type === 'large_hospital' ? (
-                  <FrameScreen
-                    formData={formData}
-                    departments={departments}
-                    doctors={doctors}
-                    hospitalId={currentHospital?.id}
-                    onFormDataChange={handleFormDataChange}
-                    loading={loadingReport}
-                    reportDate={reportDate}
-                    onDateChange={handleDateChange}
-                    onSaveDraft={handleSaveDraft}
-                    onSubmit={handleSubmit}
-                    onValidate={handleValidate}
-                    isSubmitting={submitting}
-                    isSavingDraft={savingDraft}
-                    reportStatus={reportStatus}
-                    readOnly={isReadOnly}
-                  />
-              ) : hospital_type === 'hospital' ? (
-                <Alert severity="warning">Hospital</Alert>
-              ) : hospital_type === 'welfare' ? (
-                 <Alert severity="warning">Welfare</Alert>
-              ) :hospital?.type=== 'large_hospital' ? (
-                  <FrameScreen
-                    formData={formData}
-                    departments={departments}
-                    doctors={doctors}
-                    hospitalId={currentHospital?.id}
-                    onFormDataChange={handleFormDataChange}
-                    loading={loadingReport}
-                    reportDate={reportDate}
-                    onDateChange={handleDateChange}
-                    onSaveDraft={handleSaveDraft}
-                    onSubmit={handleSubmit}
-                    onValidate={handleValidate}
-                    isSubmitting={submitting}
-                    isSavingDraft={savingDraft}
-                    reportStatus={reportStatus}
-                    readOnly={isReadOnly}
-                  />
-              ) : hospital?.type === 'hospital' ? (
-                <Alert severity="warning">Hospital</Alert>
-              ) : hospital?.type === 'welfare' ? (
-                 <Alert severity="warning">Welfare</Alert>
-              ) :
-              
-              
-              (
-                <Alert severity="warning">医療機関タイプが指定されていません</Alert>
-              )}
-
-
-
-
-                  
+                  {hospital_type === 'large_hospital' ? (
+                    <FrameScreen
+                      formData={formData}
+                      departments={departments}
+                      doctors={doctors}
+                      hospitalId={currentHospital?.id}
+                      onFormDataChange={handleFormDataChange}
+                      loading={loadingReport}
+                      reportDate={reportDate}
+                      onDateChange={handleDateChange}
+                      onSaveDraft={handleSaveDraft}
+                      onSubmit={handleSubmit}
+                      onValidate={handleValidate}
+                      isSubmitting={submitting}
+                      isSavingDraft={savingDraft}
+                      reportStatus={reportStatus}
+                      readOnly={isReadOnly}
+                    />
+                  ) : hospital_type === 'hospital' ? (
+                    <Alert severity="warning">Hospital</Alert>
+                  ) : hospital_type === 'welfare' ? (
+                    <Alert severity="warning">Welfare</Alert>
+                  ) : hospital?.type === 'large_hospital' ? (
+                    <FrameScreen
+                      formData={formData}
+                      departments={departments}
+                      doctors={doctors}
+                      hospitalId={currentHospital?.id}
+                      onFormDataChange={handleFormDataChange}
+                      loading={loadingReport}
+                      reportDate={reportDate}
+                      onDateChange={handleDateChange}
+                      onSaveDraft={handleSaveDraft}
+                      onSubmit={handleSubmit}
+                      onValidate={handleValidate}
+                      isSubmitting={submitting}
+                      isSavingDraft={savingDraft}
+                      reportStatus={reportStatus}
+                      readOnly={isReadOnly}
+                    />
+                  ) : hospital?.type === 'hospital' ? (
+                    <Alert severity="warning">Hospital</Alert>
+                  ) : hospital?.type === 'welfare' ? (
+                    <Alert severity="warning">Welfare</Alert>
+                  ) : (
+                    <Alert severity="warning">医療機関タイプが指定されていません</Alert>
+                  )}
                 </React.Suspense>
               )}
             </Box>
