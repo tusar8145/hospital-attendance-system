@@ -392,6 +392,7 @@ const ReportEntryHeader = ({
 
 // Validation helper function
 const validateReportData = (formData) => {
+  console.log(formData,'<<<<<<<<<<>>>>>>>>>')
   const errors = {};
   
   if (!formData || Object.keys(formData).length === 0) {
@@ -440,31 +441,7 @@ const validateReportData = (formData) => {
         ? errors.shift_nurses + '、深夜勤の看護師が少なくとも1名必要です'
         : '深夜勤の看護師が少なくとも1名必要です';
     }
-  }
-
-  // Validate duty staff
-  const dutyStaffPositions = [
-    "security",
-    "medical_affairs", 
-    "medical_affairs_2",
-    "security_2",
-    "medical_affairs_3",
-    "internal_medicine"
-  ];
-  
-  if (!formData.duty_staff || formData.duty_staff.length === 0) {
-    errors.duty_staff = '当直スタッフは必須です';
-  } else {
-    dutyStaffPositions.forEach((position, index) => {
-      const staff = formData.duty_staff.find(s => s.position === position);
-      if (!staff?.staff_name_1?.trim()) {
-        errors[`duty_staff_${position}_1`] = `${position === 'security' ? '保安' : position === 'medical_affairs' ? '医事' : '内科'}の1人目のスタッフ名は必須です`;
-      }
-      if (!staff?.staff_name_2?.trim()) {
-        errors[`duty_staff_${position}_2`] = `${position === 'security' ? '保安' : position === 'medical_affairs' ? '医事' : '内科'}の2人目のスタッフ名は必須です`;
-      }
-    });
-  }
+  } 
 
   // Validate consolidated data
   if (!formData.report_details || formData.report_details.length === 0) {
@@ -1092,9 +1069,9 @@ function ReportEntry() {
       // Check if there are changes from initial data
       if (initialFormData) {
         const changesFromInitial = JSON.stringify(newData) !== JSON.stringify(initialFormData);
-        setHasUnsavedChanges(changesFromInitial);
+        setHasUnsavedChanges(false);
       } else {
-        setHasUnsavedChanges(true);
+        setHasUnsavedChanges(false);
       }
     }
   }, [initialFormData]);
