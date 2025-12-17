@@ -6,7 +6,6 @@ import {
   Stack, 
   TextField, 
   Typography,
-  Container,
   useMediaQuery,
   useTheme,
   Grid,
@@ -30,8 +29,7 @@ import ja from 'date-fns/locale/ja';
 import ConsolidatedContentComponent from './ConsolidatedContentComponent';
 import ShiftNursesSection from './ShiftNursesSection';
 import DutyStaffSection from './DutyStaffSection';
-import axios from 'axios';
-import apiConfig from '../../../configs/apiConfig';
+import ExternalDoctorsSection from './ExternalDoctorsSection';
 
 const FrameScreen = React.memo(({
   formData = null,
@@ -49,9 +47,9 @@ const FrameScreen = React.memo(({
   isSavingDraft = false,
   reportStatus = null,
   readOnly = false,
-  showSnackbar, // New prop for showing snackbar from parent
-  onHeaderSaveDraft, // New prop: callback for header save draft button
-  onHeaderSubmit // New prop: callback for header submit button
+  showSnackbar,
+  onHeaderSaveDraft,
+  onHeaderSubmit
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -78,28 +76,22 @@ const FrameScreen = React.memo(({
   });
 
   const [currentStatus, setCurrentStatus] = useState({
-    firstRow: Array(21).fill(""),   // 1人目
-    secondRow: Array(21).fill(""),  // 2人目
-    thirdRow: Array(21).fill("")    // 3人目
+    firstRow: Array(21).fill(""),
+    secondRow: Array(21).fill(""),
+    thirdRow: Array(21).fill("")
   });
   const [specialNotes, setSpecialNotes] = useState("");
   const [consolidatedData, setConsolidatedData] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
   
-  // New states for read-only stats (for morning, afternoon, duty)
-  const [monthlyCumulativeStats, setMonthlyCumulativeStats] = useState({
-    morningClinic: 0,
-    afternoonClinic: 0,
-    onDuty: 0
-  });
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsError, setStatsError] = useState(null);
+  // Track if form data has been loaded
+  const [formDataLoaded, setFormDataLoaded] = useState(false);
 
   // Refs to track form state and prevent flickering
   const isInitialMountRef = useRef(true);
-  const formDataLoadedRef = useRef(false);
   const previousFormDataRef = useRef(null);
   const loadingRef = useRef(false);
+  const externalDoctorsInitializedRef = useRef(false);
 
   // Local state for snackbar
   const [localSnackbar, setLocalSnackbar] = useState({
@@ -117,69 +109,15 @@ const FrameScreen = React.memo(({
     return `${year}-${month}-${day}`;
   };
 
-  // Fetch read-only statistics from API - ONLY when there's no existing form data
-  const fetchReadOnlyStats = async () => {
-    if (!hospitalId || formDataLoadedRef.current) return;
-    
-    setStatsLoading(true);
-    setStatsError(null);
-    
-    try {
-      const response = await axios.post(`${apiConfig.baseURL}/report/read-only-stats`, {
-        date: formatDateForAPI(date),
-        hospital_id: hospitalId
-      });
-
-      if (response.data.success) {
-        const { monthlyCumulative } = response.data.data;
-        
-        // Update the read-only fields with monthly cumulative values
-        setMonthlyCumulativeStats({
-          morningClinic: monthlyCumulative.morningClinic || 0,
-          afternoonClinic: monthlyCumulative.afternoonClinic || 0,
-          onDuty: monthlyCumulative.onDuty || 0
-        });
-        
-        // Only set external doctors if we haven't loaded form data yet
-        if (!formDataLoadedRef.current) {
-          setExternalDoctors({
-            morning: monthlyCumulative.morningClinic?.toString() || "0",
-            afternoon: monthlyCumulative.afternoonClinic?.toString() || "0",
-            duty: monthlyCumulative.onDuty?.toString() || "0"
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching read-only stats:', error);
-      setStatsError('統計データの取得に失敗しました');
-      
-      // Only reset to 0 if we don't have form data
-      if (!formDataLoadedRef.current) {
-        setExternalDoctors({
-          morning: "0",
-          afternoon: "0",
-          duty: "0"
-        });
-        
-        setMonthlyCumulativeStats({
-          morningClinic: 0,
-          afternoonClinic: 0,
-          onDuty: 0
-        });
-      }
-    } finally {
-      setStatsLoading(false);
-    } 
+  // Format date for display
+  const formatJapaneseDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}年${month}月${day}日`;
   };
 
-
-  useEffect(() => {
-    if(hospitalId){
-      fetchReadOnlyStats()
-    }
-  }, [formData, loading, hospitalId]);
-
-  // Initialize form when formData changes - FIXED to prevent flickering
+  // Initialize form when formData changes
   useEffect(() => {
     // Skip if loading
     if (loading) {
@@ -200,33 +138,29 @@ const FrameScreen = React.memo(({
       console.log('Loading form data into FrameScreen');
       loadFormData(formData);
       previousFormDataRef.current = formData;
-      formDataLoadedRef.current = true;
-    } else if ((formData === null || Object.keys(formData).length === 0) && !formDataLoadedRef.current) {
-      console.log('No form data, initializing empty form');
+      setFormDataLoaded(true);
+      externalDoctorsInitializedRef.current = true;
+    } else if ((formData === null || Object.keys(formData).length === 0) && formDataLoaded) {
+      console.log('No form data, resetting form');
       resetForm();
-      formDataLoadedRef.current = false;
+      setFormDataLoaded(false);
+      externalDoctorsInitializedRef.current = false;
     }
     
-    // Fetch stats on initial mount if no form data
-    if (isInitialMountRef.current && hospitalId && !formDataLoadedRef.current) {
-      fetchReadOnlyStats();
-      isInitialMountRef.current = false;
+    // Reset formDataLoaded flag when formData becomes null
+    if (!formData && formDataLoaded) {
+      setFormDataLoaded(false);
+      externalDoctorsInitializedRef.current = false;
     }
-  }, [formData, loading, hospitalId]);
+  }, [formData, loading]);
 
-  // Fetch stats when date changes (if no form data loaded)
-  useEffect(() => {
-    if (hospitalId && !formDataLoadedRef.current) {
-      fetchReadOnlyStats();
-    }
-  }, [date, hospitalId]);
-
-  // Load form data from existing report - FIXED to prevent flickering
+  // Load form data from existing report
   const loadFormData = (data) => {
     console.log('Loading form data:', data);
     
     // Mark that we've loaded form data
-    formDataLoadedRef.current = true;
+    setFormDataLoaded(true);
+    externalDoctorsInitializedRef.current = true;
     
     // Basic stats - always load from form data
     setAdmissionCount(data.admission_count?.toString() || "0");
@@ -237,13 +171,6 @@ const FrameScreen = React.memo(({
       morning: data.external_morning?.toString() || "0",
       afternoon: data.external_afternoon?.toString() || "0",
       duty: data.external_duty?.toString() || "0"
-    });
-    
-    // Update monthly stats display (read-only info)
-    setMonthlyCumulativeStats({
-      morningClinic: data.external_morning || 0,
-      afternoonClinic: data.external_afternoon || 0,
-      onDuty: data.external_duty || 0
     });
     
     // External consultation (now free text fields)
@@ -381,22 +308,7 @@ const FrameScreen = React.memo(({
     
     setValidationErrors({});
     
-    // Reset monthly stats too
-    setMonthlyCumulativeStats({
-      morningClinic: 0,
-      afternoonClinic: 0,
-      onDuty: 0
-    });
-    
     console.log('Form reset complete');
-  };
-
-  // Format date for display
-  const formatJapaneseDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}年${month}月${day}日`;
   };
 
   // Handle date navigation
@@ -455,7 +367,7 @@ const FrameScreen = React.memo(({
     return selectedDate > today;
   };
 
-  // Validate form - FIXED to work with both top and bottom buttons
+  // Validate form
   const validateForm = () => {
     const errors = {};
     
@@ -597,7 +509,7 @@ const FrameScreen = React.memo(({
     };
   };
 
-  // Handle save draft - FIXED to show snackbar from parent
+  // Handle save draft
   const handleSaveDraftClick = () => {
     if (validateForm()) {
       const data = prepareFormData();
@@ -613,7 +525,7 @@ const FrameScreen = React.memo(({
     }
   };
 
-  // Handle submit - FIXED to show snackbar from parent
+  // Handle submit
   const handleSubmitClick = () => {
     if (validateForm()) {
       const data = prepareFormData();
@@ -658,12 +570,6 @@ const FrameScreen = React.memo(({
         delete newErrors.dischargeCount;
         setValidationErrors(newErrors);
       }
-    }
-  };
-
-  const handleExternalDoctorChange = (field, value) => {
-    if (/^\d*$/.test(value)) {
-      setExternalDoctors(prev => ({ ...prev, [field]: value }));
     }
   };
 
@@ -713,6 +619,14 @@ const FrameScreen = React.memo(({
         delete newErrors.visit;
         setValidationErrors(newErrors);
       }
+    }
+  };
+
+  // Handle external doctors change from the child component
+  const handleExternalDoctorsChange = (newExternalDoctors) => {
+    // Only update if we haven't initialized from form data yet
+    if (!externalDoctorsInitializedRef.current) {
+      setExternalDoctors(newExternalDoctors);
     }
   };
 
@@ -1059,43 +973,6 @@ const FrameScreen = React.memo(({
           </Alert>
         )}
 
-        {/* Stats Loading Indicator */}
-        {statsLoading && (
-          <Alert 
-            severity="info" 
-            sx={{ 
-              mb: 2,
-              '& .MuiAlert-message': {
-                width: '100%'
-              }
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CircularProgress size={20} />
-              <Typography sx={{ fontSize: fontSize.small }}>
-                統計データを読み込み中...
-              </Typography>
-            </Box>
-          </Alert>
-        )}
-
-        {/* Stats Error */}
-        {statsError && !statsLoading && (
-          <Alert 
-            severity="warning" 
-            sx={{ 
-              mb: 2,
-              '& .MuiAlert-message': {
-                width: '100%'
-              }
-            }}
-          >
-            <Typography sx={{ fontSize: fontSize.small }}>
-              {statsError}
-            </Typography>
-          </Alert>
-        )}
-
         {/* Emergency Statistics Section */}
         <Paper
           elevation={0}
@@ -1231,117 +1108,21 @@ const FrameScreen = React.memo(({
           </Stack>
         </Paper>
 
-        {/* External Doctors Section - NOW READ-ONLY */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Stack spacing={3}>
-            {/* Section Header */}
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              mb: 2
-            }}>
-              <Typography sx={{ 
-                fontWeight: 700, 
-                fontSize: fontSize.large,
-                color: "#2c3e50",
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <Box component="span" sx={{ 
-                  width: 4, 
-                  height: 20, 
-                  backgroundColor: '#2ecc71',
-                  borderRadius: '2px'
-                }} />
-                外来
-              </Typography>
-              <Tooltip title="外来診療の患者数（月間累積・読み取り専用）">
-                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-              </Tooltip>
-            </Box>
-
-            <Grid container spacing={isMobile ? 2 : 3}>
-              {[
-                { field: 'morning', label: '午前診', color: '#3498db', apiField: 'morningClinic' },
-                { field: 'afternoon', label: '午後診', color: '#9b59b6', apiField: 'afternoonClinic' },
-                { field: 'duty', label: '当直', color: '#e74c3c', apiField: 'onDuty' }
-              ].map((item, index) => (
-                <Grid item xs={12} sm={4} key={item.field}>
-                  <Stack spacing={1}>
-                    <Typography sx={{ 
-                      fontWeight: 600, 
-                      fontSize: fontSize.medium,
-                      color: "#6b7280",
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5
-                    }}>
-                      <Box sx={{ 
-                        width: 12, 
-                        height: 12, 
-                        borderRadius: '50%',
-                        backgroundColor: item.color
-                      }} />
-                      {item.label}
-                      <Typography component="span" sx={{ color: "#666", fontSize: fontSize.small, fontWeight: 400 }}>
-                        (月間累積)
-                      </Typography>
-                    </Typography>
-                    <TextField
-                      value={externalDoctors[item.field]}
-                      variant="outlined"
-                      fullWidth
-                      size="small"
-                      disabled
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "8px",
-                          bgcolor: "#f5f5f5",
-                          height: textFieldHeight,
-                          "& fieldset": { 
-                            borderColor: "#e0e0e0",
-                          },
-                          "& input": {
-                            fontSize: fontSize.medium,
-                            textAlign: 'right',
-                            paddingRight: 2,
-                            fontWeight: 600,
-                            color: "#2c3e50",
-                          },
-                          "&.Mui-disabled": {
-                            "& input": {
-                              color: "#2c3e50",
-                              WebkitTextFillColor: "#2c3e50",
-                            }
-                          }
-                        },
-                      }}
-                    />
-                    {statsLoading ? (
-                      <Typography sx={{ fontSize: fontSize.small, color: '#666', fontStyle: 'italic' }}>
-                        データ読み込み中...
-                      </Typography>
-                    ) : (
-                      <Typography sx={{ fontSize: fontSize.small, color: '#666', fontStyle: 'italic' }}>
-                        月間累積: {monthlyCumulativeStats[item.apiField] || 0}件
-                      </Typography>
-                    )}
-                  </Stack>
-                </Grid>
-              ))}
-            </Grid>
-          </Stack>
-        </Paper>
+        {/* External Doctors Section - Using New Component */}
+        <ExternalDoctorsSection
+          externalDoctors={externalDoctors}
+          onExternalDoctorsChange={handleExternalDoctorsChange}
+          validationErrors={validationErrors}
+          textFieldHeight={textFieldHeight}
+          fontSize={fontSize}
+          isMobile={isMobile}
+          isTablet={isTablet}
+          sectionPadding={sectionPadding}
+          readOnly={readOnly || reportStatus === 'submitted'}
+          hospitalId={hospitalId}
+          reportDate={date}
+          formDataLoaded={formDataLoaded}
+        />
 
         {/* External Consultation Section - NOW FREE TEXT */}
         <Paper
@@ -1677,7 +1458,7 @@ const FrameScreen = React.memo(({
                 color="primary"
                 startIcon={isSavingDraft ? <CircularProgress size={20} /> : <SaveIcon />}
                 onClick={handleSaveDraftClick}
-                disabled={isSavingDraft || isSubmitting || loading || statsLoading}
+                disabled={isSavingDraft || isSubmitting || loading}
                 size="large"
                 sx={{
                   minWidth: isMobile ? '100%' : '140px',
@@ -1696,7 +1477,7 @@ const FrameScreen = React.memo(({
                 color="primary"
                 startIcon={isSubmitting ? <CircularProgress size={20} /> : <SendIcon />}
                 onClick={handleSubmitClick}
-                disabled={isSubmitting || isSavingDraft || loading || statsLoading}
+                disabled={isSubmitting || isSavingDraft || loading}
                 size="large"
                 sx={{
                   minWidth: isMobile ? '100%' : '160px',

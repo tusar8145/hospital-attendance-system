@@ -649,6 +649,9 @@ function ReportEntry() {
   // Track if we've already loaded data for current state
   const hasLoadedDataRef = useRef(false);
   
+  // Add a ref to track initial load
+  const initialLoadRef = useRef(false);
+
   // Get reportId from URL params
   const reportIdFromUrl = urlParams.reportId ? parseInt(urlParams.reportId, 10) : null;
 
@@ -831,7 +834,7 @@ function ReportEntry() {
       isLoadingDataRef.current = false;
       hasLoadedDataRef.current = true;
     }
-  }, []); // Empty dependency array - this function doesn't depend on any state
+  }, []);
 
   // Load report data for selected date (normal flow) - FIXED: useCallback with proper dependencies
   const loadReportData = useCallback(async (date, forceReload = false) => {
@@ -962,7 +965,7 @@ function ReportEntry() {
       isLoadingDataRef.current = false;
       hasLoadedDataRef.current = true;
     }
-  }, []); // Empty dependency array - this function doesn't depend on any state
+  }, []);
 
   // Handle date change
   const handleDateChange = async (newDate) => {
@@ -997,49 +1000,17 @@ function ReportEntry() {
         });
       } else {
         // Same date, normal reload - only warn if there are actual changes
-        /*if (hasActualChanges) {
-          setConfirmDialog({
-            open: true,
-            title: '未保存の変更があります',
-            message: '日付を変更すると現在の変更が失われます。続行しますか？',
-            action: () => {
-              setReportDate(newDate);
-              if (reportIdFromUrl) {
-                loadReportById(reportIdFromUrl);
-              } else {
-                loadReportData(newDate, true);
-              }
-            },
-            actionType: 'dateChange'
-          });
-        } else {*/
-          // No actual changes, just change date
-          setReportDate(newDate);
-          if (reportIdFromUrl) {
-            loadReportById(reportIdFromUrl);
-          } else {
-            loadReportData(newDate, true);
-          }
-       // }
+        setReportDate(newDate);
+        if (reportIdFromUrl) {
+          loadReportById(reportIdFromUrl);
+        } else {
+          loadReportData(newDate, true);
+        }
       }
     } else {
-      // Normal date change logic - only warn if there are actual changes
-     /* if (hasActualChanges) {
-        setConfirmDialog({
-          open: true,
-          title: '未保存の変更があります',
-          message: '日付を変更すると現在の変更が失われます。続行しますか？',
-          action: () => {
-            setReportDate(newDate);
-            loadReportData(newDate, true);
-          },
-          actionType: 'dateChange'
-        });
-      } else {*/
-        // No actual changes, just change date
-        setReportDate(newDate);
-        loadReportData(newDate, true);
-     // }
+      // Normal date change logic
+      setReportDate(newDate);
+      loadReportData(newDate, true);
     }
   };
 
@@ -1324,13 +1295,13 @@ function ReportEntry() {
     }
   };
 
-  // Load initial data - FIXED: Simplified to prevent infinite loops
+  // Load initial data - FIXED with better tracking
   useEffect(() => {
     // Only load data once when component mounts or when key dependencies change
-    const shouldLoadData = currentHospital?.id && !hasLoadedDataRef.current;
+    const shouldLoadData = currentHospital?.id && !initialLoadRef.current;
     
     if (shouldLoadData) {
-      hasLoadedDataRef.current = true;
+      initialLoadRef.current = true;
       
       // If we have reportId in URL (coming from view mode), load by ID
       if (reportIdFromUrl) {
@@ -1393,8 +1364,8 @@ function ReportEntry() {
             onToday={handleToday}
             onRefresh={handleRefresh}
             onBack={handleBack}
-            onSaveDraft={handleHeaderSaveDraft} // Use the new handler
-            onSubmit={handleHeaderSubmit} // Use the new handler
+            onSaveDraft={handleHeaderSaveDraft}
+            onSubmit={handleHeaderSubmit}
             hasUnsavedChanges={hasUnsavedChanges}
             isSubmitting={submitting}
             isSavingDraft={savingDraft}
@@ -1558,8 +1529,8 @@ function ReportEntry() {
                       reportStatus={reportStatus}
                       readOnly={isReadOnly}
                       showSnackbar={showSnackbar}
-                      onHeaderSaveDraft={setFrameScreenSaveDraft} // Pass callback to get save function
-                      onHeaderSubmit={setFrameScreenSubmit} // Pass callback to get submit function
+                      onHeaderSaveDraft={setFrameScreenSaveDraft}
+                      onHeaderSubmit={setFrameScreenSubmit}
                     />
                   ) : hospital_type === 'hospital' ? (
                     <Alert severity="warning">Hospital</Alert>
@@ -1583,8 +1554,8 @@ function ReportEntry() {
                       reportStatus={reportStatus}
                       readOnly={isReadOnly}
                       showSnackbar={showSnackbar}
-                      onHeaderSaveDraft={setFrameScreenSaveDraft} // Pass callback to get save function
-                      onHeaderSubmit={setFrameScreenSubmit} // Pass callback to get submit function
+                      onHeaderSaveDraft={setFrameScreenSaveDraft}
+                      onHeaderSubmit={setFrameScreenSubmit}
                     />
                   ) : hospital?.type === 'hospital' ? (
                     <Alert severity="warning">Hospital</Alert>
