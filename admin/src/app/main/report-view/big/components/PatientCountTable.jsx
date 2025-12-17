@@ -3,7 +3,7 @@ import React from 'react';
 const PatientCountTable = ({ patientData = {} }) => {
   // Get unique department names
   const departments = Object.keys(patientData);
-
+  
   // Calculate totals
   const calculateTotals = () => {
     const totals = { morning: 0, afternoon: 0, night: 0 };
@@ -20,22 +20,16 @@ const PatientCountTable = ({ patientData = {} }) => {
 
   const totals = calculateTotals();
 
+  // Calculate how many additional empty columns we need to reach 15 total columns
+  const totalColumns = 15; // Fixed total columns
+  const usedColumns = departments.length + 2; // Departments + empty + 患者数 column
+  const additionalColumnsCount = Math.max(0, totalColumns - usedColumns);
+  
   // Generate additional empty columns
-  const additionalColumns = Array.from({ length: 20 }, (_, i) => ({
+  const additionalColumns = Array.from({ length: additionalColumnsCount }, (_, i) => ({
     id: i + 1,
-    label: `C${i + 5}`
+    label: `C${i + 1}`
   }));
-
-  // Color classes for departments
-  const getColorClass = (index) => {
-    const colors = ['bg-blue-600', 'bg-green-600', 'bg-yellow-600', 'bg-purple-600'];
-    return colors[index % colors.length];
-  };
-
-  const getHoverColorClass = (index) => {
-    const colors = ['hover:bg-blue-50', 'hover:bg-green-50', 'hover:bg-yellow-50', 'hover:bg-purple-50'];
-    return colors[index % colors.length];
-  };
 
   return (
     <div className="patient-count-table w-full h-full">
@@ -44,243 +38,337 @@ const PatientCountTable = ({ patientData = {} }) => {
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <tbody>
               {/* Row 1 - Headers */}
-              <tr className="text-center">
-                {/* Empty column */}
+              <tr className="text-center align-middle">
+                {/* Column 1: 患者数 - GRAY BACKGROUND, WHITE TEXT - VERY SMALL */}
                 <td 
-                  className="border border-gray-200 bg-gray-100 p-1"
-                  style={{ width: '30px' }}
-                ></td>
+                  className="border border-gray-200 bg-blue-600 text-white p-0.5"
+                  rowSpan={6}   
+                  style={{ 
+                    width: '20px',
+                    height: '90px'  /* Increased height to accommodate 6 rows */
+                  }}
+                >
+                  <div className="flex flex-col justify-center items-center h-full leading-none">
+                    <span className="block text-[16px] p-1">患</span>
+                    <span className="block text-[16px] p-1">者</span>
+                    <span className="block text-[16px] p-1">数</span>
+                  </div>
+                </td>
                 
-                {/* Empty column */}
+                {/* Empty column - WHITE BACKGROUND */}
                 <td 
-                  className="border border-gray-200 bg-gray-100 p-1"
-                  style={{ width: '40px' }}
-                ></td>
+                  className="border border-gray-200 bg-white p-0.5"
+                  rowSpan={2}
+                  style={{ 
+                    width: '40px',
+                    height: '24px'
+                  }}
+                >
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-[10px]"></span>
+                  </div>
+                </td>
                 
-                {/* Department headers */}
-                {departments.slice(0, 2).map((dept, index) => (
+                {/* Department headers - WHITE BACKGROUND, BLACK TEXT */}
+                {departments.map((dept, index) => (
                   <td 
                     key={`dept-header-${index}`}
-                    className={`border border-gray-200 ${getColorClass(index)} text-white font-bold p-1`}
-                    style={{ width: '40px' }}
+                    className="border border-gray-200 bg-white text-black font-bold p-0.5"
+                    style={{ 
+                      width: '40px',
+                      height: '24px'
+                    }}
                   >
-                    <div className="text-[10px]">{dept}</div>
+                    <div className="text-[11px] leading-none font-bold">{index + 1}</div>
                   </td>
                 ))}
                 
-                {/* Additional columns */}
+                {/* Additional empty columns - WHITE BACKGROUND */}
                 {additionalColumns.map((col) => (
                   <td
-                    key={`header-${col.id}`}
-                    className="border border-gray-200 bg-gray-100 p-1"
-                    style={{ width: '30px' }}
-                  ></td>
+                    key={`empty-header-${col.id}`}
+                    className="border border-gray-200 bg-white p-0.5"
+                    style={{ 
+                      width: '30px',
+                      height: '24px'
+                    }}
+                  >
+                    <div className="text-[9px] text-gray-500 leading-none">{col.id + departments.length}</div>
+                  </td>
                 ))}
                 
-                {/* Last column header - 合計 */}
+                {/* Last column header - 合計 - GRAY BACKGROUND */}
                 <td 
-                  className="border border-gray-200 bg-purple-600 text-white font-bold p-1"
-                  style={{ width: '30px' }}
+                  className="border border-gray-200 bg-gray-300 text-black font-bold p-0.5"
+                  rowSpan={2}
+                  style={{ 
+                    width: '30px',
+                    height: '24px'
+                  }}
                 >
-                  <div className="text-[10px]">合計</div>
+                  <div className="text-[10px] leading-tight font-bold text-center">合計</div>
                 </td>
               </tr>
               
-              {/* Row 2: Morning Patients */}
-              <tr className="text-center">
-                {/* 患者数 header */}
-                <td 
-                  className="border border-gray-200 bg-gray-800 text-white p-1"
-                  rowSpan="4"
-                  style={{ width: '30px' }}
-                >
-                  <div className="flex flex-col justify-center items-center h-full">
-                    <span className="block text-[10px] leading-tight">患</span>
-                    <span className="block text-[10px] leading-tight">者</span>
-                    <span className="block text-[10px] leading-tight">数</span>
-                  </div>
-                </td>
+              {/* Row 2 - Sub-headers - GRAY BACKGROUND, BLACK TEXT */}
+              <tr className="text-center align-middle">
+                {departments.map((dept, index) => (
+                  <td 
+                    key={`subheader-${dept}`}
+                    className="border border-gray-200 bg-gray-300 font-semibold p-0.5"
+                    style={{ 
+                      width: '40px',
+                      height: '24px'
+                    }}
+                  >
+                    <div className="text-[10px] leading-tight font-semibold">{dept}</div>
+                  </td>
+                ))}
                 
-                {/* 午前診 */}
+                {additionalColumns.map((col) => (
+                  <td
+                    key={`subheader-${col.id}`}
+                    className="border border-gray-200 bg-gray-300 font-semibold p-0.5"
+                    style={{ 
+                      width: '30px',
+                      height: '24px'
+                    }}
+                  >
+                    <div className="text-[10px] text-gray-600 leading-none">{col.label}</div>
+                  </td>
+                ))}
+              </tr>
+              
+              {/* Row 3: Morning Patients */}
+              <tr className="text-center align-middle">
+                {/* 午前診 header - LIGHT GRAY BACKGROUND */}
                 <td 
-                  className="border border-gray-200 bg-gray-100 font-medium p-1"
-                  style={{ width: '40px' }}
+                  className="border border-gray-200 bg-gray-100 font-medium p-0.5"
+                  style={{ 
+                    width: '40px',
+                    height: '30px'
+                  }}
                 >
                   <div className="flex items-center justify-center h-full">
-                    <span className="text-[10px]">午前診</span>
+                    <span className="text-[11px] font-medium">午前診</span>
                   </div>
                 </td>
                 
-                {/* Department data */}
-                {departments.slice(0, 2).map((dept, index) => (
+                {/* Department data for morning */}
+                {departments.map((dept, index) => (
                   <td 
                     key={`morning-${dept}`}
-                    className={`border border-gray-200 p-1 ${getHoverColorClass(index)}`}
-                    style={{ width: '40px' }}
+                    className="border border-gray-200 p-0.5 bg-blue-50"
+                    style={{ 
+                      width: '40px',
+                      height: '30px'
+                    }}
                   >
-                    <div className="text-[11px] font-medium">
+                    <div className="text-[11px] leading-none flex items-center justify-center h-full font-medium">
                       {patientData[dept]?.morning || 0}
                     </div>
                   </td>
                 ))}
                 
-                {/* Additional columns */}
+                {/* Additional empty columns */}
                 {additionalColumns.map((col) => (
                   <td
-                    key={`data-morning-${col.id}`}
-                    className="border border-gray-200 p-1"
-                    style={{ width: '30px' }}
+                    key={`data-morning-empty-${col.id}`}
+                    className="border border-gray-200 p-0.5 bg-gray-50"
+                    style={{ 
+                      width: '30px',
+                      height: '30px'
+                    }}
                   >
-                    <div className="text-[11px]">-</div>
+                    <div className="text-[10px] text-gray-400 leading-none flex items-center justify-center h-full">-</div>
                   </td>
                 ))}
                 
-                {/* Total column */}
+                {/* Total column for morning */}
                 <td 
-                  className="border border-gray-200 p-1 bg-purple-50"
-                  style={{ width: '30px' }}
+                  className="border border-gray-200 p-0.5 bg-blue-50"
+                  style={{ 
+                    width: '30px',
+                    height: '30px'
+                  }}
                 >
-                  <div className="text-[11px] font-medium">{totals.morning}</div>
+                  <div className="text-[11px] leading-none flex items-center justify-center h-full font-medium">{totals.morning}</div>
                 </td>
               </tr>
               
-              {/* Row 3: Afternoon Patients */}
-              <tr className="text-center">
-                {/* 午後診 */}
+              {/* Row 4: Afternoon Patients */}
+              <tr className="text-center align-middle">
+                {/* 午後診 header - LIGHT GRAY BACKGROUND */}
                 <td 
-                  className="border border-gray-200 bg-gray-100 font-medium p-1"
-                  style={{ width: '40px' }}
+                  className="border border-gray-200 bg-gray-100 font-medium p-0.5"
+                  style={{ 
+                    width: '40px',
+                    height: '30px'
+                  }}
                 >
                   <div className="flex items-center justify-center h-full">
-                    <span className="text-[10px]">午後診</span>
+                    <span className="text-[11px] font-medium">午後診</span>
                   </div>
                 </td>
                 
-                {/* Department data */}
-                {departments.slice(0, 2).map((dept, index) => (
+                {/* Department data for afternoon */}
+                {departments.map((dept, index) => (
                   <td 
                     key={`afternoon-${dept}`}
-                    className={`border border-gray-200 p-1 ${getHoverColorClass(index)}`}
-                    style={{ width: '40px' }}
+                    className="border border-gray-200 p-0.5 bg-green-50"
+                    style={{ 
+                      width: '40px',
+                      height: '30px'
+                    }}
                   >
-                    <div className="text-[11px] font-medium">
+                    <div className="text-[11px] leading-none flex items-center justify-center h-full font-medium">
                       {patientData[dept]?.afternoon || 0}
                     </div>
                   </td>
                 ))}
                 
-                {/* Additional columns */}
+                {/* Additional empty columns */}
                 {additionalColumns.map((col) => (
                   <td
-                    key={`data-afternoon-${col.id}`}
-                    className="border border-gray-200 p-1"
-                    style={{ width: '30px' }}
+                    key={`data-afternoon-empty-${col.id}`}
+                    className="border border-gray-200 p-0.5 bg-gray-50"
+                    style={{ 
+                      width: '30px',
+                      height: '30px'
+                    }}
                   >
-                    <div className="text-[11px]">-</div>
+                    <div className="text-[10px] text-gray-400 leading-none flex items-center justify-center h-full">-</div>
                   </td>
                 ))}
                 
-                {/* Total column */}
+                {/* Total column for afternoon */}
                 <td 
-                  className="border border-gray-200 p-1 bg-purple-50"
-                  style={{ width: '30px' }}
+                  className="border border-gray-200 p-0.5 bg-green-50"
+                  style={{ 
+                    width: '30px',
+                    height: '30px'
+                  }}
                 >
-                  <div className="text-[11px] font-medium">{totals.afternoon}</div>
+                  <div className="text-[11px] leading-none flex items-center justify-center h-full font-medium">{totals.afternoon}</div>
                 </td>
               </tr>
               
-              {/* Row 4: Night Patients */}
-              <tr className="text-center">
-                {/* 夜診 */}
+              {/* Row 5: Night Patients */}
+              <tr className="text-center align-middle">
+                {/* 夜診 header - LIGHT GRAY BACKGROUND */}
                 <td 
-                  className="border border-gray-200 bg-gray-100 font-medium p-1"
-                  style={{ width: '40px' }}
+                  className="border border-gray-200 bg-gray-100 font-medium p-0.5"
+                  style={{ 
+                    width: '40px',
+                    height: '30px'
+                  }}
                 >
                   <div className="flex items-center justify-center h-full">
-                    <span className="text-[10px]">夜診</span>
+                    <span className="text-[11px] font-medium">夜診</span>
                   </div>
                 </td>
                 
-                {/* Department data */}
-                {departments.slice(0, 2).map((dept, index) => (
+                {/* Department data for night */}
+                {departments.map((dept, index) => (
                   <td 
                     key={`night-${dept}`}
-                    className={`border border-gray-200 p-1 ${getHoverColorClass(index)}`}
-                    style={{ width: '40px' }}
+                    className="border border-gray-200 p-0.5 bg-purple-50"
+                    style={{ 
+                      width: '40px',
+                      height: '30px'
+                    }}
                   >
-                    <div className="text-[11px] font-medium">
+                    <div className="text-[11px] leading-none flex items-center justify-center h-full font-medium">
                       {patientData[dept]?.night || 0}
                     </div>
                   </td>
                 ))}
                 
-                {/* Additional columns */}
+                {/* Additional empty columns */}
                 {additionalColumns.map((col) => (
                   <td
-                    key={`data-night-${col.id}`}
-                    className="border border-gray-200 p-1"
-                    style={{ width: '30px' }}
+                    key={`data-night-empty-${col.id}`}
+                    className="border border-gray-200 p-0.5 bg-gray-50"
+                    style={{ 
+                      width: '30px',
+                      height: '30px'
+                    }}
                   >
-                    <div className="text-[11px]">-</div>
+                    <div className="text-[10px] text-gray-400 leading-none flex items-center justify-center h-full">-</div>
                   </td>
                 ))}
                 
-                {/* Total column */}
+                {/* Total column for night */}
                 <td 
-                  className="border border-gray-200 p-1 bg-purple-50"
-                  style={{ width: '30px' }}
+                  className="border border-gray-200 p-0.5 bg-purple-50"
+                  style={{ 
+                    width: '30px',
+                    height: '30px'
+                  }}
                 >
-                  <div className="text-[11px] font-medium">{totals.night}</div>
+                  <div className="text-[11px] leading-none flex items-center justify-center h-full font-medium">{totals.night}</div>
                 </td>
               </tr>
               
-              {/* Row 5: Totals */}
-              <tr className="text-center">
-                {/* 合計 */}
+              {/* Row 6: Totals */}
+              <tr className="text-center align-middle">
+                {/* 合計 header - MEDIUM GRAY BACKGROUND */}
                 <td 
-                  className="border border-gray-200 bg-gray-200 font-bold p-1"
-                  style={{ width: '40px' }}
+                  className="border border-gray-200 bg-gray-200 font-bold p-0.5"
+                  style={{ 
+                    width: '40px',
+                    height: '30px'
+                  }}
                 >
                   <div className="flex items-center justify-center h-full">
-                    <span className="text-[10px]">合計</span>
+                    <span className="text-[11px] font-bold">合計</span>
                   </div>
                 </td>
                 
                 {/* Department totals */}
-                {departments.slice(0, 2).map((dept, index) => {
+                {departments.map((dept, index) => {
                   const deptTotal = (patientData[dept]?.morning || 0) + 
                                    (patientData[dept]?.afternoon || 0) + 
                                    (patientData[dept]?.night || 0);
                   return (
                     <td 
                       key={`total-${dept}`}
-                      className={`border border-gray-200 p-1 ${getHoverColorClass(index)}`}
-                      style={{ width: '40px' }}
+                      className="border border-gray-200 p-0.5 bg-gray-100"
+                      style={{ 
+                        width: '40px',
+                        height: '30px'
+                      }}
                     >
-                      <div className="text-[11px] font-medium">
+                      <div className="text-[11px] leading-none flex items-center justify-center h-full font-bold">
                         {deptTotal}
                       </div>
                     </td>
                   );
                 })}
                 
-                {/* Additional columns */}
+                {/* Additional empty columns */}
                 {additionalColumns.map((col) => (
                   <td
-                    key={`data-total-${col.id}`}
-                    className="border border-gray-200 p-1"
-                    style={{ width: '30px' }}
+                    key={`data-total-empty-${col.id}`}
+                    className="border border-gray-200 p-0.5 bg-gray-50"
+                    style={{ 
+                      width: '30px',
+                      height: '30px'
+                    }}
                   >
-                    <div className="text-[11px]">-</div>
+                    <div className="text-[10px] text-gray-400 leading-none flex items-center justify-center h-full">-</div>
                   </td>
                 ))}
                 
                 {/* Grand total */}
                 <td 
-                  className="border border-gray-200 p-1 bg-purple-100 font-bold"
-                  style={{ width: '30px' }}
+                  className="border border-gray-200 p-0.5 bg-gray-200 font-bold"
+                  style={{ 
+                    width: '30px',
+                    height: '30px'
+                  }}
                 >
-                  <div className="text-[11px]">{totals.total}</div>
+                  <div className="text-[11px] leading-none flex items-center justify-center h-full">{totals.total}</div>
                 </td>
               </tr>
             </tbody>

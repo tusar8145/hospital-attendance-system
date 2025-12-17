@@ -828,9 +828,10 @@ useEffect(() => {
             <div className="flex flex-col h-full gap-4">
               <div className="p-0 bg-transparent flex-1">
                 <div className="h-full flex justify-center">
-                  <div className="text-center w-full">
+                  <div className="text-center w-full"> 
                     <HospitalDataTable 
                       data={reportData.tableData?.hospitalData || reportData.hospitalData} 
+                      outpatient={reportData?.report?.report_details}
                     />
                   </div>
                 </div>
@@ -861,7 +862,9 @@ useEffect(() => {
               <div className="p-0 bg-transparent h-1/2">
                 <div className="h-full flex justify-center">
                   <div className="text-center w-full">
-                    <DetailedDutyTable />
+                    <DetailedDutyTable 
+                     dutyStaff={reportData?.report?.duty_staff} 
+                    /> 
                   </div>
                 </div>
               </div>
@@ -870,7 +873,7 @@ useEffect(() => {
                 <div className="w-2/6 p-0 bg-transparent">
                   <div className="h-full flex justify-left">
                     <div className="text-center w-full">
-                      <SimpleDutyTable />
+                     {/* <SimpleDutyTable />*/}
                     </div>
                   </div>
                 </div>

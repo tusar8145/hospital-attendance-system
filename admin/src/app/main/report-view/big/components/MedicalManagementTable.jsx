@@ -131,16 +131,17 @@ const MedicalManagementTable = () => {
 
   return (
     <div className="medical-management-table w-full h-full rounded-md mt-10 mb-10">
-      <div className="overflow-hidden h-full">
+      <div className="overflow-hidden rounded-md mb-10 mt-10  h-full">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed">
             <thead>
+              {/* Changed: Blue background and unified font size */}
               <tr className="text-center">
-                <th className="bg-red-700 text-white font-bold p-3 align-middle w-1/2" rowSpan="2">
-                  <div className="text-xs sm:text-sm lg:text-base">緊急搬入数</div>
+                <th className="bg-blue-600 text-white font-bold p-2 align-middle w-1/2" rowSpan="2">
+                  <div className="text-md">緊急搬入数</div>
                 </th>
-                <th className="bg-blue-700 text-white font-bold p-3 w-1/2" colSpan="2">
-                  <div className="text-xs sm:text-sm lg:text-base">外来看護師</div>
+                <th className="bg-blue-600 text-white font-bold p-2 w-1/2" colSpan="2">
+                  <div className="text-md">外来看護師</div>
                 </th>
               </tr>
             </thead>

@@ -1,7 +1,46 @@
 import React from 'react';
 
-const HospitalDataTable = ({ data = {} }) => {
-  // Default values
+const HospitalDataTable = ({ data = {}, outpatient = [] }) => {
+  // Calculate outpatient totals from the outpatient array
+  const calculateOutpatientTotals = () => {
+    let morningTotal = 0;
+    let afternoonTotal = 0;
+    let nightTotal = 0;
+    
+    if (Array.isArray(outpatient)) {
+      outpatient.forEach(item => {
+        const patientCount = item.patient_count || 0;
+        
+        switch(item.consultation_type) {
+          case 'morning':
+            morningTotal += patientCount;
+            break;
+          case 'afternoon':
+            afternoonTotal += patientCount;
+            break;
+          case 'night':
+            nightTotal += patientCount;
+            break;
+          default:
+            break;
+        }
+      });
+    }
+    
+    const total = morningTotal + afternoonTotal + nightTotal;
+    
+    return {
+      morning: morningTotal,
+      afternoon: afternoonTotal,
+      night: nightTotal,
+      total: total
+    };
+  };
+
+  // Get calculated outpatient data
+  const outpatientTotals = calculateOutpatientTotals();
+
+  // Default values with calculated outpatient data
   const hospitalData = {
     inpatient: {
       admission: data?.inpatient?.admission || 0,
@@ -9,93 +48,110 @@ const HospitalDataTable = ({ data = {} }) => {
       current: data?.inpatient?.current || 0
     },
     outpatient: {
-      morning: data?.outpatient?.morning || 0,
-      afternoon: data?.outpatient?.afternoon || 0,
-      night: data?.outpatient?.night || 0,
-      total: data?.outpatient?.total || 0
+      morning: outpatientTotals.morning,
+      afternoon: outpatientTotals.afternoon,
+      night: outpatientTotals.night,
+      total: outpatientTotals.total
     }
   };
 
   return (
-    <div className="hospital-data-table w-full h-full rounded-md mt-10 mb-10">
-      <div className="overflow-hidden h-full">
+    <div className="hospital-data-table w-full h-full">
+      <div className="overflow-hidden rounded-md mb-10 mt-10 h-full">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed">
             <thead>
-              <tr className="text-center">
-                <th className="bg-gray-800 text-white font-bold p-3 border-r-2 border-gray-600 w-3/7" colSpan="3">
-                  <div className="text-sm lg:text-base">入院</div>
+              {/* Row 1: Main headers spanning multiple columns */}
+              <tr>
+                <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan="3">
+                  <div className="text-md">入院</div>
                 </th>
-                <th className="bg-gray-800 text-white font-bold p-3 w-4/7" colSpan="4">
-                  <div className="text-sm lg:text-base">外来</div>
+                <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan="4">
+                  <div className="text-md">外来</div>
                 </th>
               </tr>
               
-              <tr className="text-center">
+              {/* Row 2: Subheaders with GRAY BACKGROUND */}
+              <tr>
                 {/* Inpatient subcategories */}
-                <th className="bg-gray-100 text-gray-800 font-semibold p-2 text-xs sm:text-sm w-1/7">
-                  入院数
+                <th className="bg-gray-300 text-black font-bold p-2 text-center w-1/7">
+                  <div className="text-xs whitespace-nowrap">
+                    入院数
+                  </div>
                 </th>
-                <th className="bg-gray-100 text-gray-800 font-semibold p-2 text-xs sm:text-sm w-1/7">
-                  退院数
+                <th className="bg-gray-300 text-black font-bold p-2 text-center w-1/7">
+                  <div className="text-xs whitespace-nowrap">
+                    退院数
+                  </div>
                 </th>
-                <th className="bg-gray-100 text-gray-800 font-semibold p-2 text-xs sm:text-sm border-r-2 border-gray-300 w-1/7">
-                  入院患者数
+                <th className="bg-gray-300 text-black font-bold p-2 text-center w-1/7">
+                  <div className="text-xs whitespace-nowrap">
+                    入院患者数
+                  </div>
                 </th>
                 
                 {/* Outpatient subcategories */}
-                <th className="bg-gray-100 text-gray-800 font-semibold p-2 text-xs sm:text-sm w-1/7">
-                  朝診
+                <th className="bg-gray-300 text-black font-bold p-2 text-center w-1/7">
+                  <div className="text-xs whitespace-nowrap">
+                    朝診
+                  </div>
                 </th>
-                <th className="bg-gray-100 text-gray-800 font-semibold p-2 text-xs sm:text-sm w-1/7">
-                  午後診
+                <th className="bg-gray-300 text-black font-bold p-2 text-center w-1/7">
+                  <div className="text-xs whitespace-nowrap">
+                    午後診
+                  </div>
                 </th>
-                <th className="bg-gray-100 text-gray-800 font-semibold p-2 text-xs sm:text-sm w-1/7">
-                  当直
+                <th className="bg-gray-300 text-black font-bold p-2 text-center w-1/7">
+                  <div className="text-xs whitespace-nowrap">
+                    当直
+                  </div>
                 </th>
-                <th className="bg-gray-100 text-gray-800 font-semibold p-2 text-xs sm:text-sm bg-gray-50 font-bold w-1/7">
-                  合計
+                <th className="bg-gray-300 text-black font-bold p-2 text-center w-1/7">
+                  <div className="text-xs whitespace-nowrap">
+                    合計
+                  </div>
                 </th>
               </tr>
             </thead>
             
             <tbody>
-              <tr className="text-center">
+              {/* Single data row */}
+              <tr>
                 {/* Inpatient data */}
-                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
-                  <div className="text-sm sm:text-base lg:text-lg font-medium">
+                <td className="border border-gray-300 p-2 text-center w-1/7">
+                  <div className="text-sm font-medium text-gray-800">
                     {hospitalData.inpatient.admission}
                   </div>
                 </td>
-                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
-                  <div className="text-sm sm:text-base lg:text-lg font-medium">
+                <td className="border border-gray-300 p-2 text-center w-1/7">
+                  <div className="text-sm font-medium text-gray-800">
                     {hospitalData.inpatient.discharge}
                   </div>
                 </td>
-                <td className="border border-gray-300 p-2 sm:p-3 border-r-2 border-gray-300 w-1/7">
-                  <div className="text-sm sm:text-base lg:text-lg font-medium">
+                <td className="border border-gray-300 p-2 text-center w-1/7">
+                  <div className="text-sm font-medium text-gray-800">
                     {hospitalData.inpatient.current}
                   </div>
                 </td>
                 
                 {/* Outpatient data */}
-                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
-                  <div className="text-sm sm:text-base lg:text-lg font-medium">
+                <td className="border border-gray-300 p-2 text-center w-1/7">
+                  <div className="text-sm font-medium text-gray-800">
                     {hospitalData.outpatient.morning}
                   </div>
                 </td>
-                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
-                  <div className="text-sm sm:text-base lg:text-lg font-medium">
+                <td className="border border-gray-300 p-2 text-center w-1/7">
+                  <div className="text-sm font-medium text-gray-800">
                     {hospitalData.outpatient.afternoon}
                   </div>
                 </td>
-                <td className="border border-gray-300 p-2 sm:p-3 w-1/7">
-                  <div className="text-sm sm:text-base lg:text-lg font-medium">
+                <td className="border border-gray-300 p-2 text-center w-1/7">
+                  <div className="text-sm font-medium text-gray-800">
                     {hospitalData.outpatient.night}
                   </div>
                 </td>
-                <td className="border border-gray-300 p-2 sm:p-3 bg-gray-50 font-bold w-1/7">
-                  <div className="text-sm sm:text-base lg:text-lg">
+                <td className="border border-gray-300 p-2 text-center w-1/7">
+                  <div className="text-sm font-bold text-gray-800">
                     {hospitalData.outpatient.total}
                   </div>
                 </td>

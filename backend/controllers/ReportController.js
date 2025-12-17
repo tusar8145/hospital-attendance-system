@@ -304,6 +304,9 @@ export const getReportByDateTable = async (req, res, next) => {
       }
     });
 
+
+    console.log(existingReport,'existingReport')
+    
     // Ensure all 21 duty staff positions exist
     if (existingReport && existingReport.duty_staff) {
       existingReport.duty_staff = ensureAllDutyStaffPositions(existingReport.duty_staff);
@@ -530,6 +533,7 @@ export const getReportById = async (req, res, next) => {
 
     // Organize data for frontend tables
     const organizedData = {
+
       patientCountData: organizePatientCountData(report.report_details || []),
       diagnosisData: organizeDiagnosisData(report.report_details || []),
       emergencyData: {
