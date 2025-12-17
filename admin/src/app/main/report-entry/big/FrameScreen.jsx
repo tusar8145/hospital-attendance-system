@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Box, 
   Button, 
@@ -49,7 +49,9 @@ const FrameScreen = React.memo(({
   isSavingDraft = false,
   reportStatus = null,
   readOnly = false,
-  showSnackbar // New prop for showing snackbar from parent
+  showSnackbar, // New prop for showing snackbar from parent
+  onHeaderSaveDraft, // New prop: callback for header save draft button
+  onHeaderSubmit // New prop: callback for header submit button
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -169,6 +171,13 @@ const FrameScreen = React.memo(({
       setStatsLoading(false);
     } 
   };
+
+
+  useEffect(() => {
+    if(hospitalId){
+      fetchReadOnlyStats()
+    }
+  }, [formData, loading, hospitalId]);
 
   // Initialize form when formData changes - FIXED to prevent flickering
   useEffect(() => {
@@ -775,6 +784,38 @@ const FrameScreen = React.memo(({
     specialNotes,
     consolidatedData
   ]);
+
+  // Expose the save and submit handlers to parent via refs or callbacks
+  useEffect(() => {
+    // This effect runs when the component mounts and sets up the callback functions
+    // that the parent (ReportEntry) can call
+    if (onHeaderSaveDraft || onHeaderSubmit) {
+      // We're not actually calling them here, just making them available
+      // The parent component will handle calling these functions
+    }
+  }, []);
+
+  // Create a function that the parent can call to trigger save draft
+  const triggerSaveDraft = useCallback(() => {
+    console.log('Header save draft button clicked, triggering form save draft');
+    handleSaveDraftClick();
+  }, [validateForm, prepareFormData, onSaveDraft, showSnackbar]);
+
+  // Create a function that the parent can call to trigger submit
+  const triggerSubmit = useCallback(() => {
+    console.log('Header submit button clicked, triggering form submit');
+    handleSubmitClick();
+  }, [validateForm, prepareFormData, onSubmit, showSnackbar]);
+
+  // Notify parent of the trigger functions when they change
+  useEffect(() => {
+    if (onHeaderSaveDraft) {
+      onHeaderSaveDraft(triggerSaveDraft);
+    }
+    if (onHeaderSubmit) {
+      onHeaderSubmit(triggerSubmit);
+    }
+  }, [onHeaderSaveDraft, onHeaderSubmit, triggerSaveDraft, triggerSubmit]);
 
   // Responsive values
   const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;

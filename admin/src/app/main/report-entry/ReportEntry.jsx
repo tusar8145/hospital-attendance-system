@@ -652,6 +652,10 @@ function ReportEntry() {
   // Get reportId from URL params
   const reportIdFromUrl = urlParams.reportId ? parseInt(urlParams.reportId, 10) : null;
 
+  // Refs to store the FrameScreen's trigger functions
+  const frameScreenSaveDraftRef = useRef(null);
+  const frameScreenSubmitRef = useRef(null);
+
   // Update refs when state changes
   useEffect(() => {
     formDataRef.current = formData;
@@ -709,6 +713,36 @@ function ReportEntry() {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  // Callback functions to set FrameScreen's trigger functions
+  const setFrameScreenSaveDraft = useCallback((saveDraftFn) => {
+    frameScreenSaveDraftRef.current = saveDraftFn;
+  }, []);
+
+  const setFrameScreenSubmit = useCallback((submitFn) => {
+    frameScreenSubmitRef.current = submitFn;
+  }, []);
+
+  // Header button handlers that trigger FrameScreen functions
+  const handleHeaderSaveDraft = () => {
+    if (frameScreenSaveDraftRef.current) {
+      console.log('Header save draft clicked, calling FrameScreen save draft');
+      frameScreenSaveDraftRef.current();
+    } else {
+      console.log('FrameScreen save draft function not available yet, using parent handler');
+      handleSaveDraft();
+    }
+  };
+
+  const handleHeaderSubmit = () => {
+    if (frameScreenSubmitRef.current) {
+      console.log('Header submit clicked, calling FrameScreen submit');
+      frameScreenSubmitRef.current();
+    } else {
+      console.log('FrameScreen submit function not available yet, using parent handler');
+      handleSubmit();
+    }
   };
 
   // Load report data by ID when coming from view mode - FIXED: useCallback with proper dependencies
@@ -963,7 +997,7 @@ function ReportEntry() {
         });
       } else {
         // Same date, normal reload - only warn if there are actual changes
-        if (hasActualChanges) {
+        /*if (hasActualChanges) {
           setConfirmDialog({
             open: true,
             title: '未保存の変更があります',
@@ -978,7 +1012,7 @@ function ReportEntry() {
             },
             actionType: 'dateChange'
           });
-        } else {
+        } else {*/
           // No actual changes, just change date
           setReportDate(newDate);
           if (reportIdFromUrl) {
@@ -986,11 +1020,11 @@ function ReportEntry() {
           } else {
             loadReportData(newDate, true);
           }
-        }
+       // }
       }
     } else {
       // Normal date change logic - only warn if there are actual changes
-      if (hasActualChanges) {
+     /* if (hasActualChanges) {
         setConfirmDialog({
           open: true,
           title: '未保存の変更があります',
@@ -1001,11 +1035,11 @@ function ReportEntry() {
           },
           actionType: 'dateChange'
         });
-      } else {
+      } else {*/
         // No actual changes, just change date
         setReportDate(newDate);
         loadReportData(newDate, true);
-      }
+     // }
     }
   };
 
@@ -1028,7 +1062,7 @@ function ReportEntry() {
     handleDateChange(new Date());
   };
 
-  // Save as draft
+  // Save as draft - this is the parent's version, FrameScreen will have its own
   const handleSaveDraft = async () => {
     const hospitalId = currentHospitalRef.current?.id;
     
@@ -1079,7 +1113,7 @@ function ReportEntry() {
     }
   };
 
-  // Submit report
+  // Submit report - this is the parent's version, FrameScreen will have its own
   const handleSubmit = async () => {
     const hospitalId = currentHospitalRef.current?.id;
     
@@ -1359,8 +1393,8 @@ function ReportEntry() {
             onToday={handleToday}
             onRefresh={handleRefresh}
             onBack={handleBack}
-            onSaveDraft={handleSaveDraft}
-            onSubmit={handleSubmit}
+            onSaveDraft={handleHeaderSaveDraft} // Use the new handler
+            onSubmit={handleHeaderSubmit} // Use the new handler
             hasUnsavedChanges={hasUnsavedChanges}
             isSubmitting={submitting}
             isSavingDraft={savingDraft}
@@ -1523,7 +1557,9 @@ function ReportEntry() {
                       isSavingDraft={savingDraft}
                       reportStatus={reportStatus}
                       readOnly={isReadOnly}
-                      showSnackbar={showSnackbar} // Pass snackbar function
+                      showSnackbar={showSnackbar}
+                      onHeaderSaveDraft={setFrameScreenSaveDraft} // Pass callback to get save function
+                      onHeaderSubmit={setFrameScreenSubmit} // Pass callback to get submit function
                     />
                   ) : hospital_type === 'hospital' ? (
                     <Alert severity="warning">Hospital</Alert>
@@ -1546,7 +1582,9 @@ function ReportEntry() {
                       isSavingDraft={savingDraft}
                       reportStatus={reportStatus}
                       readOnly={isReadOnly}
-                      showSnackbar={showSnackbar} // Pass snackbar function
+                      showSnackbar={showSnackbar}
+                      onHeaderSaveDraft={setFrameScreenSaveDraft} // Pass callback to get save function
+                      onHeaderSubmit={setFrameScreenSubmit} // Pass callback to get submit function
                     />
                   ) : hospital?.type === 'hospital' ? (
                     <Alert severity="warning">Hospital</Alert>
