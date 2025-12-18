@@ -30,6 +30,8 @@ import ConsolidatedContentComponent from './ConsolidatedContentComponent';
 import ShiftNursesSection from './ShiftNursesSection';
 import DutyStaffSection from './DutyStaffSection';
 import ExternalDoctorsSection from './ExternalDoctorsSection';
+import apiConfig from '../../../configs/apiConfig';
+import axios from 'axios';
 
 const FrameScreen = React.memo(({
   formData = null,
@@ -156,7 +158,7 @@ const FrameScreen = React.memo(({
   }, [formData, loading]);
 
   // Load form data from existing report
-  const loadFormData = (data) => {
+  const loadFormData = async (data) => {
     console.log('Loading form data:', data);
     
     // Mark that we've loaded form data
@@ -262,8 +264,23 @@ const FrameScreen = React.memo(({
       console.log('Setting consolidated data from form data:', data.report_details.length, 'items');
       setConsolidatedData(data.report_details);
     } else {
-      console.log('No consolidated data in form data - setting empty array');
-      setConsolidatedData([]);
+      //here call the api and response set this state 
+      if (hospitalId) {
+        const response = await axios.post(apiConfig.reportHospitalDepartmentsDoctors, {
+          hospital_id: hospitalId
+        });
+
+        if (response.data.success && response.data.data) {
+          const departmentsData = response.data.data;
+
+          // Create a new array with patient_count set to 0
+          const modifiedData = departmentsData.map(item => ({
+            ...item,
+            patient_count: 0
+          }));
+          setConsolidatedData(modifiedData);
+        }
+      }
     }
     
     // Clear validation errors when loading data

@@ -2140,3 +2140,62 @@ export const getHospitalTypeByReportId = async (req, res, next) => {
     response.error(error.message, res, next);
   }
 };
+
+
+
+ // Get last report's diagnosis data
+export const getHospitalDepartmentsDoctors = async (req, res, next) => {
+  try {
+    const { hospital_id } = req.body;
+    
+    if (!hospital_id) {
+      return response.error("Hospital ID is required", res, next);
+    }
+
+    // Get the latest submitted/approved report for this hospital
+    const latestReport = await prisma.report.findFirst({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+        OR: [
+          { status: 'submitted' },
+          { status: 'approved' }
+        ]
+      },
+      select: {
+        id: true,
+        report_date: true
+      },
+      orderBy: {
+        report_date: 'desc'
+      }
+    });
+
+    let reportDetails = [];
+    
+    // If latest report exists, get its report_details with related data
+    if (latestReport) {
+      reportDetails = await prisma.report_detail.findMany({
+        where: {
+          report_id: latestReport.id
+        },
+        include: {
+          department: true,
+          doctor1: true,
+          doctor2: true,
+          doctor3: true
+        },
+        orderBy: [
+          { department_id: 'asc' },
+          { sequence_no: 'asc' },
+          { consultation_type: 'asc' }
+        ]
+      });
+    }
+
+    response.success(reportDetails, res);
+
+  } catch (error) {
+    console.error('Error in getHospitalDepartmentsDoctors:', error);
+    response.error(error.message, res, next);
+  }
+};

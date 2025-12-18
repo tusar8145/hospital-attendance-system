@@ -607,7 +607,10 @@ function ReportEntryBig({newHospital}) {
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
+
   const [formData, setFormData] = useState(null);
+  const [formDataSubmit, setformDataSubmit] = useState(null);
+
   const [initialFormData, setInitialFormData] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -806,6 +809,7 @@ function ReportEntryBig({newHospital}) {
           };
           sethospital_type(report.hospital_type)
           setFormData(formattedReport);
+          setformDataSubmit(formattedReport)
           setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(formattedReport));
           setReportStatus(report.status);
@@ -894,6 +898,7 @@ function ReportEntryBig({newHospital}) {
           };
           sethospital_type(report.hospital_type)
           setFormData(formattedReport);
+          setformDataSubmit(formattedReport)
           setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(formattedReport));
           setReportStatus(report.status);
@@ -922,6 +927,7 @@ function ReportEntryBig({newHospital}) {
           };
           
           setFormData(emptyForm);
+          setformDataSubmit(emptyForm)
           setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(emptyForm));
           setReportStatus(null);
@@ -956,6 +962,7 @@ function ReportEntryBig({newHospital}) {
         report_details: []
       };
       setFormData(emptyForm);
+      setformDataSubmit(emptyForm)
       setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
       initialFormDataRef.current = JSON.parse(JSON.stringify(emptyForm));
       setReportStatus(null);
@@ -1045,7 +1052,7 @@ function ReportEntryBig({newHospital}) {
       return;
     }
 
-    if (!formData) {
+    if (!formDataSubmit) {
       showSnackbar('保存するデータがありません', 'error');
       return;
     }
@@ -1053,7 +1060,7 @@ function ReportEntryBig({newHospital}) {
     setSavingDraft(true);
     try {
       const response = await axios.post(`${apiConfig.baseURL}/report/submit`, {
-        ...formData,
+        ...formDataSubmit,
         hospital_id: hospitalId,
         report_date: formatDateForAPI(reportDate),
         is_draft: true
@@ -1091,18 +1098,18 @@ function ReportEntryBig({newHospital}) {
   const handleSubmit = async () => {
     const hospitalId = currentHospitalRef.current?.id;
     
-    if (!hospitalId) {
+    if (!formDataSubmit) {
       showSnackbar('病院が選択されていません', 'error');
       return;
     }
 
-    if (!formData) {
+    if (!formDataSubmit) {
       showSnackbar('提出するデータがありません', 'error');
       return;
     }
 
     // Validate form data
-    const validation = validateReportData(formData);
+    const validation = validateReportData(formDataSubmit);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       showSnackbar('フォームにエラーがあります。確認してください。', 'error');
@@ -1116,7 +1123,7 @@ function ReportEntryBig({newHospital}) {
         ? '既存のレポートを更新して提出します。この操作は取り消せません。'
         : '新しいレポートを提出します。この操作は取り消せません。',
       action: async () => {
-        await performSubmit(formData);
+        await performSubmit(formDataSubmit);
       },
       actionType: 'submit'
     });
@@ -1191,8 +1198,8 @@ function ReportEntryBig({newHospital}) {
     if (currentData && JSON.stringify(newData) === JSON.stringify(currentData)) {
       return;
     }
-    
-    setFormData(newData);
+    //setFormData(newData);
+    setformDataSubmit(newData)
     formDataRef.current = newData;
     
     // Check if there are changes from initial data
@@ -1248,7 +1255,7 @@ function ReportEntryBig({newHospital}) {
     const hasActualChanges = currentData && initialData ? 
       hasFormDataChanged(currentData, initialData) : false;
 
-    if (hasActualChanges) {
+  /*  if (hasActualChanges) {
       setConfirmDialog({
         open: true,
         title: '未保存の変更があります',
@@ -1263,13 +1270,13 @@ function ReportEntryBig({newHospital}) {
         },
         actionType: 'refresh'
       });
-    } else {
+    } else {*/
       if (reportIdFromUrl) {
         loadReportById(reportIdFromUrl);
       } else {
         loadReportData(reportDate, true);
       }
-    }
+   // }
   };
 
   // Handle back to report list or view
@@ -1349,6 +1356,7 @@ useEffect(() => {
     
     // Clear existing data
     setFormData(null);
+    setformDataSubmit(null)
     setInitialFormData(null);
     setReportStatus(null);
     setReportId(null);

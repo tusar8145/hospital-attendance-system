@@ -72,10 +72,9 @@ const ConsolidatedContentComponent = ({
   // Initialize rows when data or departments change
   useEffect(() => {
     // Only initialize from data once when component mounts
-    if (data && data.length > 0 && !dataInitializedRef.current) {
+    if (data && data.length > 0) {
       console.log('Initializing rows from data for the first time');
       initializeRowsFromData(data);
-      dataInitializedRef.current = true;
     } else if (departmentOptions.length > 0 && rows.length === 0) {
       console.log('Initializing empty rows from departments');
       initializeRowsFromDepartments();
