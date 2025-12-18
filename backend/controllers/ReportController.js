@@ -305,8 +305,7 @@ export const getReportByDateTable = async (req, res, next) => {
     });
 
 
-    console.log(existingReport,'existingReport')
-    
+  
     // Ensure all 21 duty staff positions exist
     if (existingReport && existingReport.duty_staff) {
       existingReport.duty_staff = ensureAllDutyStaffPositions(existingReport.duty_staff);
@@ -2088,6 +2087,56 @@ export const getReadOnlyStats = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in getReadOnlyStats:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Get hospital_type by report ID
+export const getHospitalTypeByReportId = async (req, res, next) => {
+  try {
+    const { report_id } = req.body;
+    
+    if (!report_id) {
+      return response.error("Report ID is required", res, next);
+    }
+
+    // Get report by ID - select only hospital_type and minimal info
+    const report = await prisma.report.findUnique({
+      where: {
+        id: parseInt(report_id)
+      },
+      select: {
+        id: true,
+        hospital_type: true,
+        report_no: true,
+        report_date: true,
+        medical_center: {
+          select: {
+            id: true,
+            name: true,
+            type: true
+          }
+        },
+        status: true
+      }
+    });
+
+    if (!report) {
+      return response.error("Report not found", res, next);
+    }
+
+    response.success({
+      success: true,
+      report_id: report.id,
+      report_no: report.report_no,
+      report_date: report.report_date,
+      hospital_type: report.hospital_type,
+      medical_center: report.medical_center,
+      status: report.status
+    }, res);
+
+  } catch (error) {
+    console.error('Error in getHospitalTypeByReportId:', error);
     response.error(error.message, res, next);
   }
 };

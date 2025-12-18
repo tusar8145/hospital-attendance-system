@@ -49,7 +49,8 @@ const FrameScreen = React.memo(({
   readOnly = false,
   showSnackbar,
   onHeaderSaveDraft,
-  onHeaderSubmit
+  onHeaderSubmit,
+  isEditingFromView=false
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -876,6 +877,7 @@ const FrameScreen = React.memo(({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconButton 
                 onClick={handlePreviousDay}
+                disabled={isEditingFromView}
                 size="small"
                 sx={{ border: '1px solid #e0e0e0' }}
               >
@@ -886,6 +888,7 @@ const FrameScreen = React.memo(({
                 value={date}
                 onChange={handleDatePickerChange}
                 shouldDisableDate={shouldDisableDate}
+                disabled={isEditingFromView}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -911,7 +914,7 @@ const FrameScreen = React.memo(({
               <IconButton 
                 onClick={handleNextDay}
                 size="small"
-                disabled={shouldDisableDate(new Date(date.getTime() + 24 * 60 * 60 * 1000))}
+                disabled={shouldDisableDate(new Date(date.getTime() + 24 * 60 * 60 * 1000)) || isEditingFromView}
                 sx={{ border: '1px solid #e0e0e0' }}
               >
                 <ArrowForwardIosIcon fontSize="small" />

@@ -25,4 +25,6 @@ router.post("/report/comments", auth, ReportController.getComments);
 
 router.post("/report/read-only-stats", auth, ReportController.getReadOnlyStats);
 
+router.post("/report/hospital-type", auth, ReportController.getHospitalTypeByReportId);
+
 export { router as ReportRoute };
