@@ -578,7 +578,7 @@ const hasFormDataChanged = (currentData, initialData) => {
   return false;
 };
 
-function ReportEntryBig() {
+function ReportEntryBig({newHospital}) {
   const { t } = useTranslation('shared-components');
   const { hospital: hospitalFromContext } = useTheme();
   const muiTheme = useMuiTheme();
@@ -750,7 +750,6 @@ function ReportEntryBig() {
 
   // Load report data by ID when coming from view mode - FIXED: useCallback with proper dependencies
   const loadReportById = useCallback(async (reportIdToLoad) => {
-    console.log(reportIdToLoad,'reportIdToLoadreportIdToLoad')
     if (!reportIdToLoad) {
       showSnackbar('レポートIDが指定されていません', 'warning');
       return;
@@ -839,8 +838,11 @@ function ReportEntryBig() {
 
   // Load report data for selected date (normal flow) - FIXED: useCallback with proper dependencies
   const loadReportData = useCallback(async (date, forceReload = false) => {
+
     const hospitalId = currentHospitalRef.current?.id;
-    
+        
+    console.log(newHospital,'<<<<<<<<reportIdToLoad',hospital)
+
     if (!hospitalId) {
       showSnackbar('病院が選択されていません', 'warning');
       setLoading(false);
@@ -966,7 +968,7 @@ function ReportEntryBig() {
       isLoadingDataRef.current = false;
       hasLoadedDataRef.current = true;
     }
-  }, []);
+  }, [hospital,newHospital]);
 
   // Handle date change
   const handleDateChange = async (newDate) => {
@@ -1317,6 +1319,59 @@ function ReportEntryBig() {
       setLoading(false);
     }
   }, [currentHospital?.id, reportDate, loadReportData, loadReportById, reportIdFromUrl]);
+
+
+
+useEffect(() => {
+  console.log('?????????????????????', newHospital);
+  
+  if (newHospital && newHospital.id) {
+    // Update the current hospital with the new hospital data
+    setCurrentHospital({
+      id: newHospital.id,
+      name: newHospital.name,
+      type: newHospital.type
+    });
+    
+    // Set flag to indicate hospital has been changed from context
+    setHasHospitalChangedFromContext(true);
+    
+    // Reset loading states
+    setLoading(true);
+    setLoadingReport(true);
+    
+    // Update the ref immediately
+    currentHospitalRef.current = {
+      id: newHospital.id,
+      name: newHospital.name,
+      type: newHospital.type
+    };
+    
+    // Clear existing data
+    setFormData(null);
+    setInitialFormData(null);
+    setReportStatus(null);
+    setReportId(null);
+    setReportExists(false);
+    sethospital_type(null);
+    setHasUnsavedChanges(false);
+    setValidationErrors({});
+    
+    // If we have a reportId from URL (edit mode), reload by ID
+    if (reportIdFromUrl) {
+      console.log('Reloading report by ID with new hospital:', newHospital.id);
+      loadReportById(reportIdFromUrl);
+    } else {
+      // Otherwise reload by date with new hospital
+      console.log('Reloading report by date with new hospital:', newHospital.id);
+      loadReportData(reportDate, true);
+    }
+  }
+}, [newHospital]);
+
+  
+
+
 
   // Effect to handle when hospital context changes
   useEffect(() => {

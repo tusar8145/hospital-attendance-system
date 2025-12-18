@@ -1,4 +1,3 @@
-import Button from '@mui/material/Button';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
@@ -8,10 +7,22 @@ import axios from 'axios';
 import apiConfig from '../../configs/apiConfig';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import ReportEntryBig from './ReportEntryBig';
+
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+
 //import ReportEntryHospitalMain from './ReportEntryHospitalMain'; // Assuming you have this
 //import ReportEntryWelfareMain from './ReportEntryWelfareMain'; // Assuming you have this
-import CircularProgress from '@mui/material/CircularProgress';
-import Box from '@mui/material/Box';
+import { 
+  Box, 
+  Button, 
+  Container, 
+  CircularProgress, 
+  Typography,
+  Paper,
+
+} from '@mui/material';
+
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
 	'& .FusePageSimple-header': {
@@ -35,9 +46,18 @@ function ReportEntryParent() {
 	const [hospital_type, setHospitalType] = useState(null);
 	const [searchParams] = useSearchParams();
 	const location = useLocation();
+	const [overwrite, setoverwrite] = useState(null);
 	
 	// Get report ID from URL if exists
 	const reportIdFromUrl = searchParams.get('reportId');
+	const hospitalId = searchParams.get('hospitalId');
+  const handleBack = () => {
+    //onBack();
+  };
+
+  const handleReloadWithCorrectHospital  = () => {
+window.location.reload();
+  }
 
 	const getReportType = async (reportId) => {
 		try {
@@ -77,12 +97,22 @@ function ReportEntryParent() {
 	};
 
 	useEffect(() => {
+		if(hospital && hospitalId){
+			if(parseInt(hospital.id) !=parseInt(hospitalId)){
+					setoverwrite(true)
+			}else{	
+					setoverwrite(false)
+			}
+		}
 		determineHospitalType();
 	}, [reportIdFromUrl, hospital]);
 
+
+
+
 	// Function to render appropriate component based on hospital_type
 	const renderReportComponent = () => {
-		if (loading) {
+		if (loading ) {
 			return (
 				<Box 
 					sx={{ 
@@ -97,16 +127,124 @@ function ReportEntryParent() {
 			);
 		}
 
+		if (overwrite ) {
+			return (
+		<Container 
+			maxWidth="md" 
+			sx={{ 
+				display: 'flex', 
+				flexDirection: 'column',
+				justifyContent: 'center', 
+				alignItems: 'center', 
+				minHeight: '100vh',
+				p: 3
+			}}
+		>
+			<Paper 
+				elevation={2}
+				sx={{ 
+					p: 4, 
+					textAlign: 'center',
+					borderRadius: 2,
+					backgroundColor: '#fff',
+					width: '100%',
+					maxWidth: 500,
+					border: '1px solid #ff9800'
+				}}
+			>
+				<ErrorOutlineIcon 
+					sx={{ 
+						fontSize: 48, 
+						color: '#ff9800',
+						mb: 2
+					}} 
+				/>
+				
+				<Typography variant="h5" sx={{ fontWeight: 600, color: '#e65100', mb: 2 }}>
+					編集モードでは病院を変更できません
+				</Typography>
+				
+				<Typography variant="body1" sx={{ mb: 3, color: '#666' }}>
+					現在選択中の病院と編集対象のレポートの病院が異なります。
+				</Typography>
+				
+				<Box sx={{ 
+					backgroundColor: '#fff8e1', 
+					p: 2, 
+					borderRadius: 1,
+					mb: 3,
+					border: '1px solid #ffe082'
+				}}>
+					<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#5d4037' }}>
+						詳細情報:
+					</Typography>
+					<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+						<Box>
+							<Typography variant="caption" sx={{ display: 'block', color: '#666' }}>
+								現在の病院:
+							</Typography>
+							<Typography variant="body2" sx={{ color: '#d84315', fontWeight: 600 }}>
+								{hospital?.name || `ID: ${hospital?.id}`}
+							</Typography>
+						</Box>
+						<Box>
+							<Typography variant="caption" sx={{ display: 'block', color: '#666' }}>
+								対象病院:
+							</Typography>
+							<Typography variant="body2" sx={{ color: '#388e3c', fontWeight: 600 }}>
+								ID: {hospitalId}
+							</Typography>
+						</Box>
+					</Box>
+				</Box>
+				
+				<Typography variant="body2" sx={{ mb: 4, color: '#666' }}>
+					データ整合性のため、編集モードでは病院を変更できません。
+				</Typography>
+				
+ 
+<Button
+    fullWidth
+    variant="contained"
+    onClick={handleReloadWithCorrectHospital}
+    sx={{ 
+        py: 1.5,
+        backgroundColor: '#1976d2', // Primary color
+        color: 'white', // White text
+        mb: 2,
+        '&:hover': {
+            backgroundColor: '#1565c0', // Darker primary on hover
+        },
+        '&:disabled': {
+            backgroundColor: 'rgba(0, 0, 0, 0.12)', // Disabled state
+            color: 'rgba(0, 0, 0, 0.26)',
+        }
+    }}
+    disabled={!hospitalId}
+>
+    正しい病院で開き直す
+</Button>
+			</Paper>
+			
+			<Typography variant="caption" sx={{ mt: 3, color: '#999' }}>
+				問題が解決しない場合は、システム管理者に連絡してください。
+			</Typography>
+		</Container>
+			);
+		}
+
 		switch (hospital_type) {
 			case 'large_hospital':
-				return (
+				return (<>
 					<ReportEntryBig 
 						reportId={reportIdFromUrl}
 						hospitalType={hospital_type}
 						hospital={hospital}
+						newHospital={hospital}
 						onSuccess={(message) => setSuccessAlert(message)}
 						onError={(message) => setFailAlert(message)}
-					/>
+					/>				
+				</>
 				);
 			
 			case 'hospital':

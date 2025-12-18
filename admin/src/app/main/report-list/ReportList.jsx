@@ -294,7 +294,7 @@ function ReportList() {
 
     // Pass both hospital type and encrypted hospital ID
     const typeValue = hospitalTypeMap[hospital.type] || 2;
-    navigate(`/report-entry?hospitalId=${hospital.id}&type=${typeValue}`);
+    navigate(`/report-entry`);
   };
 
   // Handle hospital selection dialog close
