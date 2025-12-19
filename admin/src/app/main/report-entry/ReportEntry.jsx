@@ -7,6 +7,7 @@ import axios from 'axios';
 import apiConfig from '../../configs/apiConfig';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import ReportEntryBig from './ReportEntryBig';
+import ReportEntryMid from './ReportEntryMid';
 
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -249,7 +250,14 @@ window.location.reload();
 			
 			case 'hospital':
 				return (
-				<>hospital</>
+					<ReportEntryMid 
+						reportId={reportIdFromUrl}
+						hospitalType={hospital_type}
+						hospital={hospital}
+						newHospital={hospital}
+						onSuccess={(message) => setSuccessAlert(message)}
+						onError={(message) => setFailAlert(message)}
+					/>			
 				);
 			
 			case 'welfare':
