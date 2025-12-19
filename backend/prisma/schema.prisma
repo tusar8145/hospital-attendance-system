@@ -159,6 +159,7 @@ model admin_medical_center {
 model department {
   id           Int        @id @default(autoincrement())
   name         String
+  floor        String? 
   medical_center medical_center @relation(fields: [medical_center_id], references: [id])
   medical_center_id Int
   status       Int        @default(1)

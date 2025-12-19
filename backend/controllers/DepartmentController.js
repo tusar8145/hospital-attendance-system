@@ -139,6 +139,7 @@ export const department_create = async (req, res, next) => {
       // Bulk create multiple departments
       const departmentData = departments.map(dept => ({
         name: dept.name,
+        floor: dept.floor || null, // Add floor field
         medical_center_id: parseInt(dept.medical_center_id),
         created_by: user_id,
       }));
@@ -155,7 +156,7 @@ export const department_create = async (req, res, next) => {
 
     } else {
       // Single department creation
-      const { name, medical_center_id } = departments;
+      const { name, floor, medical_center_id } = departments;
 
       // Validate medical_center_id is provided
       if (!medical_center_id) {
@@ -165,6 +166,7 @@ export const department_create = async (req, res, next) => {
       const newDepartment = await prisma.department.create({
         data: {
           name,
+          floor: floor || null, // Add floor field
           medical_center_id: parseInt(medical_center_id),
           created_by: user_id,
         }
@@ -179,13 +181,18 @@ export const department_create = async (req, res, next) => {
 
 export const department_update = async (req, res, next) => {
   try {
-    const { id, name, medical_center_id } = req.body;
+    const { id, name, floor, medical_center_id } = req.body;
 
     const updateData = {
       name,
       updated_by: user_id,
       updated_at: new Date()
     };
+
+    // Update floor if provided (including null to clear it)
+    if (floor !== undefined) {
+      updateData.floor = floor || null;
+    }
 
     // Only update medical_center_id if provided
     if (medical_center_id) {
@@ -404,7 +411,7 @@ export const department_doctors = async (req, res, next) => {
               where: { status: 1 },
               include: {
                 department: {
-                  select: { id: true, name: true }
+                  select: { id: true, name: true, floor: true } // Add floor to response
                 }
               }
             }
@@ -479,7 +486,7 @@ export const department_remove_doctor = async (req, res, next) => {
 
 export const department_by_hospital = async (req, res, next) => {
   try {
-    const { hospital_id, status = 1 } = req.body;
+    const { hospital_id, status = 1, include_floor = false } = req.body;
 
     if (!hospital_id) {
       return response.error({ message: 'hospital_id is required' }, res, next);
@@ -493,6 +500,7 @@ export const department_by_hospital = async (req, res, next) => {
       select: {
         id: true,
         name: true,
+        floor: include_floor, // Include floor only when requested
         status: true,
         _count: {
           select: {

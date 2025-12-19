@@ -274,6 +274,36 @@ const Table = (props) => {
         },
       },
       {
+        accessorKey: 'floor',
+        header: t('診療室'),
+        size: 150,
+        enableColumnFilter: false,
+        Cell: ({ cell, row }) => {
+          const floor = cell.getValue();
+          const medicalCenterType = row.original.medical_center?.type;
+          const isHospital = medicalCenterType === 'hospital';
+          
+          if (isHospital && !floor) {
+            return (
+              <Tooltip title={t('Floor required for hospitals')}>
+                <Chip
+                  label={t('Required')}
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                />
+              </Tooltip>
+            );
+          }
+          
+          return (
+            <Typography variant="body2">
+              {floor || '-'}
+            </Typography>
+          );
+        },
+      },
+      {
         accessorKey: 'status',
         header: t('Status'),
         size: 120,
@@ -685,26 +715,41 @@ const Table = (props) => {
 // Create Department Modal Component
 const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, hospital }) => {
   const { t } = useTranslation('shared-components');
-  const [departments, setDepartments] = useState([{ name: '', medical_center_id: '' }]);
+  const [departments, setDepartments] = useState([{ name: '', floor: '', medical_center_id: '' }]);
   const [errors, setErrors] = useState([]);
   const [duplicateErrors, setDuplicateErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [lastSelectedHospital, setLastSelectedHospital] = useState('');
+  const [selectedHospitalType, setSelectedHospitalType] = useState('');
+
+  // Get medical center type from medicalCenters array
+  const getMedicalCenterType = (medicalCenterId) => {
+    const center = medicalCenters.find(c => c.id == medicalCenterId);
+    return center?.type || '';
+  };
+
+  // Check if hospital type is 'hospital' or 'large_hospital'
+  const isHospitalType = (type) => {
+    return type === 'hospital';
+  };
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
       // Auto-select hospital if hospital exists
       const initialMedicalCenterId = hospital?.id || '';
+      const initialMedicalCenterType = hospital?.type || '';
       
       setDepartments([{ 
         name: '', 
+        floor: '',
         medical_center_id: initialMedicalCenterId 
       }]);
       setErrors([]);
       setDuplicateErrors({});
       setApiError('');
       setLastSelectedHospital(initialMedicalCenterId);
+      setSelectedHospitalType(initialMedicalCenterType);
     }
   }, [open, hospital]);
 
@@ -733,6 +778,13 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       if (!department.medical_center_id) {
         fieldErrors.medical_center_id = t('This field is Required');
       }
+      
+      // Check if floor is required based on hospital type
+      const hospitalType = getMedicalCenterType(department.medical_center_id);
+      if (isHospitalType(hospitalType) && !department.floor?.trim()) {
+        fieldErrors.floor = t('This field is Required for hospitals');
+      }
+      
       return fieldErrors;
     });
 
@@ -794,6 +846,7 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
   const addDepartment = () => {
     const newDepartment = { 
       name: '', 
+      floor: '',
       medical_center_id: lastSelectedHospital || '' 
     };
     setDepartments([...departments, newDepartment]);
@@ -816,6 +869,13 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
     // Update last selected hospital when hospital is selected
     if (field === 'medical_center_id' && value) {
       setLastSelectedHospital(value);
+      const hospitalType = getMedicalCenterType(value);
+      setSelectedHospitalType(hospitalType);
+      
+      // Clear floor if hospital type changes from hospital to clinic
+      if (!isHospitalType(hospitalType) && updated[index].floor) {
+        updated[index].floor = '';
+      }
     }
 
     // Clear errors when user types
@@ -858,83 +918,110 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
 
   const handleClose = () => {
     // Reset form when closing
-    setDepartments([{ name: '', medical_center_id: '' }]);
+    setDepartments([{ name: '', floor: '', medical_center_id: '' }]);
     setErrors([]);
     setDuplicateErrors({});
     setApiError('');
     setLastSelectedHospital('');
+    setSelectedHospitalType('');
     onClose();
   };
 
   const dialogContent = (
     <div className="flex flex-col gap-8">
-      {departments.map((department, index) => (
-        <div
-          key={index}
-          className="flex mt-20 mb-10 flex-col gap-4 border border-gray-200 p-6 rounded-lg relative bg-gray-50"
-        >
-          {/* Department Name and Hospital/Facility in same row */}
-          <Grid container spacing={2}>
-            <Grid item xs={6}>
-              <div className="flex flex-col gap-1">
-                <Typography variant="subtitle1" className="font-medium">
-                  {t('Clinical Department')} *
-                </Typography>
-                <TextField
-                  value={department.name}
-                  onChange={(e) => updateDepartment(index, 'name', e.target.value)}
-                  fullWidth
-                  error={!!errors[index]?.name || !!duplicateErrors[index]}
-                  helperText={errors[index]?.name || duplicateErrors[index]}
-                  placeholder={t('Enter department name')}
-                  disabled={isLoading}
-                />
-              </div>
-            </Grid>
-            <Grid item xs={6}>
-              <div className="flex flex-col gap-1">
-                <Typography variant="subtitle1" className="font-medium">
-                  {t('Hospital/Facility')} *
-                </Typography>
-                <FormControl fullWidth error={!!errors[index]?.medical_center_id}>
-                  <Select
-                    value={department.medical_center_id}
-                    onChange={(e) => updateDepartment(index, 'medical_center_id', e.target.value)}
-                    displayEmpty
+      {departments.map((department, index) => {
+        const hospitalType = getMedicalCenterType(department.medical_center_id);
+        const showFloorField = isHospitalType(hospitalType);
+        
+        return (
+          <div
+            key={index}
+            className="flex mt-20 mb-10 flex-col gap-4 border border-gray-200 p-6 rounded-lg relative bg-gray-50"
+          >
+            {/* Department Name and Hospital/Facility in same row */}
+            <Grid container spacing={2}>
+              <Grid item xs={showFloorField ? 4 : 6}>
+                <div className="flex flex-col gap-1">
+                  <Typography variant="subtitle1" className="font-medium">
+                    {t('Clinical Department')} *
+                  </Typography>
+                  <TextField
+                    value={department.name}
+                    onChange={(e) => updateDepartment(index, 'name', e.target.value)}
+                    fullWidth
+                    error={!!errors[index]?.name || !!duplicateErrors[index]}
+                    helperText={errors[index]?.name || duplicateErrors[index]}
+                    placeholder={t('Enter department name')}
                     disabled={isLoading}
-                  >
-                    <MenuItem value="">
-                      <em>{t('Select hospital/facility')}</em>
-                    </MenuItem>
-                    {medicalCenters.map((center) => (
-                      <MenuItem key={center.id} value={center.id}>
-                        {center.name}
+                  />
+                </div>
+              </Grid>
+              
+              <Grid item xs={showFloorField ? 4 : 6}>
+                <div className="flex flex-col gap-1">
+                  <Typography variant="subtitle1" className="font-medium">
+                    {t('Hospital/Facility')} *
+                  </Typography>
+                  <FormControl fullWidth error={!!errors[index]?.medical_center_id}>
+                    <Select
+                      value={department.medical_center_id}
+                      onChange={(e) => updateDepartment(index, 'medical_center_id', e.target.value)}
+                      displayEmpty
+                      disabled={isLoading}
+                    >
+                      <MenuItem value="">
+                        <em>{t('Select hospital/facility')}</em>
                       </MenuItem>
-                    ))}
-                  </Select>
-                  {errors[index]?.medical_center_id && (
-                    <Typography variant="caption" color="error">
-                      {errors[index]?.medical_center_id}
-                    </Typography>
-                  )}
-                </FormControl>
-              </div>
-            </Grid>
-          </Grid>
+                      {medicalCenters.map((center) => (
+                        <MenuItem key={center.id} value={center.id}>
+                          {center.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors[index]?.medical_center_id && (
+                      <Typography variant="caption" color="error">
+                        {errors[index]?.medical_center_id}
+                      </Typography>
+                    )}
+                  </FormControl>
+                </div>
+              </Grid>
 
-          {departments.length > 1 && (
-            <IconButton
-              className="absolute top-2 right-2"
-              onClick={() => removeDepartment(index)}
-              color="error"
-              size="small"
-              disabled={isLoading}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          )}
-        </div>
-      ))}
+              {/* Floor Field - only shown for hospital type */}
+              {showFloorField && (
+                <Grid item xs={4}>
+                  <div className="flex flex-col gap-1">
+                    <Typography variant="subtitle1" className="font-medium">
+                      {t('診療室')} *
+                    </Typography>
+                    <TextField
+                      value={department.floor || ''}
+                      onChange={(e) => updateDepartment(index, 'floor', e.target.value)}
+                      fullWidth
+                      error={!!errors[index]?.floor}
+                      helperText={errors[index]?.floor}
+                      placeholder="例: 診1"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </Grid>
+              )}
+            </Grid>
+
+            {departments.length > 1 && (
+              <IconButton
+                className="absolute top-2 right-2"
+                onClick={() => removeDepartment(index)}
+                color="error"
+                size="small"
+                disabled={isLoading}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            )}
+          </div>
+        );
+      })}
 
       {/* API Error Alert */}
       {apiError && (
@@ -996,16 +1083,32 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
 // Edit Department Modal Component
 const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, mutationError, medicalCenters }) => {
   const { t } = useTranslation('shared-components');
-  const [formData, setFormData] = useState({ name: '', medical_center_id: '' });
+  const [formData, setFormData] = useState({ name: '', floor: '', medical_center_id: '' });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
+  const [selectedHospitalType, setSelectedHospitalType] = useState('');
+
+  // Get medical center type from medicalCenters array
+  const getMedicalCenterType = (medicalCenterId) => {
+    const center = medicalCenters.find(c => c.id == medicalCenterId);
+    return center?.type || '';
+  };
+
+  // Check if hospital type is 'hospital' or 'large_hospital'
+  const isHospitalType = (type) => {
+    return type === 'hospital';
+  };
 
   useEffect(() => {
     if (department && open) {
+      const hospitalType = getMedicalCenterType(department.medical_center_id);
+      
       setFormData({
         name: department.name || '',
+        floor: department.floor || '',
         medical_center_id: department.medical_center_id || ''
       });
+      setSelectedHospitalType(hospitalType);
       setApiError('');
     }
   }, [department, open]);
@@ -1034,6 +1137,12 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
     if (!formData.medical_center_id) {
       newErrors.medical_center_id = t('This field is Required');
     }
+    
+    // Check if floor is required based on hospital type
+    if (isHospitalType(selectedHospitalType) && !formData.floor?.trim()) {
+      newErrors.floor = t('This field is Required for hospitals');
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -1051,6 +1160,18 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Update hospital type when hospital is selected
+    if (field === 'medical_center_id' && value) {
+      const hospitalType = getMedicalCenterType(value);
+      setSelectedHospitalType(hospitalType);
+      
+      // Clear floor if hospital type changes from hospital to clinic
+      if (!isHospitalType(hospitalType) && formData.floor) {
+        setFormData(prev => ({ ...prev, floor: '' }));
+      }
+    }
+    
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -1062,19 +1183,22 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
 
   const handleClose = () => {
     // Reset form when closing
-    setFormData({ name: '', medical_center_id: '' });
+    setFormData({ name: '', floor: '', medical_center_id: '' });
     setErrors({});
     setApiError('');
+    setSelectedHospitalType('');
     onClose();
   };
 
   if (!department) return null;
 
+  const showFloorField = isHospitalType(selectedHospitalType);
+
   const dialogContent = (
     <div className="flex flex-col gap-4 mt-20">
-      {/* Department Name and Hospital/Facility in same row */}
+      {/* Department Name, Hospital/Facility, and Floor in same row */}
       <Grid container spacing={2}>
-        <Grid item xs={6}>
+        <Grid item xs={showFloorField ? 4 : 6}>
           <div className="flex flex-col gap-2">
             <Typography variant="subtitle1" className="font-medium">
               {t('Clinical Department')} *
@@ -1090,7 +1214,7 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
             />
           </div>
         </Grid>
-        <Grid item xs={6}>
+        <Grid item xs={showFloorField ? 4 : 6}>
           <div className="flex flex-col gap-2">
             <Typography variant="subtitle1" className="font-medium">
               {t('Hospital/Facility')} *
@@ -1119,6 +1243,26 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
             </FormControl>
           </div>
         </Grid>
+        
+        {/* Floor Field - only shown for hospital type */}
+        {showFloorField && (
+          <Grid item xs={4}>
+            <div className="flex flex-col gap-2">
+              <Typography variant="subtitle1" className="font-medium">
+                {t('診療室')} *
+              </Typography>
+              <TextField
+                value={formData.floor || ''}
+                onChange={(e) => handleChange('floor', e.target.value)}
+                fullWidth
+                error={!!errors.floor}
+                helperText={errors.floor}
+                placeholder="例: 診1"
+                disabled={isLoading}
+              />
+            </div>
+          </Grid>
+        )}
       </Grid>
 
       {/* API Error Alert */}
