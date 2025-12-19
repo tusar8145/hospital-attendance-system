@@ -27,6 +27,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
 import ConsolidatedContentComponent from './ConsolidatedContentComponent';
+import ConsolidatedContentComponentCount from './ConsolidatedContentComponentCount';
+
 import apiConfig from '../../../configs/apiConfig';
 import axios from 'axios';
 
@@ -1205,6 +1207,29 @@ const FrameScreen = React.memo(({
           </Stack>
         </Paper>
 
+
+        {/* Consolidated Content Component */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: sectionPadding,
+            borderRadius: '12px',
+            border: '1px solid #e0e0e0',
+            backgroundColor: '#ffffff',
+          }}
+        >
+          <ConsolidatedContentComponentCount
+            data={consolidatedData}
+            departments={departments}
+            doctors={doctors}
+            hospitalId={hospitalId}
+            onDataChange={handleConsolidatedDataChange}
+            validationErrors={validationErrors}
+            readOnly={readOnly || reportStatus === 'submitted'}
+          />
+        </Paper>
+
+
         {/* Consolidated Content Component */}
         <Paper
           elevation={0}
@@ -1225,6 +1250,8 @@ const FrameScreen = React.memo(({
             readOnly={readOnly || reportStatus === 'submitted'}
           />
         </Paper>
+
+
 
         {/* Administrative Matters Section */}
         <Paper
