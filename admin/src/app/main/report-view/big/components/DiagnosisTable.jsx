@@ -19,7 +19,7 @@ const DiagnosisTable = ({ diagnosisData = {} }) => {
     <div className="diagnosis-table w-full h-full ">
       <div className="overflow-hidden h-full">
         <div className="overflow-x-auto ">
-          <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+          <table className="w-full border-collapse " style={{ tableLayout: 'fixed' }}>
             <tbody>
               {/* Row 1 - Headers */}
               <tr className="text-center align-middle">

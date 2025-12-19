@@ -821,7 +821,7 @@ useEffect(() => {
       />
 
       {/* Data Tables Section */}
-      <div className="flex flex-col lg:flex-row gap-0 mt-40">
+      <div className="flex flex-col lg:flex-row gap-0 mt-40 pl-1 pr-1">
         {/* Left Area - 40% */}
         <div className="lg:w-4/12">
           <div className="p-0 h-full">
@@ -895,7 +895,7 @@ useEffect(() => {
       </div>
 
       {/* Diagnosis Table */}
-      <div className="flex flex-col lg:flex-row gap-0 mt-40">
+      <div className="flex flex-col lg:flex-row gap-0 mt-40  pl-2 pr-2">
         <div className="lg:w-12/12">
           <div className="p-0 h-full">
             <div className="flex flex-col h-full gap-4">
@@ -914,7 +914,7 @@ useEffect(() => {
       </div>
 
       {/* Patient Count Table */}
-      <div className="flex flex-col lg:flex-row gap-0 mt-40">
+      <div className="flex flex-col lg:flex-row gap-0 mt-40   pl-2 pr-2">
         <div className="lg:w-12/12">
           <div className="p-0 h-full">
             <div className="flex flex-col h-full gap-4">

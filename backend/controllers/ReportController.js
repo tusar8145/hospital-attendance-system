@@ -2146,20 +2146,40 @@ export const getHospitalTypeByReportId = async (req, res, next) => {
  // Get last report's diagnosis data
 export const getHospitalDepartmentsDoctors = async (req, res, next) => {
   try {
-    const { hospital_id } = req.body;
+    const { hospital_id, report_date } = req.body;
     
+    // Validate required parameters
     if (!hospital_id) {
       return response.error("Hospital ID is required", res, next);
     }
+    
+    if (!report_date) {
+      return response.error("Report date is required", res, next);
+    }
 
-    // Get the latest submitted/approved report for this hospital
-    const latestReport = await prisma.report.findFirst({
+    // Parse and validate the report_date
+    const providedDate = new Date(report_date);
+    if (isNaN(providedDate.getTime())) {
+      return response.error("Invalid report date format", res, next);
+    }
+
+    // Calculate date 7 days earlier
+    const targetDate = new Date(providedDate);
+    targetDate.setDate(targetDate.getDate() - 7);
+    
+    // Create a DateTime object for the start of the target day
+    const searchDate = new Date(targetDate);
+    searchDate.setUTCHours(0, 0, 0, 0); // Set to start of day (00:00:00)
+
+    // Find the report for the calculated date
+    const report = await prisma.report.findFirst({
       where: {
         medical_center_id: parseInt(hospital_id),
         OR: [
           { status: 'submitted' },
           { status: 'approved' }
-        ]
+        ],
+        report_date: searchDate  // Pass Date object directly
       },
       select: {
         id: true,
@@ -2170,27 +2190,29 @@ export const getHospitalDepartmentsDoctors = async (req, res, next) => {
       }
     });
 
-    let reportDetails = [];
-    
-    // If latest report exists, get its report_details with related data
-    if (latestReport) {
-      reportDetails = await prisma.report_detail.findMany({
-        where: {
-          report_id: latestReport.id
-        },
-        include: {
-          department: true,
-          doctor1: true,
-          doctor2: true,
-          doctor3: true
-        },
-        orderBy: [
-          { department_id: 'asc' },
-          { sequence_no: 'asc' },
-          { consultation_type: 'asc' }
-        ]
-      });
+    // If no report found for the calculated date, return error
+    if (!report) {
+      const dateString = searchDate.toISOString().split('T')[0];
+      return response.error(`No report found for date: ${dateString} (7 days before ${report_date})`, res, next);
     }
+
+    // Get report details
+    const reportDetails = await prisma.report_detail.findMany({
+      where: {
+        report_id: report.id
+      },
+      include: {
+        department: true,
+        doctor1: true,
+        doctor2: true,
+        doctor3: true
+      },
+      orderBy: [
+        { department_id: 'asc' },
+        { sequence_no: 'asc' },
+        { consultation_type: 'asc' }
+      ]
+    });
 
     response.success(reportDetails, res);
 

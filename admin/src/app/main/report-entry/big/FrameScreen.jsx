@@ -265,22 +265,30 @@ const FrameScreen = React.memo(({
       setConsolidatedData(data.report_details);
     } else {
       //here call the api and response set this state 
-      if (hospitalId) {
-        const response = await axios.post(apiConfig.reportHospitalDepartmentsDoctors, {
-          hospital_id: hospitalId
-        });
+      try {
+          if (hospitalId) {
+            const response = await axios.post(apiConfig.reportHospitalDepartmentsDoctors, {
+              hospital_id: hospitalId,
+              report_date: date
+            });
 
-        if (response.data.success && response.data.data) {
-          const departmentsData = response.data.data;
+            if (response.data.success && response.data.data) {
+              const departmentsData = response.data.data;
 
-          // Create a new array with patient_count set to 0
-          const modifiedData = departmentsData.map(item => ({
-            ...item,
-            patient_count: 0
-          }));
-          setConsolidatedData(modifiedData);
-        }
+              // Create a new array with patient_count set to 0
+              const modifiedData = departmentsData.map(item => ({
+                ...item,
+                patient_count: 0
+              }));
+              setConsolidatedData(modifiedData);
+            }else{
+                      setConsolidatedData([]);
+            }
+          }        
+      } catch (error) {
+        setConsolidatedData([]);
       }
+
     }
     
     // Clear validation errors when loading data

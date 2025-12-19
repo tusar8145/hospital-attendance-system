@@ -5,7 +5,7 @@ const VisitTable = ({ visitCount = 0 }) => {
     <div className="visit-table w-full h-full">
       <div className="overflow-hidden rounded-md mb-10 mt-10 h-full">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse table-fixed">
+          <table className="w-full border-collapse table-fixed  bg-white border border-gray-300">
             <thead>
               {/* Row 1: Main header */}
               <tr>

@@ -133,7 +133,7 @@ const MedicalManagementTable = () => {
     <div className="medical-management-table w-full h-full rounded-md mt-10 mb-10">
       <div className="overflow-hidden rounded-md mb-10 mt-10  h-full">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse table-fixed">
+          <table className="w-full border-collapse table-fixed  bg-white border border-gray-300">
             <thead>
               {/* Changed: Blue background and unified font size */}
               <tr className="text-center">

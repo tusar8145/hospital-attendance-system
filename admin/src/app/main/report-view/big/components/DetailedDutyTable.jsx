@@ -33,10 +33,10 @@ const DetailedDutyTable = ({ dutyStaff = [] }) => {
   };
 
   return (
-    <div className="detailed-duty-table w-full h-full">
+    <div className="detailed-duty-table w-full h-full ">
       <div className="overflow-hidden rounded-md mb-10 mt-10 h-full">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse table-fixed">
+          <table className="w-full border-collapse table-fixed bg-white border border-gray-300">
             <thead>
               {/* Row 1: 当直 header spanning 7 columns */}
               <tr>

@@ -59,7 +59,7 @@ const HospitalDataTable = ({ data = {}, outpatient = [] }) => {
     <div className="hospital-data-table w-full h-full">
       <div className="overflow-hidden rounded-md mb-10 mt-10 h-full">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse table-fixed">
+          <table className="w-full border-collapse table-fixed  bg-white border border-gray-300">
             <thead>
               {/* Row 1: Main headers spanning multiple columns */}
               <tr>
