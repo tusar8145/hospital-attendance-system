@@ -1,6 +1,8 @@
 import express from "express";
 import { auth } from "../middleware/Auth.js";
+
 import * as ReportController from "../controllers/ReportController.js";
+import * as ReportControllerMid from "../controllers/ReportControllerMid.js";
 
 const router = express.Router();
 
@@ -35,6 +37,13 @@ router.post("/report/export", auth, ReportController.exportReports);
 
 //common entry
 router.post("/report/hospital-type", auth, ReportController.getHospitalTypeByReportId);
+
+//Mid
+router.post("/report-mid/get-by-id", auth, ReportControllerMid.getReportById);
+router.post("/report-mid/get-by-date-table", auth, ReportControllerMid.getReportByDateTable);
+router.post("/report-mid/departments-with-doctors", auth, ReportControllerMid.getDepartmentsWithDoctors);
+router.post("/report-mid/hospital-departments-doctors", ReportControllerMid.getHospitalDepartmentsDoctors);
+router.post("/report-mid/submit", auth, ReportControllerMid.submitReport);
 
 
 export { router as ReportRoute };
