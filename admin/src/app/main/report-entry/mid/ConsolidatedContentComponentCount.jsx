@@ -19,7 +19,8 @@ import {
   Alert,
   Tooltip,
   FormControl,
-  InputAdornment
+  InputAdornment,
+  Grid
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -32,10 +33,10 @@ import apiConfig from '../../../configs/apiConfig';
 const ConsolidatedContentComponentCount = ({
   data = [],
   departments = [],
-  doctors = [],
   hospitalId,
   onDataChange,
   validationErrors = {},
+  readOnly = false,
   loading: externalLoading = false
 }) => {
   const theme = useTheme();
@@ -46,9 +47,6 @@ const ConsolidatedContentComponentCount = ({
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [departmentOptions, setDepartmentOptions] = useState([]);
-  const [doctorOptions, setDoctorOptions] = useState({});
-  const [departmentStats, setDepartmentStats] = useState({});
-  const [doctorCache, setDoctorCache] = useState({});
 
   // Refs to track initialization state
   const initializedRef = useRef(false);
@@ -61,10 +59,10 @@ const ConsolidatedContentComponentCount = ({
     { value: 'night', label: '夜診', color: '#e74c3c', short: '夜' }
   ];
 
-  // Load departments with doctors from API
+  // Load departments
   useEffect(() => {
     if (hospitalId && !initializedRef.current) {
-      loadDepartmentsWithDoctors();
+      loadDepartments();
       initializedRef.current = true;
     }
   }, [hospitalId]);
@@ -81,45 +79,29 @@ const ConsolidatedContentComponentCount = ({
     }
   }, [data, departmentOptions]);
 
-  const loadDepartmentsWithDoctors = async () => {
+  const loadDepartments = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${apiConfig.baseURL}/report-mid/departments-with-doctors`, { 
+      const response = await axios.post(`${apiConfig.baseURL}/report-mid/departments`, { 
         hospital_id: hospitalId
       });
 
-      if (response.data.success && response.data.data) {
+      if (response.data.success && Array.isArray(response.data.data)) {
         const departmentsData = response.data.data;
         
         // Format department options
         const formattedDepartments = departmentsData.map(dept => ({
           id: dept.id,
-          name: dept.name,
-          doctorCount: dept.doctors?.length || 0
+          name: dept.name
         }));
         
         setDepartmentOptions(formattedDepartments);
-        
-        // Build doctor options by department
-        const doctorsByDept = {};
-        const allDoctorsCache = {};
-        
-        departmentsData.forEach(dept => {
-          doctorsByDept[dept.id] = dept.doctors || [];
-          
-          // Cache doctors by ID for quick lookup
-          if (dept.doctors) {
-            dept.doctors.forEach(doctor => {
-              allDoctorsCache[doctor.id] = doctor;
-            });
-          }
-        });
-        
-        setDoctorOptions(doctorsByDept);
-        setDoctorCache(allDoctorsCache);
+      } else {
+        setDepartmentOptions([]);
       }
     } catch (error) {
-      console.error('Error loading departments with doctors:', error);
+      console.error('Error loading departments:', error);
+      setDepartmentOptions([]);
     } finally {
       setLoading(false);
     }
@@ -144,16 +126,14 @@ const ConsolidatedContentComponentCount = ({
           id: `row-${key}`,
           sequence_no: item.sequence_no,
           department_id: item.department_id,
-          department_name: item.department_name,
+          department_name: item.department?.name || item.department_name,
           consultations: {}
         };
       }
       
       groupedData[key].consultations[item.consultation_type] = {
-        doctor_id_1: item.doctor_id_1,
-        doctor_id_2: item.doctor_id_2,
-        doctor_id_3: item.doctor_id_3,
-        patient_count: item.patient_count || 0
+        total_patients: item.total_patients || 0,
+        new_patients: item.new_patients || 0
       };
     });
     
@@ -162,10 +142,8 @@ const ConsolidatedContentComponentCount = ({
       const consultationsMap = {};
       consultationTypes.forEach(type => {
         consultationsMap[type.value] = group.consultations[type.value] || {
-          doctor_id_1: null,
-          doctor_id_2: null,
-          doctor_id_3: null,
-          patient_count: 0
+          total_patients: 0,
+          new_patients: 0
         };
       });
       
@@ -173,10 +151,8 @@ const ConsolidatedContentComponentCount = ({
         ...group,
         consultations: consultationTypes.map(type => ({
           type: type.value,
-          doctor_id_1: consultationsMap[type.value]?.doctor_id_1 || null,
-          doctor_id_2: consultationsMap[type.value]?.doctor_id_2 || null,
-          doctor_id_3: consultationsMap[type.value]?.doctor_id_3 || null,
-          patient_count: consultationsMap[type.value]?.patient_count || 0
+          total_patients: consultationsMap[type.value]?.total_patients || 0,
+          new_patients: consultationsMap[type.value]?.new_patients || 0
         }))
       };
     });
@@ -197,10 +173,8 @@ const ConsolidatedContentComponentCount = ({
         department_name: '',
         consultations: consultationTypes.map(type => ({
           type: type.value,
-          doctor_id_1: null,
-          doctor_id_2: null,
-          doctor_id_3: null,
-          patient_count: 0
+          total_patients: 0,
+          new_patients: 0
         }))
       };
       
@@ -209,29 +183,16 @@ const ConsolidatedContentComponentCount = ({
     }
   };
 
-  const getDoctorsForDepartment = (departmentId) => {
-    return doctorOptions[departmentId] || [];
-  };
-
-  const findDoctorById = (doctorId) => {
-    return doctorCache[doctorId];
-  };
-
-  const getDoctorDisplayName = (doctorId) => {
-    const doctor = findDoctorById(doctorId);
-    if (!doctor) return '';
-    
-    return doctor.license_no ? `${doctor.name} (${doctor.license_no})` : doctor.name;
-  };
-
   // Handler functions
-  const handleDoctorChange = (rowId, consultationIndex, doctorField, doctorId) => {
+  const handleTotalPatientsChange = (rowId, consultationIndex, value) => {
+    const numValue = parseInt(value) || 0;
+    
     const newRows = rows.map(row => {
       if (row.id === rowId) {
         const updatedConsultations = [...row.consultations];
         updatedConsultations[consultationIndex] = {
           ...updatedConsultations[consultationIndex],
-          [doctorField]: doctorId
+          total_patients: numValue
         };
         
         return {
@@ -247,7 +208,7 @@ const ConsolidatedContentComponentCount = ({
     notifyParent(newRows);
   };
 
-  const handlePatientCountChange = (rowId, consultationIndex, value) => {
+  const handleNewPatientsChange = (rowId, consultationIndex, value) => {
     const numValue = parseInt(value) || 0;
     
     const newRows = rows.map(row => {
@@ -255,7 +216,7 @@ const ConsolidatedContentComponentCount = ({
         const updatedConsultations = [...row.consultations];
         updatedConsultations[consultationIndex] = {
           ...updatedConsultations[consultationIndex],
-          patient_count: numValue
+          new_patients: numValue
         };
         
         return {
@@ -281,10 +242,8 @@ const ConsolidatedContentComponentCount = ({
       department_name: '',
       consultations: consultationTypes.map(type => ({
         type: type.value,
-        doctor_id_1: null,
-        doctor_id_2: null,
-        doctor_id_3: null,
-        patient_count: 0
+        total_patients: 0,
+        new_patients: 0
       }))
     };
     
@@ -320,14 +279,7 @@ const ConsolidatedContentComponentCount = ({
         const updatedRow = {
           ...row,
           department_id: departmentId,
-          department_name: department?.name || '',
-          // Reset doctors when department changes
-          consultations: row.consultations.map(cons => ({
-            ...cons,
-            doctor_id_1: null,
-            doctor_id_2: null,
-            doctor_id_3: null
-          }))
+          department_name: department?.name || ''
         };
         console.log('Updated row:', updatedRow);
         return updatedRow;
@@ -370,10 +322,8 @@ const ConsolidatedContentComponentCount = ({
             sequence_no: row.sequence_no,
             department_id: row.department_id,
             consultation_type: consultation.type,
-            doctor_id_1: consultation.doctor_id_1,
-            doctor_id_2: consultation.doctor_id_2,
-            doctor_id_3: consultation.doctor_id_3,
-            patient_count: consultation.patient_count
+            total_patients: consultation.total_patients,
+            new_patients: consultation.new_patients
           });
         });
       });
@@ -387,7 +337,16 @@ const ConsolidatedContentComponentCount = ({
     if (!row) return 0;
     
     return row.consultations.reduce((sum, consultation) => {
-      return sum + (consultation.patient_count || 0);
+      return sum + (consultation.total_patients || 0);
+    }, 0);
+  };
+
+  const calculateRowNewTotal = (rowId) => {
+    const row = rows.find(r => r.id === rowId);
+    if (!row) return 0;
+    
+    return row.consultations.reduce((sum, consultation) => {
+      return sum + (consultation.new_patients || 0);
     }, 0);
   };
 
@@ -397,12 +356,14 @@ const ConsolidatedContentComponentCount = ({
     }, 0);
   };
 
+  const calculateGrandNewTotal = () => {
+    return rows.reduce((total, row) => {
+      return total + calculateRowNewTotal(row.id);
+    }, 0);
+  };
+
   const calculateDepartmentStats = (rowsData) => {
-    const stats = {};
-    rowsData.forEach(row => {
-      stats[row.id] = calculateRowTotal(row.id);
-    });
-    setDepartmentStats(stats);
+    // Stats are now handled differently since we don't have doctor stats
   };
 
   // Check if department is already used in other rows
@@ -434,7 +395,7 @@ const ConsolidatedContentComponentCount = ({
       }}>
         <CircularProgress />
         <Typography sx={{ color: '#666', fontSize: fontSize.medium }}>
-          診療区と医師データを読み込み中...
+          診療区データを読み込み中...
         </Typography>
       </Box>
     );
@@ -507,14 +468,14 @@ const ConsolidatedContentComponentCount = ({
                 backgroundColor: '#3498db',
                 borderRadius: '2px'
               }} />
-              診療部門別集計
+              診療部門別集計 (患者数)
             </Typography>
             <Typography sx={{ 
               fontSize: fontSize.medium,
               color: "#666",
               mt: 0.5
             }}>
-              診療区ごとに担当医と患者数を入力してください
+              診療区ごとに患者数を入力してください
             </Typography>
           </Box>
           
@@ -544,20 +505,22 @@ const ConsolidatedContentComponentCount = ({
               </Box>
             </Tooltip>
             
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleAddRow}
-              size="small"
-              sx={{
-                backgroundColor: '#27ae60',
-                '&:hover': {
-                  backgroundColor: '#219955'
-                }
-              }}
-            >
-              診療区追加
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleAddRow}
+                size="small"
+                sx={{
+                  backgroundColor: '#27ae60',
+                  '&:hover': {
+                    backgroundColor: '#219955'
+                  }
+                }}
+              >
+                診療区追加
+              </Button>
+            )}
           </Box>
         </Box>
         
@@ -583,48 +546,29 @@ const ConsolidatedContentComponentCount = ({
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {departmentOptions.map(dept => {
                 const isSelected = rows.some(row => row.department_id === dept.id);
-                const doctorCount = doctorOptions[dept.id]?.length || 0;
                 
                 return (
-                  <Tooltip 
-                    key={dept.id} 
-                    title={`${doctorCount}名の医師が登録されています`}
+                  <Box
+                    key={dept.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: '12px',
+                      backgroundColor: isSelected ? '#e3f2fd' : '#f5f5f5',
+                      border: `1px solid ${isSelected ? '#0A6AE3' : '#e0e0e0'}`,
+                    }}
                   >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        px: 1.5,
-                        py: 0.5,
-                        borderRadius: '12px',
-                        backgroundColor: isSelected ? '#e3f2fd' : '#f5f5f5',
-                        border: `1px solid ${isSelected ? '#0A6AE3' : '#e0e0e0'}`,
-                      }}
-                    >
-                      <Typography sx={{ 
-                        fontSize: fontSize.medium,
-                        color: isSelected ? '#0A6AE3' : '#666',
-                        fontWeight: isSelected ? 600 : 400
-                      }}>
-                        {dept.name}
-                      </Typography>
-                      {doctorCount > 0 && (
-                        <Box sx={{ 
-                          backgroundColor: isSelected ? '#0A6AE3' : '#757575',
-                          color: 'white',
-                          fontSize: fontSize.small,
-                          px: 0.5,
-                          py: 0.25,
-                          borderRadius: '4px',
-                          minWidth: '20px',
-                          textAlign: 'center'
-                        }}>
-                          {doctorCount}
-                        </Box>
-                      )}
-                    </Box>
-                  </Tooltip>
+                    <Typography sx={{ 
+                      fontSize: fontSize.medium,
+                      color: isSelected ? '#0A6AE3' : '#666',
+                      fontWeight: isSelected ? 600 : 400
+                    }}>
+                      {dept.name}
+                    </Typography>
+                  </Box>
                 );
               })}
             </Box>
@@ -666,7 +610,7 @@ const ConsolidatedContentComponentCount = ({
           }
         },
       }}>
-        <Table sx={{ minWidth: isMobile ? '1000px' : '1200px' }}>
+        <Table sx={{ minWidth: isMobile ? '800px' : '1000px' }}>
           <TableHead>
             <TableRow>
               <TableCell
@@ -715,26 +659,6 @@ const ConsolidatedContentComponentCount = ({
               }}>
                 診療区分
               </TableCell>
-              <TableCell colSpan={3} sx={{ 
-                backgroundColor: "#F9FAFB",
-                border: "1px solid #e0e0e0",
-                padding: cellPadding,
-                textAlign: 'center',
-                fontWeight: 700,
-                fontSize: fontSize.medium,
-                color: "#2c3e50",
-                minWidth: '320px'
-              }}>
-                診療担当医
-                <Typography sx={{ 
-                  fontSize: fontSize.small, 
-                  color: "#666",
-                  fontWeight: 400,
-                  mt: 0.5
-                }}>
-                  (最大3名まで選択可能)
-                </Typography>
-              </TableCell>
               <TableCell sx={{ 
                 backgroundColor: "#F9FAFB",
                 border: "1px solid #e0e0e0",
@@ -743,7 +667,7 @@ const ConsolidatedContentComponentCount = ({
                 fontWeight: 700,
                 fontSize: fontSize.medium,
                 color: "#2c3e50",
-                minWidth: '100px'
+                minWidth: '200px'
               }}>
                 患者数
               </TableCell>
@@ -759,18 +683,20 @@ const ConsolidatedContentComponentCount = ({
               }}>
                 合計
               </TableCell>
-              <TableCell sx={{ 
-                backgroundColor: "#F9FAFB",
-                border: "1px solid #e0e0e0",
-                padding: cellPadding,
-                textAlign: 'center',
-                fontWeight: 700,
-                fontSize: fontSize.medium,
-                color: "#2c3e50",
-                minWidth: '120px'
-              }}>
-                操作
-              </TableCell>
+              {!readOnly && (
+                <TableCell sx={{ 
+                  backgroundColor: "#F9FAFB",
+                  border: "1px solid #e0e0e0",
+                  padding: cellPadding,
+                  textAlign: 'center',
+                  fontWeight: 700,
+                  fontSize: fontSize.medium,
+                  color: "#2c3e50",
+                  minWidth: '120px'
+                }}>
+                  操作
+                </TableCell>
+              )}
             </TableRow>
           </TableHead>
           
@@ -780,8 +706,8 @@ const ConsolidatedContentComponentCount = ({
                 {row.consultations.map((consultation, consultationIndex) => {
                   const typeConfig = consultationTypes.find(t => t.value === consultation.type);
                   const rowError = validationErrors[`department_${rowIndex}`];
-                  const patientError = validationErrors[`patientCount_${rowIndex}_${consultationIndex}`];
-                  const departmentDoctors = getDoctorsForDepartment(row.department_id);
+                  const totalError = validationErrors[`total_patients_${rowIndex}_${consultationIndex}`];
+                  const newError = validationErrors[`new_patients_${rowIndex}_${consultationIndex}`];
                   const isDeptAlreadyUsed = isDepartmentAlreadyUsed(row.department_id, row.id);
                   
                   return (
@@ -836,6 +762,7 @@ const ConsolidatedContentComponentCount = ({
                               value={row.department_id || ''}
                               onChange={(e) => handleDepartmentChange(row.id, e.target.value)}
                               displayEmpty
+                              disabled={readOnly || isDeptAlreadyUsed}
                               sx={{
                                 height: selectHeight,
                                 fontSize: fontSize.medium,
@@ -856,7 +783,6 @@ const ConsolidatedContentComponentCount = ({
                                 }
                                 
                                 const selectedDept = departmentOptions.find(d => d.id === selected);
-                                const doctorCount = departmentDoctors.length;
                                 
                                 return (
                                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -867,13 +793,6 @@ const ConsolidatedContentComponentCount = ({
                                     }}>
                                       {selectedDept?.name || 'Unknown'}
                                       {isDeptAlreadyUsed && ' (重複)'}
-                                    </Typography>
-                                    <Typography sx={{ 
-                                      fontSize: fontSize.small,
-                                      color: '#666',
-                                      mt: 0.25
-                                    }}>
-                                      {doctorCount}名の医師
                                     </Typography>
                                   </Box>
                                 );
@@ -893,14 +812,13 @@ const ConsolidatedContentComponentCount = ({
                                 </Typography>
                               </MenuItem>
                               {departmentOptions.map((dept) => {
-                                const deptDoctorCount = doctorOptions[dept.id]?.length || 0;
                                 const isUsed = isDepartmentAlreadyUsed(dept.id, row.id);
                                 
                                 return (
                                   <MenuItem 
                                     key={dept.id} 
                                     value={dept.id}
-                                    disabled={isUsed}
+                                    disabled={isUsed || readOnly}
                                     sx={{ 
                                       fontSize: fontSize.medium,
                                       '&.Mui-selected': {
@@ -919,28 +837,6 @@ const ConsolidatedContentComponentCount = ({
                                         {dept.name}
                                         {isUsed && ' (使用中)'}
                                       </Typography>
-                                      <Box sx={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center',
-                                        gap: 1
-                                      }}>
-                                        {deptDoctorCount > 0 ? (
-                                          <Typography sx={{ 
-                                            fontSize: fontSize.small,
-                                            color: '#666'
-                                          }}>
-                                            {deptDoctorCount}名
-                                          </Typography>
-                                        ) : (
-                                          <Typography sx={{ 
-                                            fontSize: fontSize.small,
-                                            color: '#ff9800',
-                                            fontStyle: 'italic'
-                                          }}>
-                                            医師なし
-                                          </Typography>
-                                        )}
-                                      </Box>
                                     </Box>
                                   </MenuItem>
                                 );
@@ -997,291 +893,106 @@ const ConsolidatedContentComponentCount = ({
                         </Box>
                       </TableCell>
                       
-                      {/* Doctor 1 */}
+                      {/* Patient Count - Total and New in same line */}
                       <TableCell sx={{ 
                         border: "1px solid #e0e0e0",
                         padding: cellPadding,
                         textAlign: 'center'
                       }}>
-                        <Select
-                          value={consultation.doctor_id_1 || ''}
-                          onChange={(e) => handleDoctorChange(row.id, consultationIndex, 'doctor_id_1', e.target.value)}
-                          displayEmpty
-                          size="small"
-                          disabled={!row.department_id || departmentDoctors.length === 0 || isDeptAlreadyUsed}
-                          IconComponent={KeyboardArrowDownIcon}
-                          sx={{
-                            width: '100%',
-                            height: selectHeight,
-                            backgroundColor: consultation.doctor_id_1 ? '#EFF6FF' : '#F9FAFB',
-                            fontSize: fontSize.medium,
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              borderColor: consultation.doctor_id_1 ? '#0A6AE3' : '#dfe1e7',
-                            },
-                            '& .MuiSelect-select': {
-                              padding: isMobile ? '6px 8px' : '8px 12px',
-                              color: consultation.doctor_id_1 ? "#0A6AE3" : "#9CA3AF",
-                              fontWeight: consultation.doctor_id_1 ? 600 : 400,
-                            },
-                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                              borderColor: '#0A6AE3',
-                            }
-                          }}
-                          renderValue={(selected) => {
-                            if (!selected) {
-                              if (!row.department_id) {
-                                return "診療区を先に選択";
-                              }
-                              if (isDeptAlreadyUsed) {
-                                return "診療区が重複";
-                              }
-                              if (departmentDoctors.length === 0) {
-                                return "医師がいません";
-                              }
-                              return "医師を選択";
-                            }
-                            return getDoctorDisplayName(selected);
-                          }}
-                          MenuProps={{
-                            PaperProps: {
-                              sx: {
-                                maxHeight: 300,
-                                fontSize: fontSize.medium
-                              }
-                            }
-                          }}
-                        >
-                          <MenuItem value="">
-                            <Typography sx={{ color: '#999', fontSize: fontSize.medium }}>
-                              医師を選択
-                            </Typography>
-                          </MenuItem>
-                          {departmentDoctors.map((doctor) => (
-                            <MenuItem 
-                              key={`${row.id}-${consultation.type}-doctor1-${doctor.id}`}
-                              value={doctor.id}
-                              sx={{ 
-                                fontSize: fontSize.medium,
-                                '&.Mui-selected': {
-                                  backgroundColor: '#e3f2fd'
-                                }
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Box sx={{ 
-                                  width: 8, 
-                                  height: 8, 
-                                  borderRadius: '50%',
-                                  backgroundColor: '#0A6AE3'
-                                }} />
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
-                                </Typography>
-                                {doctor.license_no && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    {doctor.license_no}
-                                  </Typography>
-                                )}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </TableCell>
-                      
-                      {/* Doctor 2 */}
-                      <TableCell sx={{ 
-                        border: "1px solid #e0e0e0",
-                        padding: cellPadding,
-                        textAlign: 'center'
-                      }}>
-                        <Select
-                          value={consultation.doctor_id_2 || ''}
-                          onChange={(e) => handleDoctorChange(row.id, consultationIndex, 'doctor_id_2', e.target.value)}
-                          displayEmpty
-                          size="small"
-                          disabled={!row.department_id || departmentDoctors.length === 0 || isDeptAlreadyUsed}
-                          IconComponent={KeyboardArrowDownIcon}
-                          sx={{
-                            width: '100%',
-                            height: selectHeight,
-                            backgroundColor: consultation.doctor_id_2 ? '#EFF6FF' : '#F9FAFB',
-                            fontSize: fontSize.medium,
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              borderColor: consultation.doctor_id_2 ? '#0A6AE3' : '#dfe1e7',
-                            },
-                            '& .MuiSelect-select': {
-                              padding: isMobile ? '6px 8px' : '8px 12px',
-                              color: consultation.doctor_id_2 ? "#0A6AE3" : "#9CA3AF",
-                              fontWeight: consultation.doctor_id_2 ? 600 : 400,
-                            },
-                          }}
-                          renderValue={(selected) => {
-                            if (!selected) {
-                              if (!row.department_id) {
-                                return "診療区を先に選択";
-                              }
-                              if (isDeptAlreadyUsed) {
-                                return "診療区が重複";
-                              }
-                              if (departmentDoctors.length === 0) {
-                                return "医師がいません";
-                              }
-                              return "医師を選択";
-                            }
-                            return getDoctorDisplayName(selected);
-                          }}
-                        >
-                          <MenuItem value="">医師を選択</MenuItem>
-                          {departmentDoctors.map((doctor) => (
-                            <MenuItem 
-                              key={`${row.id}-${consultation.type}-doctor2-${doctor.id}`}
-                              value={doctor.id}
-                              sx={{ fontSize: fontSize.medium }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
-                                </Typography>
-                                {doctor.license_no && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    ({doctor.license_no})
-                                  </Typography>
-                                )}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </TableCell>
-                      
-                      {/* Doctor 3 */}
-                      <TableCell sx={{ 
-                        border: "1px solid #e0e0e0",
-                        padding: cellPadding,
-                        textAlign: 'center'
-                      }}>
-                        <Select
-                          value={consultation.doctor_id_3 || ''}
-                          onChange={(e) => handleDoctorChange(row.id, consultationIndex, 'doctor_id_3', e.target.value)}
-                          displayEmpty
-                          size="small"
-                          disabled={!row.department_id || departmentDoctors.length === 0 || isDeptAlreadyUsed}
-                          IconComponent={KeyboardArrowDownIcon}
-                          sx={{
-                            width: '100%',
-                            height: selectHeight,
-                            backgroundColor: consultation.doctor_id_3 ? '#EFF6FF' : '#F9FAFB',
-                            fontSize: fontSize.medium,
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              borderColor: consultation.doctor_id_3 ? '#0A6AE3' : '#dfe1e7',
-                            },
-                            '& .MuiSelect-select': {
-                              padding: isMobile ? '6px 8px' : '8px 12px',
-                              color: consultation.doctor_id_3 ? "#0A6AE3" : "#9CA3AF",
-                              fontWeight: consultation.doctor_id_3 ? 600 : 400,
-                            },
-                          }}
-                          renderValue={(selected) => {
-                            if (!selected) {
-                              if (!row.department_id) {
-                                return "診療区を先に選択";
-                              }
-                              if (isDeptAlreadyUsed) {
-                                return "診療区が重複";
-                              }
-                              if (departmentDoctors.length === 0) {
-                                return "医師がいません";
-                              }
-                              return "医師を選択";
-                            }
-                            return getDoctorDisplayName(selected);
-                          }}
-                        >
-                          <MenuItem value="">医師を選択</MenuItem>
-                          {departmentDoctors.map((doctor) => (
-                            <MenuItem 
-                              key={`${row.id}-${consultation.type}-doctor3-${doctor.id}`}
-                              value={doctor.id}
-                              sx={{ fontSize: fontSize.medium }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
-                                </Typography>
-                                {doctor.license_no && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    ({doctor.license_no})
-                                  </Typography>
-                                )}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </TableCell>
-                      
-                      {/* Patient Count */}
-                      <TableCell sx={{ 
-                        border: "1px solid #e0e0e0",
-                        padding: cellPadding,
-                        textAlign: 'center'
-                      }}>
-                        <TextField
-                          value={consultation.patient_count || ''}
-                          onChange={(e) => handlePatientCountChange(row.id, consultationIndex, e.target.value)}
-                          variant="outlined"
-                          size="small"
-                          type="number"
-                          error={!!patientError}
-                          helperText={patientError}
-                          disabled={isDeptAlreadyUsed}
-                          inputProps={{
-                            min: 0,
-                            style: {
-                              textAlign: 'center',
-                              fontSize: fontSize.medium,
-                              padding: isMobile ? '6px 8px' : '8px 12px',
-                              height: selectHeight - 8,
-                              fontWeight: 600,
-                              color: consultation.patient_count > 0 ? '#2c3e50' : '#999'
-                            },
-                          }}
-                          InputProps={{
-                            endAdornment: (
-                              <InputAdornment position="end">
-                                <Typography sx={{ 
-                                  fontSize: fontSize.medium,
-                                  color: '#666'
-                                }}>
-                                  名
-                                </Typography>
-                              </InputAdornment>
-                            ),
-                          }}
-                          sx={{
-                            width: '100%',
-                            '& .MuiOutlinedInput-root': {
-                              height: selectHeight,
-                              backgroundColor: consultation.patient_count > 0 ? '#f0f7ff' : '#ffffff',
-                              '& fieldset': {
-                                borderColor: patientError ? '#df1c41' : consultation.patient_count > 0 ? '#0A6AE3' : '#dfe1e7',
-                              },
-                              '&:hover fieldset': {
-                                borderColor: patientError ? '#df1c41' : '#0A6AE3',
-                              }
-                            },
-                          }}
-                        />
+                        <Grid container spacing={1}>
+                          <Grid item xs={6}>
+                            <Box sx={{ mb: 0.5 }}>
+                              <Typography sx={{ 
+                                fontSize: fontSize.small,
+                                color: '#666',
+                                mb: 0.5,
+                                textAlign: 'left'
+                              }}>
+                                合計
+                              </Typography>
+                              <TextField
+                                value={consultation.total_patients || ''}
+                                onChange={(e) => handleTotalPatientsChange(row.id, consultationIndex, e.target.value)}
+                                variant="outlined"
+                                size="small"
+                                type="number"
+                                error={!!totalError}
+                                helperText={totalError}
+                                disabled={readOnly || isDeptAlreadyUsed}
+                                inputProps={{
+                                  min: 0,
+                                  style: {
+                                    textAlign: 'center',
+                                    fontSize: fontSize.medium,
+                                    padding: isMobile ? '6px 8px' : '8px 12px',
+                                    height: selectHeight - 8,
+                                    fontWeight: 600,
+                                    color: consultation.total_patients > 0 ? '#2c3e50' : '#999'
+                                  },
+                                }}
+                                sx={{
+                                  width: '100%',
+                                  '& .MuiOutlinedInput-root': {
+                                    height: selectHeight,
+                                    backgroundColor: consultation.total_patients > 0 ? '#f0f7ff' : '#ffffff',
+                                    '& fieldset': {
+                                      borderColor: totalError ? '#df1c41' : consultation.total_patients > 0 ? '#0A6AE3' : '#dfe1e7',
+                                    },
+                                    '&:hover fieldset': {
+                                      borderColor: totalError ? '#df1c41' : '#0A6AE3',
+                                    }
+                                  },
+                                }}
+                              />
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Box sx={{ mb: 0.5 }}>
+                              <Typography sx={{ 
+                                fontSize: fontSize.small,
+                                color: '#666',
+                                mb: 0.5,
+                                textAlign: 'left'
+                              }}>
+                                新規
+                              </Typography>
+                              <TextField
+                                value={consultation.new_patients || ''}
+                                onChange={(e) => handleNewPatientsChange(row.id, consultationIndex, e.target.value)}
+                                variant="outlined"
+                                size="small"
+                                type="number"
+                                error={!!newError}
+                                helperText={newError}
+                                disabled={readOnly || isDeptAlreadyUsed}
+                                inputProps={{
+                                  min: 0,
+                                  style: {
+                                    textAlign: 'center',
+                                    fontSize: fontSize.medium,
+                                    padding: isMobile ? '6px 8px' : '8px 12px',
+                                    height: selectHeight - 8,
+                                    fontWeight: 600,
+                                    color: consultation.new_patients > 0 ? '#2c3e50' : '#999'
+                                  },
+                                }}
+                                sx={{
+                                  width: '100%',
+                                  '& .MuiOutlinedInput-root': {
+                                    height: selectHeight,
+                                    backgroundColor: consultation.new_patients > 0 ? '#f0f7ff' : '#ffffff',
+                                    '& fieldset': {
+                                      borderColor: newError ? '#df1c41' : consultation.new_patients > 0 ? '#0A6AE3' : '#dfe1e7',
+                                    },
+                                    '&:hover fieldset': {
+                                      borderColor: newError ? '#df1c41' : '#0A6AE3',
+                                    }
+                                  },
+                                }}
+                              />
+                            </Box>
+                          </Grid>
+                        </Grid>
                       </TableCell>
                       
                       {/* Subtotal - spans 3 rows */}
@@ -1309,19 +1020,19 @@ const ConsolidatedContentComponentCount = ({
                             </Typography>
                             <Typography
                               sx={{
-                                fontSize: fontSize.medium,
+                                fontSize: fontSize.small,
                                 color: "#666",
                                 mt: 0.5
                               }}
                             >
-                              患者数
+                              {calculateRowNewTotal(row.id)} 新規
                             </Typography>
                           </Box>
                         </TableCell>
                       )}
                       
                       {/* Actions - spans 3 rows */}
-                      {consultationIndex === 0 && (
+                      {consultationIndex === 0 && !readOnly && (
                         <TableCell 
                           rowSpan={3}
                           sx={{ 
@@ -1339,11 +1050,11 @@ const ConsolidatedContentComponentCount = ({
                           }}>
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
                               <Tooltip title="上に移動">
-                                <span> {/* Added span wrapper for disabled button */}
+                                <span>
                                   <IconButton
                                     size="small"
                                     onClick={() => handleMoveRow(row.id, 'up')}
-                                    disabled={rowIndex === 0}
+                                    disabled={rowIndex === 0 || isDeptAlreadyUsed}
                                     sx={{
                                       border: '1px solid #e0e0e0',
                                       borderRadius: '4px',
@@ -1352,7 +1063,7 @@ const ConsolidatedContentComponentCount = ({
                                     }}
                                   >
                                     <Typography sx={{ 
-                                      color: rowIndex === 0 ? '#ccc' : '#3498db',
+                                      color: (rowIndex === 0 || isDeptAlreadyUsed) ? '#ccc' : '#3498db',
                                       fontSize: fontSize.medium,
                                       fontWeight: 600
                                     }}>
@@ -1363,11 +1074,11 @@ const ConsolidatedContentComponentCount = ({
                               </Tooltip>
                               
                               <Tooltip title="下に移動">
-                                <span> {/* Added span wrapper for disabled button */}
+                                <span>
                                   <IconButton
                                     size="small"
                                     onClick={() => handleMoveRow(row.id, 'down')}
-                                    disabled={rowIndex === rows.length - 1}
+                                    disabled={rowIndex === rows.length - 1 || isDeptAlreadyUsed}
                                     sx={{
                                       border: '1px solid #e0e0e0',
                                       borderRadius: '4px',
@@ -1376,7 +1087,7 @@ const ConsolidatedContentComponentCount = ({
                                     }}
                                   >
                                     <Typography sx={{ 
-                                      color: rowIndex === rows.length - 1 ? '#ccc' : '#3498db',
+                                      color: (rowIndex === rows.length - 1 || isDeptAlreadyUsed) ? '#ccc' : '#3498db',
                                       fontSize: fontSize.medium,
                                       fontWeight: 600
                                     }}>
@@ -1393,6 +1104,7 @@ const ConsolidatedContentComponentCount = ({
                                   size="small"
                                   onClick={() => handleRemoveRow(row.id)}
                                   color="error"
+                                  disabled={isDeptAlreadyUsed}
                                   sx={{
                                     border: '1px solid #ffcdd2',
                                     borderRadius: '6px',
@@ -1419,7 +1131,7 @@ const ConsolidatedContentComponentCount = ({
             {/* Empty State */}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} sx={{ 
+                <TableCell colSpan={readOnly ? 5 : 6} sx={{ 
                   textAlign: 'center', 
                   py: 6,
                   border: '1px solid #e0e0e0'
@@ -1447,23 +1159,25 @@ const ConsolidatedContentComponentCount = ({
                       maxWidth: '400px',
                       textAlign: 'center'
                     }}>
-                      「診療区追加」ボタンをクリックして、最初の診療区を追加してください
+                      {readOnly ? 'このレポートには診療区データがありません' : '「診療区追加」ボタンをクリックして、最初の診療区を追加してください'}
                     </Typography>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddRow}
-                      sx={{
-                        mt: 2,
-                        backgroundColor: '#27ae60',
-                        fontSize: fontSize.medium,
-                        '&:hover': {
-                          backgroundColor: '#219955'
-                        }
-                      }}
-                    >
-                      診療区を追加
-                    </Button>
+                    {!readOnly && (
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddRow}
+                        sx={{
+                          mt: 2,
+                          backgroundColor: '#27ae60',
+                          fontSize: fontSize.medium,
+                          '&:hover': {
+                            backgroundColor: '#219955'
+                          }
+                        }}
+                      >
+                        診療区を追加
+                      </Button>
+                    )}
                   </Box>
                 </TableCell>
               </TableRow>
@@ -1473,7 +1187,7 @@ const ConsolidatedContentComponentCount = ({
             {rows.length > 0 && (
               <TableRow>
                 <TableCell 
-                  colSpan={7} 
+                  colSpan={3} 
                   sx={{ 
                     border: "1px solid #e0e0e0",
                     padding: cellPadding,
@@ -1500,15 +1214,27 @@ const ConsolidatedContentComponentCount = ({
                   padding: cellPadding,
                   textAlign: 'center',
                 }}>
-                  <Typography
-                    sx={{
-                      fontWeight: 800,
-                      fontSize: fontSize.large,
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    {calculateGrandTotal()}
-                  </Typography>
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: fontSize.large,
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      {calculateGrandTotal()}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: fontSize.small,
+                        color: "#FFFFFF",
+                        opacity: 0.9,
+                        mt: 0.5
+                      }}
+                    >
+                      {calculateGrandNewTotal()} 新規
+                    </Typography>
+                  </Box>
                 </TableCell>
                 <TableCell sx={{ 
                   border: "1px solid #e0e0e0",
@@ -1538,6 +1264,15 @@ const ConsolidatedContentComponentCount = ({
                     </Box>
                   </Tooltip>
                 </TableCell>
+                {!readOnly && (
+                  <TableCell sx={{ 
+                    border: "1px solid #e0e0e0",
+                    padding: cellPadding,
+                    backgroundColor: '#f8f9fa'
+                  }}>
+                    {/* Empty cell for actions column */}
+                  </TableCell>
+                )}
               </TableRow>
             )}
           </TableBody>
@@ -1580,12 +1315,29 @@ const ConsolidatedContentComponentCount = ({
                 color: "#666",
                 mb: 0.5
               }}>
-                診療部門数
+                新規患者数
               </Typography>
               <Typography sx={{ 
                 fontSize: fontSize.large,
                 fontWeight: 700,
                 color: "#27ae60"
+              }}>
+                {calculateGrandNewTotal()} 名
+              </Typography>
+            </Box>
+            
+            <Box>
+              <Typography sx={{ 
+                fontSize: fontSize.medium,
+                color: "#666",
+                mb: 0.5
+              }}>
+                診療部門数
+              </Typography>
+              <Typography sx={{ 
+                fontSize: fontSize.large,
+                fontWeight: 700,
+                color: "#e74c3c"
               }}>
                 {rows.length} 部門
               </Typography>
@@ -1602,41 +1354,26 @@ const ConsolidatedContentComponentCount = ({
               <Typography sx={{ 
                 fontSize: fontSize.large,
                 fontWeight: 700,
-                color: "#e74c3c"
+                color: "#9b59b6"
               }}>
                 {rows.length * 3} 時間帯
               </Typography>
             </Box>
-            
-            <Box>
-              <Typography sx={{ 
-                fontSize: fontSize.medium,
-                color: "#666",
-                mb: 0.5
-              }}>
-                利用可能な診療区
-              </Typography>
-              <Typography sx={{ 
-                fontSize: fontSize.large,
-                fontWeight: 700,
-                color: "#9b59b6"
-              }}>
-                {departmentOptions.length} 部門
-              </Typography>
-            </Box>
           </Box>
           
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={handleAddRow}
-            size="small"
-            sx={{
-              fontSize: fontSize.medium
-            }}
-          >
-            さらに診療区を追加
-          </Button>
+          {!readOnly && (
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={handleAddRow}
+              size="small"
+              sx={{
+                fontSize: fontSize.medium
+              }}
+            >
+              さらに診療区を追加
+            </Button>
+          )}
         </Box>
       )}
     </Box>

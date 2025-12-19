@@ -39,11 +39,12 @@ router.post("/report/export", auth, ReportController.exportReports);
 router.post("/report/hospital-type", auth, ReportController.getHospitalTypeByReportId);
 
 //Mid
-router.post("/report-mid/get-by-id", auth, ReportControllerMid.getReportById);
-router.post("/report-mid/get-by-date-table", auth, ReportControllerMid.getReportByDateTable);
-router.post("/report-mid/departments-with-doctors", auth, ReportControllerMid.getDepartmentsWithDoctors);
 router.post("/report-mid/hospital-departments-doctors", ReportControllerMid.getHospitalDepartmentsDoctors);
+router.post("/report-mid/get-by-id", auth, ReportControllerMid.getReportById);
+router.post("/report-mid/get-by-date", auth, ReportControllerMid.getReportByDate);
+router.post("/report-mid/departments", auth, ReportControllerMid.getDepartments);
 router.post("/report-mid/submit", auth, ReportControllerMid.submitReport);
+router.post("/report-mid/departments-with-doctors", auth, ReportController.getDepartmentsWithDoctors);
 
 
 export { router as ReportRoute };

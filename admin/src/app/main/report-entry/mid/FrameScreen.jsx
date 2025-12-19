@@ -14,7 +14,9 @@ import {
   Paper,
   Alert,
   Tooltip,
-  Snackbar
+  Snackbar,
+  Tabs,
+  Tab
 } from "@mui/material";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
@@ -51,7 +53,8 @@ const FrameScreen = React.memo(({
   showSnackbar,
   onHeaderSaveDraft,
   onHeaderSubmit,
-  isEditingFromView=false
+  isEditingFromView = false,
+  hospital_type = 'hospital'
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -74,8 +77,13 @@ const FrameScreen = React.memo(({
     thirdRow: Array(21).fill("")
   });
   const [specialNotes, setSpecialNotes] = useState("");
-  const [consolidatedData, setConsolidatedData] = useState([]);
+  
+  // Separate states for both components
+  const [consolidatedData, setConsolidatedData] = useState([]); // For ConsolidatedContentComponent
+  const [consolidatedDataCount, setConsolidatedDataCount] = useState([]); // For ConsolidatedContentComponentCount
+  
   const [validationErrors, setValidationErrors] = useState({});
+  const [activeTab, setActiveTab] = useState(0);
   
   // Track if form data has been loaded
   const [formDataLoaded, setFormDataLoaded] = useState(false);
@@ -84,7 +92,6 @@ const FrameScreen = React.memo(({
   const isInitialMountRef = useRef(true);
   const previousFormDataRef = useRef(null);
   const loadingRef = useRef(false);
-  const externalDoctorsInitializedRef = useRef(false);
 
   // Local state for snackbar
   const [localSnackbar, setLocalSnackbar] = useState({
@@ -132,18 +139,15 @@ const FrameScreen = React.memo(({
       loadFormData(formData);
       previousFormDataRef.current = formData;
       setFormDataLoaded(true);
-      externalDoctorsInitializedRef.current = true;
     } else if ((formData === null || Object.keys(formData).length === 0) && formDataLoaded) {
       console.log('No form data, resetting form');
       resetForm();
       setFormDataLoaded(false);
-      externalDoctorsInitializedRef.current = false;
     }
     
     // Reset formDataLoaded flag when formData becomes null
     if (!formData && formDataLoaded) {
       setFormDataLoaded(false);
-      externalDoctorsInitializedRef.current = false;
     }
   }, [formData, loading]);
 
@@ -153,7 +157,6 @@ const FrameScreen = React.memo(({
     
     // Mark that we've loaded form data
     setFormDataLoaded(true);
-    externalDoctorsInitializedRef.current = true;
     
     // Basic stats - always load from form data
     setPatientsCount(data.admission_count?.toString() || "0");
@@ -170,36 +173,21 @@ const FrameScreen = React.memo(({
     // Special notes
     setSpecialNotes(data.special_notes || "");
     
-    // Consolidated data from report_details
+    // Load data for both components
+    // For ConsolidatedContentComponent (doctor-based)
     if (data.report_details && Array.isArray(data.report_details) && data.report_details.length > 0) {
-      console.log('Setting consolidated data from form data:', data.report_details.length, 'items');
+      console.log('Setting consolidated data for doctor-based component:', data.report_details.length, 'items');
       setConsolidatedData(data.report_details);
     } else {
-      //here call the api and response set this state 
-      try {
-          if (hospitalId) {
-            const response = await axios.post(`${apiConfig.baseURL}/report-mid/hospital-departments-doctors`, {
-              hospital_id: hospitalId,
-              report_date: date
-            });
-
-            if (response.data.success && response.data.data) {
-              const departmentsData = response.data.data;
-
-              // Create a new array with patient_count set to 0
-              const modifiedData = departmentsData.map(item => ({
-                ...item,
-                patient_count: 0
-              }));
-              setConsolidatedData(modifiedData);
-            }else{
-                      setConsolidatedData([]);
-            }
-          }        
-      } catch (error) {
-        setConsolidatedData([]);
-      }
-
+      setConsolidatedData([]);
+    }
+    
+    // For ConsolidatedContentComponentCount (patient count-based)
+    if (data.report_details_mid && Array.isArray(data.report_details_mid) && data.report_details_mid.length > 0) {
+      console.log('Setting consolidated data for count-based component:', data.report_details_mid.length, 'items');
+      setConsolidatedDataCount(data.report_details_mid);
+    } else {
+      setConsolidatedDataCount([]);
     }
     
     // Clear validation errors when loading data
@@ -222,8 +210,6 @@ const FrameScreen = React.memo(({
       CT: "0" 
     });
     
- 
-    
     setCurrentStatus({ 
       firstRow: Array(21).fill(""), 
       secondRow: Array(21).fill(""),
@@ -232,8 +218,9 @@ const FrameScreen = React.memo(({
     
     setSpecialNotes("");
     
-    // Reset consolidated data to empty array
+    // Reset consolidated data for both components
     setConsolidatedData([]);
+    setConsolidatedDataCount([]);
     
     setValidationErrors({});
     
@@ -329,40 +316,35 @@ const FrameScreen = React.memo(({
     if (!externalConsultation.CT || isNaN(parseInt(externalConsultation.CT))) {
       errors.CT = "有効なCT数が必要です";
     }
-    
 
-
-    // Validate duty staff - 21 fields are now OPTIONAL
-    // Only validate if fields exist, they are strings
-    for (let i = 0; i < 21; i++) {
-      const firstRowValue = currentStatus.firstRow[i];
-      const secondRowValue = currentStatus.secondRow[i];
-      const thirdRowValue = currentStatus.thirdRow[i];
-      
-      if (firstRowValue !== undefined && typeof firstRowValue !== 'string') {
-        errors[`dutyStaff_field_group_${i + 1}_1`] = "当直部署は有効である必要があります";
-      }
-      if (secondRowValue !== undefined && typeof secondRowValue !== 'string') {
-        errors[`dutyStaff_field_group_${i + 1}_2`] = "当直医師1は有効である必要があります";
-      }
-      if (thirdRowValue !== undefined && typeof thirdRowValue !== 'string') {
-        errors[`dutyStaff_field_group_${i + 1}_3`] = "当直医師2は有効である必要があります";
-      }
-    }
-    
-    // Validate consolidated data
-    if (consolidatedData.length === 0) {
+    // Validate consolidated data for both components
+    // Both components should have at least one entry
+    if (consolidatedData.length === 0 && consolidatedDataCount.length === 0) {
       errors.consolidatedData = "少なくとも1つの診療科エントリが必要です";
-    } else {
-      consolidatedData.forEach((item, index) => {
-        if (!item.department_id) {
-          errors[`department_${index}`] = "診療科の選択が必要です";
-        }
-        if (!item.patient_count && item.patient_count !== 0) {
-          errors[`patientCount_${index}`] = "患者数が必要です";
-        }
-      });
     }
+    
+    // Validate ConsolidatedContentComponent data
+    consolidatedData.forEach((item, index) => {
+      if (!item.department_id) {
+        errors[`doctor_dept_${index}`] = "診療科の選択が必要です";
+      }
+      if (!item.patient_count && item.patient_count !== 0) {
+        errors[`doctor_patientCount_${index}`] = "患者数が必要です";
+      }
+    });
+    
+    // Validate ConsolidatedContentComponentCount data
+    consolidatedDataCount.forEach((item, index) => {
+      if (!item.department_id) {
+        errors[`count_dept_${index}`] = "診療科の選択が必要です";
+      }
+      if (!item.total_patients && item.total_patients !== 0) {
+        errors[`count_total_${index}`] = "合計患者数が必要です";
+      }
+      if (!item.new_patients && item.new_patients !== 0) {
+        errors[`count_new_${index}`] = "新規患者数が必要です";
+      }
+    });
     
     setValidationErrors(errors);
     
@@ -375,10 +357,13 @@ const FrameScreen = React.memo(({
   };
 
   const prepareFormData = () => {
-
-    // Filter out empty consolidated data
+    // Filter out empty consolidated data for both components
     const filteredConsolidatedData = consolidatedData.filter(item => 
       item.department_id && item.patient_count !== undefined
+    );
+
+    const filteredConsolidatedDataCount = consolidatedDataCount.filter(item => 
+      item.department_id && (item.total_patients !== undefined || item.new_patients !== undefined)
     );
 
     return {
@@ -390,7 +375,8 @@ const FrameScreen = React.memo(({
       visit_count: parseInt(externalConsultation.CT) || 0,
       special_notes: specialNotes.trim(),
       report_details: filteredConsolidatedData,
-      hospital_type: 'hospital',
+      report_details_mid: filteredConsolidatedDataCount,
+      hospital_type: hospital_type,
     };
   };
 
@@ -520,8 +506,6 @@ const FrameScreen = React.memo(({
     }
   };
 
- 
-
   const handleSpecialNotesChange = (e) => {
     setSpecialNotes(e.target.value);
   };
@@ -529,11 +513,25 @@ const FrameScreen = React.memo(({
   const handleConsolidatedDataChange = (newData) => {
     setConsolidatedData(newData);
     // Clear consolidated data error if data is added
-    if (validationErrors.consolidatedData && newData.length > 0) {
+    if (validationErrors.consolidatedData && (newData.length > 0 || consolidatedDataCount.length > 0)) {
       const newErrors = { ...validationErrors };
       delete newErrors.consolidatedData;
       setValidationErrors(newErrors);
     }
+  };
+
+  const handleConsolidatedDataCountChange = (newData) => {
+    setConsolidatedDataCount(newData);
+    // Clear consolidated data error if data is added
+    if (validationErrors.consolidatedData && (consolidatedData.length > 0 || newData.length > 0)) {
+      const newErrors = { ...validationErrors };
+      delete newErrors.consolidatedData;
+      setValidationErrors(newErrors);
+    }
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
   };
 
   // Show local snackbar (for date navigation warnings)
@@ -563,18 +561,9 @@ const FrameScreen = React.memo(({
     externalConsultation,
     currentStatus,
     specialNotes,
-    consolidatedData
+    consolidatedData,
+    consolidatedDataCount
   ]);
-
-  // Expose the save and submit handlers to parent via refs or callbacks
-  useEffect(() => {
-    // This effect runs when the component mounts and sets up the callback functions
-    // that the parent (ReportEntry) can call
-    if (onHeaderSaveDraft || onHeaderSubmit) {
-      // We're not actually calling them here, just making them available
-      // The parent component will handle calling these functions
-    }
-  }, []);
 
   // Create a function that the parent can call to trigger save draft
   const triggerSaveDraft = useCallback(() => {
@@ -1207,51 +1196,44 @@ const FrameScreen = React.memo(({
           </Stack>
         </Paper>
 
-
-        {/* Consolidated Content Component */}
+        {/* Consolidated Content Section with Tabs */}
         <Paper
           elevation={0}
           sx={{
-            p: sectionPadding,
             borderRadius: '12px',
             border: '1px solid #e0e0e0',
             backgroundColor: '#ffffff',
           }}
         >
-          <ConsolidatedContentComponentCount
-            data={consolidatedData}
-            departments={departments}
-            doctors={doctors}
-            hospitalId={hospitalId}
-            onDataChange={handleConsolidatedDataChange}
-            validationErrors={validationErrors}
-            readOnly={readOnly || reportStatus === 'submitted'}
-          />
+ 
+
+          {/* Tab Content */}
+          <Box sx={{ p: sectionPadding }}>
+
+
+              <ConsolidatedContentComponentCount
+                data={consolidatedDataCount}
+                departments={departments}
+                hospitalId={hospitalId}
+                onDataChange={handleConsolidatedDataCountChange}
+                validationErrors={validationErrors}
+                readOnly={readOnly || reportStatus === 'submitted'}
+              />
+
+              <ConsolidatedContentComponent
+                data={consolidatedData}
+                departments={departments}
+                doctors={doctors}
+                hospitalId={hospitalId}
+                onDataChange={handleConsolidatedDataChange}
+                validationErrors={validationErrors}
+                readOnly={readOnly || reportStatus === 'submitted'}
+              />
+
+
+
+          </Box>
         </Paper>
-
-
-        {/* Consolidated Content Component */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <ConsolidatedContentComponent
-            data={consolidatedData}
-            departments={departments}
-            doctors={doctors}
-            hospitalId={hospitalId}
-            onDataChange={handleConsolidatedDataChange}
-            validationErrors={validationErrors}
-            readOnly={readOnly || reportStatus === 'submitted'}
-          />
-        </Paper>
-
-
 
         {/* Administrative Matters Section */}
         <Paper

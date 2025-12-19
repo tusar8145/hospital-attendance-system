@@ -166,7 +166,8 @@ model department {
   
   doctor_links doctor_department[]
   report_details report_detail[]
-  
+  report_details_mid        report_detail_mid[]  
+
   created_by   Int
   created_at   DateTime?  @default(now())
   updated_by   Int?
@@ -336,6 +337,7 @@ model report {
   shift_nurses            report_shift_nurse[] // Shift nurses
   duty_staff              report_duty_staff[] // Duty staff
   approvals               report_approval[] // Approvals
+  report_details_mid        report_detail_mid[] // Mid report details
   
   @@index([medical_center_id])
   @@index([report_date])
@@ -382,6 +384,36 @@ model report_detail {
   @@index([doctor_id_1])
   @@index([doctor_id_2])
   @@index([doctor_id_3])
+}
+
+
+
+/////////////////////////////
+// Report Detail Mid (Child Table for Hospital Type 2)
+/////////////////////////////
+model report_detail_mid {
+  id                      Int         @id @default(autoincrement())
+  report_id               Int         // Parent report
+  sequence_no             Int         // 通番 within report (01, 02, etc.)
+  department_id           Int         // 診療区 (内科, 外科, etc.)
+  
+  // Consultation types - using enum ConsultationType
+  consultation_type       ConsultationType // 0: 午前診, 1: 午後診, 2: 夜診
+  
+  // Patient counts (replaces doctors)
+  total_patients          Int         @default(0) // 合計 (Total patients)
+  new_patients            Int         @default(0) // 新規 (New patients)
+  
+  // Relations
+  report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  department              department  @relation(fields: [department_id], references: [id])
+  
+  created_at              DateTime?   @default(now())
+  updated_at              DateTime?   @default(now())
+  
+  @@unique([report_id, sequence_no, consultation_type])
+  @@index([report_id])
+  @@index([department_id])
 }
 
 /////////////////////////////

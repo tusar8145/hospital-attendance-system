@@ -177,8 +177,8 @@ function ensureAllDutyStaffPositions(dutyStaffData) {
   return result;
 }
 
-// Get report by date with table data
-export const getReportByDateTable = async (req, res, next) => {
+
+export const getReportByDate = async (req, res, next) => {
   try {
     const { date, hospital_id } = req.body;
     
@@ -197,30 +197,20 @@ export const getReportByDateTable = async (req, res, next) => {
         }
       },
       include: {
-        report_details: {
+        report_details_mid: {
           include: {
-            department: true,
-            doctor1: true,
-            doctor2: true,
-            doctor3: true
+            department: true
           },
           orderBy: [
             { sequence_no: 'asc' },
             { consultation_type: 'asc' }
           ]
         },
-        shift_nurses: true,
-        duty_staff: true,
         medical_center: true
       }
     });
 
-    // Ensure all 21 duty staff positions exist
-    if (existingReport && existingReport.duty_staff) {
-      existingReport.duty_staff = ensureAllDutyStaffPositions(existingReport.duty_staff);
-    }
-
-    // Get related data for the form
+    // Get departments
     const departments = await prisma.department.findMany({
       where: {
         medical_center_id: parseInt(hospital_id),
@@ -228,100 +218,19 @@ export const getReportByDateTable = async (req, res, next) => {
       }
     });
 
-    const doctors = await prisma.doctor.findMany({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        status: 1
-      },
-      include: {
-        dept_links: {
-          where: { status: 1 },
-          include: {
-            department: true
-          }
-        }
-      }
-    });
-
-    // Calculate monthly statistics
-    const startOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
-    const endOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
-    
-    const monthlyReports = await prisma.report.findMany({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        report_date: {
-          gte: startOfMonth,
-          lte: endOfMonth
-        }
-      },
-      select: {
-        emergency_transport: true,
-        post_transport_admission: true,
-        admission_count: true,
-        discharge_count: true,
-        hospital_type: true
-      }
-    });
-
-    const monthlyStats = monthlyReports.reduce((acc, report) => {
-      acc.emergency_transport += report.emergency_transport || 0;
-      acc.post_transport_admission += report.post_transport_admission || 0;
-      acc.admission_count += report.admission_count || 0;
-      acc.discharge_count += report.discharge_count || 0;
-      return acc;
-    }, { 
-      emergency_transport: 0, 
-      post_transport_admission: 0,
-      admission_count: 0,
-      discharge_count: 0 
-    });
-
-    // Organize data for frontend tables
-    const organizedData = {
-      patientCountData: organizePatientCountData(existingReport?.report_details || []),
-      diagnosisData: organizeDiagnosisData(existingReport?.report_details || []),
-      emergencyData: {
-        current: existingReport?.emergency_transport || 0,
-        hospitalization: existingReport?.post_transport_admission || 0,
-        monthly: monthlyStats.emergency_transport,
-        cumulative: monthlyStats.post_transport_admission
-      },
-      nurseData: organizeNurseData(existingReport?.shift_nurses || []),
-      hospitalData: {
-        inpatient: {
-          admission: existingReport?.admission_count || 0,
-          discharge: existingReport?.discharge_count || 0,
-          current: (existingReport?.admission_count || 0) - (existingReport?.discharge_count || 0)
-        },
-        outpatient: {
-          morning: existingReport?.external_morning || 0,
-          afternoon: existingReport?.external_afternoon || 0,
-          night: existingReport?.external_duty || 0,
-          total: (existingReport?.external_morning || 0) + 
-                 (existingReport?.external_afternoon || 0) + 
-                 (existingReport?.external_duty || 0)
-        }
-      },
-      visitCount: existingReport?.visit_count || 0,
-      hospitalType: existingReport?.hospital_type || null
-    };
-
     response.success({
       report: existingReport,
       departments,
-      doctors,
-      exists: !!existingReport,
-      tableData: organizedData,
-      monthlyStats
+      exists: !!existingReport
     }, res);
 
   } catch (error) {
-    response.error(error, res, next);
+    console.error('Error in getReportByDateMid:', error);
+    response.error(error.message, res, next);
   }
 };
 
-// Get report by ID with approvals and comments
+ 
 export const getReportById = async (req, res, next) => {
   try {
     const { report_id } = req.body;
@@ -336,62 +245,21 @@ export const getReportById = async (req, res, next) => {
         id: parseInt(report_id)
       },
       include: {
-        report_details: {
+        report_details_mid: {
           include: {
-            department: true,
-            doctor1: true,
-            doctor2: true,
-            doctor3: true
+            department: true
           },
           orderBy: [
             { sequence_no: 'asc' },
             { consultation_type: 'asc' }
           ]
         },
-        shift_nurses: true,
-        duty_staff: true,
         medical_center: true,
         created_by_admin: {
           select: { name: true }
         },
         updated_by_admin: {
           select: { name: true }
-        },
-        approved_by_admin: {
-          select: { name: true }
-        },
-        // Include approvals
-        approvals: {
-          include: {
-            admin: {
-              select: {
-                id: true,
-                name: true,
-                role: true
-              }
-            }
-          },
-          orderBy: {
-            created_at: 'asc'
-          }
-        },
-        // Include comments
-        report_comments: {
-          where: {
-            is_internal: false
-          },
-          include: {
-            admin: {
-              select: {
-                id: true,
-                name: true,
-                role: true
-              }
-            }
-          },
-          orderBy: {
-            created_at: 'desc'
-          }
         }
       }
     });
@@ -400,76 +268,7 @@ export const getReportById = async (req, res, next) => {
       return response.error("Report not found", res, next);
     }
 
-    // Ensure all 21 duty staff positions exist
-    if (report.duty_staff) {
-      report.duty_staff = ensureAllDutyStaffPositions(report.duty_staff);
-    }
-
-    // Calculate monthly statistics
-    const startOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth(), 1);
-    const endOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth() + 1, 0);
-    
-    const monthlyReports = await prisma.report.findMany({
-      where: {
-        medical_center_id: report.medical_center_id,
-        report_date: {
-          gte: startOfMonth,
-          lte: endOfMonth
-        }
-      },
-      select: {
-        emergency_transport: true,
-        post_transport_admission: true,
-        admission_count: true,
-        discharge_count: true,
-        hospital_type: true
-      }
-    });
-
-    const monthlyStats = monthlyReports.reduce((acc, monthlyReport) => {
-      acc.emergency_transport += monthlyReport.emergency_transport || 0;
-      acc.post_transport_admission += monthlyReport.post_transport_admission || 0;
-      acc.admission_count += monthlyReport.admission_count || 0;
-      acc.discharge_count += monthlyReport.discharge_count || 0;
-      return acc;
-    }, { 
-      emergency_transport: 0, 
-      post_transport_admission: 0,
-      admission_count: 0,
-      discharge_count: 0 
-    });
-
-    // Organize data for frontend tables
-    const organizedData = {
-      patientCountData: organizePatientCountData(report.report_details || []),
-      diagnosisData: organizeDiagnosisData(report.report_details || []),
-      emergencyData: {
-        current: report.emergency_transport || 0,
-        hospitalization: report.post_transport_admission || 0,
-        monthly: monthlyStats.emergency_transport,
-        cumulative: monthlyStats.post_transport_admission
-      },
-      nurseData: organizeNurseData(report.shift_nurses || []),
-      hospitalData: {
-        inpatient: {
-          admission: report.admission_count || 0,
-          discharge: report.discharge_count || 0,
-          current: (report.admission_count || 0) - (report.discharge_count || 0)
-        },
-        outpatient: {
-          morning: report.external_morning || 0,
-          afternoon: report.external_afternoon || 0,
-          night: report.external_duty || 0,
-          total: (report.external_morning || 0) + 
-                 (report.external_afternoon || 0) + 
-                 (report.external_duty || 0)
-        }
-      },
-      visitCount: report.visit_count || 0,
-      hospitalType: report.hospital_type || null
-    };
-
-    // Get departments and doctors
+    // Get departments
     const departments = await prisma.department.findMany({
       where: {
         medical_center_id: report.medical_center_id,
@@ -477,39 +276,18 @@ export const getReportById = async (req, res, next) => {
       }
     });
 
-    const doctors = await prisma.doctor.findMany({
-      where: {
-        medical_center_id: report.medical_center_id,
-        status: 1
-      },
-      include: {
-        dept_links: {
-          where: { status: 1 },
-          include: {
-            department: true
-          }
-        }
-      }
-    });
-
     response.success({
       report,
       departments,
-      doctors,
-      exists: true,
-      tableData: organizedData,
-      monthlyStats,
-      approvals: report.approvals,
-      comments: report.report_comments
+      exists: true
     }, res);
 
   } catch (error) {
-    console.error('Error in getReportById:', error);
+    console.error('Error in getReportByIdMid:', error);
     response.error(error.message, res, next);
   }
 };
 
-// Submit/Update report
 export const submitReport = async (req, res, next) => {
   const transaction = await prisma.$transaction(async (tx) => {
     try {
@@ -518,16 +296,12 @@ export const submitReport = async (req, res, next) => {
         report_date,
         admission_count,
         discharge_count,
-        external_morning,
-        external_afternoon,
         external_duty,
         emergency_transport,
         post_transport_admission,
         visit_count,
         special_notes,
-        shift_nurses,
-        duty_staff,
-        report_details,
+        report_details_mid,  // Changed from report_details to report_details_mid
         is_draft = false,
         hospital_type,
       } = req.body;
@@ -556,13 +330,11 @@ export const submitReport = async (req, res, next) => {
         special_notes,
         admission_count: parseInt(admission_count) || 0,
         discharge_count: parseInt(discharge_count) || 0,
-        external_morning: parseInt(external_morning) || 0,
-        external_afternoon: parseInt(external_afternoon) || 0,
         external_duty: parseInt(external_duty) || 0,
         emergency_transport: parseInt(emergency_transport) || 0,
         post_transport_admission: parseInt(post_transport_admission) || 0,
         visit_count: parseInt(visit_count) || 0,
-        hospital_type: hospital_type,
+        hospital_type: hospital_type || 'hospital',
         updated_by: userId,
         updated_at: new Date(),
       };
@@ -585,79 +357,24 @@ export const submitReport = async (req, res, next) => {
             data: reportData
           });
 
-      // Delete existing details, shift nurses, and duty staff
-      await tx.report_detail.deleteMany({
+      // Delete existing mid details
+      await tx.report_detail_mid.deleteMany({
         where: { report_id: report.id }
       });
 
-      await tx.report_shift_nurse.deleteMany({
-        where: { report_id: report.id }
-      });
-
-      await tx.report_duty_staff.deleteMany({
-        where: { report_id: report.id }
-      });
-
-      // Create report details
-      if (report_details && report_details.length > 0) {
-        const detailsData = report_details.map(detail => ({
+      // Create report details mid
+      if (report_details_mid && report_details_mid.length > 0) {
+        const detailsData = report_details_mid.map(detail => ({
           report_id: report.id,
-          sequence_no: parseInt(detail.sequence_no),
+          sequence_no: parseInt(detail.sequence_no) || 1,
           department_id: parseInt(detail.department_id),
           consultation_type: detail.consultation_type,
-          doctor_id_1: detail.doctor_id_1 ? parseInt(detail.doctor_id_1) : null,
-          doctor_id_2: detail.doctor_id_2 ? parseInt(detail.doctor_id_2) : null,
-          doctor_id_3: detail.doctor_id_3 ? parseInt(detail.doctor_id_3) : null,
-          patient_count: parseInt(detail.patient_count) || 0
+          total_patients: parseInt(detail.total_patients) || 0,
+          new_patients: parseInt(detail.new_patients) || 0
         }));
 
-        await tx.report_detail.createMany({
+        await tx.report_detail_mid.createMany({
           data: detailsData
-        });
-      }
-
-      // Create shift nurses
-      if (shift_nurses && shift_nurses.length > 0) {
-        const nursesData = shift_nurses.map(nurse => ({
-          report_id: report.id,
-          shift_type: parseInt(nurse.shift_type),
-          nurse_name: nurse.nurse_name
-        }));
-
-        await tx.report_shift_nurse.createMany({
-          data: nursesData
-        });
-      }
-
-      // Create duty staff - ensure all 21 positions with 3 staff names each
-      // If duty_staff is not provided or incomplete, create all 21 positions
-      let staffData = [];
-      
-      if (duty_staff && duty_staff.length > 0) {
-        // Use provided data and ensure all positions
-        const allStaffData = ensureAllDutyStaffPositions(duty_staff);
-        
-        staffData = allStaffData.map(staff => ({
-          report_id: report.id,
-          position: staff.position,
-          staff_name_1: staff.staff_name_1 || "",
-          staff_name_2: staff.staff_name_2 || "",
-          staff_name_3: staff.staff_name_3 || ""
-        }));
-      } else {
-        // Create empty entries for all 21 positions
-        staffData = ALL_DUTY_STAFF_POSITIONS.map(position => ({
-          report_id: report.id,
-          position: position,
-          staff_name_1: "",
-          staff_name_2: "",
-          staff_name_3: ""
-        }));
-      }
-
-      if (staffData.length > 0) {
-        await tx.report_duty_staff.createMany({
-          data: staffData
         });
       }
 
@@ -665,24 +382,14 @@ export const submitReport = async (req, res, next) => {
       const completeReport = await tx.report.findUnique({
         where: { id: report.id },
         include: {
-          report_details: {
+          report_details_mid: {
             include: {
-              department: true,
-              doctor1: true,
-              doctor2: true,
-              doctor3: true
+              department: true
             }
           },
-          shift_nurses: true,
-          duty_staff: true,
           medical_center: true
         }
       });
-
-      // Ensure all 21 duty staff positions exist in the response
-      if (completeReport.duty_staff) {
-        completeReport.duty_staff = ensureAllDutyStaffPositions(completeReport.duty_staff);
-      }
 
       return {
         success: true,
@@ -701,49 +408,38 @@ export const submitReport = async (req, res, next) => {
   try {
     response.success(transaction, res);
   } catch (error) {
-    response.error(error, res, next);
+    console.error('Error in submitReportMid:', error);
+    response.error(error.message, res, next);
   }
 };
 
 // Get departments with doctors
-export const getDepartmentsWithDoctors = async (req, res, next) => {
+// Get departments only (no doctors)
+export const getDepartments = async (req, res, next) => {
   try {
     const { hospital_id } = req.body;
+
+    if (!hospital_id) {
+      return response.error("Hospital ID is required", res, next);
+    }
 
     const departments = await prisma.department.findMany({
       where: {
         medical_center_id: parseInt(hospital_id),
         status: 1
       },
-      include: {
-        doctor_links: {
-          where: { status: 1 },
-          include: {
-            doctor: true
-          }
-        }
-      },
       orderBy: {
         name: 'asc'
       }
     });
 
-    // Format data for frontend
-    const formattedDepartments = departments.map(dept => ({
-      id: dept.id,
-      name: dept.name,
-      doctors: dept.doctor_links.map(link => ({
-        id: link.doctor.id,
-        name: link.doctor.name,
-        license_no: link.doctor.license_no
-      }))
-    }));
-
-    response.success(formattedDepartments, res);
+    response.success(departments, res);
   } catch (error) {
-    response.error(error, res, next);
+    console.error('Error in getDepartments:', error);
+    response.error(error.message, res, next);
   }
 };
+
 
 // Get last report's diagnosis data
 export const getHospitalDepartmentsDoctors = async (req, res, next) => {
