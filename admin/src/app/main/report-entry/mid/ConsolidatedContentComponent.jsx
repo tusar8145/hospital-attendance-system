@@ -136,65 +136,76 @@ const ConsolidatedContentComponent = ({
     }
   };
 
-  const initializeRowsFromData = (reportData) => {
-    if (!reportData || !Array.isArray(reportData)) {
-      console.log('No valid report data, initializing from floors');
-      initializeRowsFromFloors();
-      return;
+const initializeRowsFromData = (reportData) => {
+  if (!reportData || !Array.isArray(reportData)) {
+    console.log('No valid report data, initializing from floors');
+    initializeRowsFromFloors();
+    return;
+  }
+  
+  console.log('=== initializeRowsFromData called ===');
+  console.log('Received reportData:', reportData);
+  console.log('Number of items:', reportData.length);
+  console.log('First item:', reportData[0]);
+  console.log('===============================');
+  
+  // Group data by sequence_no and floor (instead of department_id)
+  const groupedData = {};
+  
+  reportData.forEach(item => {
+    console.log('Processing item:', item);
+    const floor = item.floor || '未設定';
+    const key = `${item.sequence_no}_${floor}`;
+    if (!groupedData[key]) {
+      groupedData[key] = {
+        id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        sequence_no: item.sequence_no,
+        floor: floor,
+        consultations: {}
+      };
     }
     
-    console.log('Initializing rows from data:', reportData.length, 'items');
-    
-    // Group data by sequence_no and floor (instead of department_id)
-    const groupedData = {};
-    
-    reportData.forEach(item => {
-      const floor = item.floor || '未設定';
-      const key = `${item.sequence_no}_${floor}`;
-      if (!groupedData[key]) {
-        groupedData[key] = {
-          id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          sequence_no: item.sequence_no,
-          floor: floor,
-          consultations: {}
-        };
-      }
-      
-      groupedData[key].consultations[item.consultation_type] = {
-        doctor_id_1: item.doctor_id_1,
-        doctor_id_2: item.doctor_id_2,
-        doctor_id_3: item.doctor_id_3
+    groupedData[key].consultations[item.consultation_type] = {
+      doctor_id_1: item.doctor_id_1,
+      doctor_id_2: item.doctor_id_2,
+      doctor_id_3: item.doctor_id_3
+    };
+  });
+  
+  console.log('Grouped data:', groupedData);
+  
+  const newRows = Object.values(groupedData).map(group => {
+    // Ensure all consultation types exist
+    const consultationsMap = {};
+    consultationTypes.forEach(type => {
+      consultationsMap[type.value] = group.consultations[type.value] || {
+        doctor_id_1: null,
+        doctor_id_2: null,
+        doctor_id_3: null
       };
     });
     
-    const newRows = Object.values(groupedData).map(group => {
-      // Ensure all consultation types exist
-      const consultationsMap = {};
-      consultationTypes.forEach(type => {
-        consultationsMap[type.value] = group.consultations[type.value] || {
-          doctor_id_1: null,
-          doctor_id_2: null,
-          doctor_id_3: null
-        };
-      });
-      
-      return {
-        ...group,
-        consultations: consultationTypes.map(type => ({
-          type: type.value,
-          doctor_id_1: consultationsMap[type.value]?.doctor_id_1 || null,
-          doctor_id_2: consultationsMap[type.value]?.doctor_id_2 || null,
-          doctor_id_3: consultationsMap[type.value]?.doctor_id_3 || null
-        }))
-      };
-    });
-    
-    // Sort by sequence_no
-    newRows.sort((a, b) => a.sequence_no - b.sequence_no);
-    
-    console.log('Created rows from data:', newRows.length, 'rows');
-    setRows(newRows);
-  };
+    return {
+      ...group,
+      consultations: consultationTypes.map(type => ({
+        type: type.value,
+        doctor_id_1: consultationsMap[type.value]?.doctor_id_1 || null,
+        doctor_id_2: consultationsMap[type.value]?.doctor_id_2 || null,
+        doctor_id_3: consultationsMap[type.value]?.doctor_id_3 || null
+      }))
+    };
+  });
+  
+  // Sort by sequence_no
+  newRows.sort((a, b) => a.sequence_no - b.sequence_no);
+  
+  console.log('Created rows:', newRows);
+  console.log('Number of rows:', newRows.length);
+  setRows(newRows);
+  
+  // Immediately notify parent with the initialized data
+  notifyParent(newRows);
+};
 
   const initializeRowsFromFloors = () => {
     // Start with one empty row if no data
@@ -373,22 +384,32 @@ const ConsolidatedContentComponent = ({
   };
 
   const notifyParent = (updatedRows) => {
-    console.log('Notifying parent with rows:', updatedRows.length, 'rows');
+    console.log('=== ConsolidatedContentComponent notifyParent ===');
+    console.log('Rows to send:', updatedRows);
+    console.log('Rows structure:', JSON.stringify(updatedRows, null, 2));
+    
     if (onDataChange) {
       const flatData = [];
       updatedRows.forEach(row => {
         row.consultations.forEach(consultation => {
-          flatData.push({
+          const item = {
             sequence_no: row.sequence_no,
             floor: row.floor,
             consultation_type: consultation.type,
             doctor_id_1: consultation.doctor_id_1,
             doctor_id_2: consultation.doctor_id_2,
             doctor_id_3: consultation.doctor_id_3
-          });
+          };
+          console.log('Adding item to flatData:', item);
+          flatData.push(item);
         });
       });
-      console.log('Flat data for parent:', flatData.length, 'items');
+      
+      console.log('=== Final flat data ===');
+      console.log('Number of items:', flatData.length);
+      console.log('All items:', JSON.stringify(flatData, null, 2));
+      console.log('==========================');
+      
       onDataChange(flatData);
     }
   };

@@ -153,6 +153,14 @@ const FrameScreen = React.memo(({
 
   // Load form data from existing report
   const loadFormData = async (data) => {
+      console.log('=== FrameScreen loadFormData ===');
+  console.log('Full data received:', data);
+  console.log('report_details:', data.report_details);
+  console.log('report_details_mid:', data.report_details_mid);
+  console.log('report_details type:', typeof data.report_details);
+  console.log('report_details is array?', Array.isArray(data.report_details));
+  console.log('==========================');
+
     console.log('Loading form data:', data);
     
     // Mark that we've loaded form data
@@ -187,6 +195,7 @@ const FrameScreen = React.memo(({
       console.log('Setting consolidated data for count-based component:', data.report_details_mid.length, 'items');
       setConsolidatedDataCount(data.report_details_mid);
     } else {
+      console.log('nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn')
       setConsolidatedDataCount([]);
     }
     
@@ -357,14 +366,27 @@ const FrameScreen = React.memo(({
   };
 
   const prepareFormData = () => {
+    console.log('=== FrameScreen prepareFormData ===');
+    console.log('consolidatedData (doctor-based):', consolidatedData);
+    console.log('consolidatedData length:', consolidatedData.length);
+    console.log('consolidatedDataCount (count-based):', consolidatedDataCount);
+    console.log('consolidatedDataCount length:', consolidatedDataCount.length);
+    
     // Filter out empty consolidated data for both components
     const filteredConsolidatedData = consolidatedData.filter(item => 
-      item.department_id && item.patient_count !== undefined
+      // For doctor-based data, check if there's at least one doctor or floor
+      (item.doctor_id_1 || item.doctor_id_2 || item.doctor_id_3 || item.floor)
     );
 
     const filteredConsolidatedDataCount = consolidatedDataCount.filter(item => 
       item.department_id && (item.total_patients !== undefined || item.new_patients !== undefined)
     );
+
+    console.log('Filtered doctor-based data:', filteredConsolidatedData);
+    console.log('Filtered doctor-based data length:', filteredConsolidatedData.length);
+    console.log('Filtered count-based data:', filteredConsolidatedDataCount);
+    console.log('Filtered count-based data length:', filteredConsolidatedDataCount.length);
+    console.log('==========================');
 
     return {
       admission_count: parseInt(patientsCount) || 0,

@@ -247,12 +247,13 @@ export const submitReport = async (req, res, next) => {
           const detailsData = report_details.map(detail => ({
             report_id: report.id,
             sequence_no: parseInt(detail.sequence_no) || 1,
-            department_id: parseInt(detail.department_id),
+            floor: detail.floor,
+           // department_id: parseInt(detail.department_id),
             consultation_type: detail.consultation_type,
             doctor_id_1: detail.doctor_id_1 ? parseInt(detail.doctor_id_1) : null,
             doctor_id_2: detail.doctor_id_2 ? parseInt(detail.doctor_id_2) : null,
             doctor_id_3: detail.doctor_id_3 ? parseInt(detail.doctor_id_3) : null,
-            patient_count: parseInt(detail.patient_count) || 0
+           // patient_count: parseInt(detail.patient_count) || 0
           }));
 
           await tx.report_detail.createMany({
