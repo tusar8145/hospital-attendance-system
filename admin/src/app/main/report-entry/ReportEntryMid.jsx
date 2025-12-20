@@ -1198,6 +1198,7 @@ function ReportEntryMid({newHospital}) {
 
   // Handle form data change
   const handleFormDataChange = useCallback((newData) => {
+    console.log('dddddddd', newData)
     // Don't update if we're currently loading data
     if (isLoadingDataRef.current) {
       return;

@@ -9,7 +9,6 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  TextField,
   useMediaQuery,
   useTheme,
   IconButton,
@@ -19,13 +18,17 @@ import {
   Alert,
   Tooltip,
   FormControl,
-  InputAdornment
+  Chip,
+  Avatar,
+  AvatarGroup
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import PersonSearchIcon from '@mui/icons-material/PersonSearch';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import GroupsIcon from '@mui/icons-material/Groups';
 import axios from 'axios';
 import apiConfig from '../../../configs/apiConfig';
 
@@ -47,12 +50,10 @@ const ConsolidatedContentComponent = ({
   const [loading, setLoading] = useState(false);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [doctorOptions, setDoctorOptions] = useState({});
-  const [departmentStats, setDepartmentStats] = useState({});
   const [doctorCache, setDoctorCache] = useState({});
 
   // Refs to track initialization state
   const initializedRef = useRef(false);
-  const dataInitializedRef = useRef(false);
 
   // Consultation types
   const consultationTypes = [
@@ -76,8 +77,8 @@ const ConsolidatedContentComponent = ({
       console.log('Initializing rows from data for the first time');
       initializeRowsFromData(data);
     } else if (departmentOptions.length > 0 && rows.length === 0) {
-      console.log('Initializing empty rows from departments');
-      initializeRowsFromDepartments();
+      console.log('Initializing empty rows from floors');
+      initializeRowsFromFloors();
     }
   }, [data, departmentOptions]);
 
@@ -91,31 +92,41 @@ const ConsolidatedContentComponent = ({
       if (response.data.success && response.data.data) {
         const departmentsData = response.data.data;
         
-        // Format department options
+        // Format department options with floor information
         const formattedDepartments = departmentsData.map(dept => ({
           id: dept.id,
           name: dept.name,
+          floor: dept.floor || '未設定',
           doctorCount: dept.doctors?.length || 0
         }));
         
         setDepartmentOptions(formattedDepartments);
         
-        // Build doctor options by department
-        const doctorsByDept = {};
+        // Build doctor options by floor (not by department)
+        const doctorsByFloor = {};
         const allDoctorsCache = {};
         
         departmentsData.forEach(dept => {
-          doctorsByDept[dept.id] = dept.doctors || [];
+          const floor = dept.floor || '未設定';
+          if (!doctorsByFloor[floor]) {
+            doctorsByFloor[floor] = [];
+          }
           
-          // Cache doctors by ID for quick lookup
+          // Add doctors from this department to the floor
           if (dept.doctors) {
             dept.doctors.forEach(doctor => {
+              // Check if doctor already exists in this floor to avoid duplicates
+              const exists = doctorsByFloor[floor].some(d => d.id === doctor.id);
+              if (!exists) {
+                doctorsByFloor[floor].push(doctor);
+              }
+              // Cache doctors by ID for quick lookup
               allDoctorsCache[doctor.id] = doctor;
             });
           }
         });
         
-        setDoctorOptions(doctorsByDept);
+        setDoctorOptions(doctorsByFloor);
         setDoctorCache(allDoctorsCache);
       }
     } catch (error) {
@@ -127,24 +138,24 @@ const ConsolidatedContentComponent = ({
 
   const initializeRowsFromData = (reportData) => {
     if (!reportData || !Array.isArray(reportData)) {
-      console.log('No valid report data, initializing from departments');
-      initializeRowsFromDepartments();
+      console.log('No valid report data, initializing from floors');
+      initializeRowsFromFloors();
       return;
     }
     
     console.log('Initializing rows from data:', reportData.length, 'items');
     
-    // Group data by sequence_no and department_id
+    // Group data by sequence_no and floor (instead of department_id)
     const groupedData = {};
     
     reportData.forEach(item => {
-      const key = `${item.sequence_no}_${item.department_id}`;
+      const floor = '未設定'; // Default floor
+      const key = `${item.sequence_no}_${floor}`;
       if (!groupedData[key]) {
         groupedData[key] = {
           id: `row-${key}`,
           sequence_no: item.sequence_no,
-          department_id: item.department_id,
-          department_name: item.department_name,
+          floor: floor,
           consultations: {}
         };
       }
@@ -152,8 +163,7 @@ const ConsolidatedContentComponent = ({
       groupedData[key].consultations[item.consultation_type] = {
         doctor_id_1: item.doctor_id_1,
         doctor_id_2: item.doctor_id_2,
-        doctor_id_3: item.doctor_id_3,
-        patient_count: item.patient_count || 0
+        doctor_id_3: item.doctor_id_3
       };
     });
     
@@ -164,8 +174,7 @@ const ConsolidatedContentComponent = ({
         consultationsMap[type.value] = group.consultations[type.value] || {
           doctor_id_1: null,
           doctor_id_2: null,
-          doctor_id_3: null,
-          patient_count: 0
+          doctor_id_3: null
         };
       });
       
@@ -175,42 +184,37 @@ const ConsolidatedContentComponent = ({
           type: type.value,
           doctor_id_1: consultationsMap[type.value]?.doctor_id_1 || null,
           doctor_id_2: consultationsMap[type.value]?.doctor_id_2 || null,
-          doctor_id_3: consultationsMap[type.value]?.doctor_id_3 || null,
-          patient_count: consultationsMap[type.value]?.patient_count || 0
+          doctor_id_3: consultationsMap[type.value]?.doctor_id_3 || null
         }))
       };
     });
     
     console.log('Created rows from data:', newRows.length, 'rows');
     setRows(newRows);
-    calculateDepartmentStats(newRows);
   };
 
-  const initializeRowsFromDepartments = () => {
+  const initializeRowsFromFloors = () => {
     // Start with one empty row if no data
-    if (departmentOptions.length > 0 && rows.length === 0) {
+    if (Object.keys(doctorOptions).length > 0 && rows.length === 0) {
       console.log('Creating initial empty row');
       const initialRow = {
         id: `new-${Date.now()}`,
         sequence_no: 1,
-        department_id: null,
-        department_name: '',
+        floor: '',
         consultations: consultationTypes.map(type => ({
           type: type.value,
           doctor_id_1: null,
           doctor_id_2: null,
-          doctor_id_3: null,
-          patient_count: 0
+          doctor_id_3: null
         }))
       };
       
       setRows([initialRow]);
-      calculateDepartmentStats([initialRow]);
     }
   };
 
-  const getDoctorsForDepartment = (departmentId) => {
-    return doctorOptions[departmentId] || [];
+  const getDoctorsForFloor = (floor) => {
+    return doctorOptions[floor] || [];
   };
 
   const findDoctorById = (doctorId) => {
@@ -222,6 +226,42 @@ const ConsolidatedContentComponent = ({
     if (!doctor) return '';
     
     return doctor.license_no ? `${doctor.name} (${doctor.license_no})` : doctor.name;
+  };
+
+  const getDoctorDepartment = (doctorId) => {
+    const doctor = findDoctorById(doctorId);
+    if (!doctor) return '';
+    
+    // Find which department(s) this doctor belongs to
+    const departmentsForDoctor = departmentOptions.filter(dept => 
+      doctorOptions[dept.floor]?.some(d => d.id === doctorId)
+    );
+    
+    if (departmentsForDoctor.length === 0) return '';
+    if (departmentsForDoctor.length === 1) return departmentsForDoctor[0].name;
+    
+    return `${departmentsForDoctor.length}診療区`;
+  };
+
+  // Format floor display
+  const formatFloorDisplay = (floor) => {
+    if (!floor || floor === '未設定') return '未選択';
+    
+    // Check if floor contains Japanese "階" character
+    if (floor.includes('階')) {
+      return floor;
+    }
+    
+    // Check if it's a simple number or number with suffix
+    const match = floor.match(/^(\d+)([a-zA-Z]*)$/);
+    if (match) {
+      const number = match[1];
+      const suffix = match[2] || '';
+      return `${number}階${suffix}`;
+    }
+    
+    // Return as is with 階 appended
+    return `${floor}階`;
   };
 
   // Handler functions
@@ -243,31 +283,6 @@ const ConsolidatedContentComponent = ({
     });
     
     setRows(newRows);
-    calculateDepartmentStats(newRows);
-    notifyParent(newRows);
-  };
-
-  const handlePatientCountChange = (rowId, consultationIndex, value) => {
-    const numValue = parseInt(value) || 0;
-    
-    const newRows = rows.map(row => {
-      if (row.id === rowId) {
-        const updatedConsultations = [...row.consultations];
-        updatedConsultations[consultationIndex] = {
-          ...updatedConsultations[consultationIndex],
-          patient_count: numValue
-        };
-        
-        return {
-          ...row,
-          consultations: updatedConsultations
-        };
-      }
-      return row;
-    });
-    
-    setRows(newRows);
-    calculateDepartmentStats(newRows);
     notifyParent(newRows);
   };
 
@@ -277,14 +292,12 @@ const ConsolidatedContentComponent = ({
     const newRow = {
       id: newRowId,
       sequence_no: rows.length + 1,
-      department_id: null,
-      department_name: '',
+      floor: '',
       consultations: consultationTypes.map(type => ({
         type: type.value,
         doctor_id_1: null,
         doctor_id_2: null,
-        doctor_id_3: null,
-        patient_count: 0
+        doctor_id_3: null
       }))
     };
     
@@ -292,7 +305,6 @@ const ConsolidatedContentComponent = ({
     const newRows = [...rows, newRow];
     console.log('New rows after adding:', newRows.length);
     setRows(newRows);
-    calculateDepartmentStats(newRows);
     notifyParent(newRows);
   };
 
@@ -307,21 +319,18 @@ const ConsolidatedContentComponent = ({
     
     console.log('After removal:', newRows.length, 'rows');
     setRows(newRows);
-    calculateDepartmentStats(newRows);
     notifyParent(newRows);
   };
 
-  const handleDepartmentChange = (rowId, departmentId) => {
-    console.log('Changing department for row:', rowId, 'to:', departmentId);
-    const department = departmentOptions.find(dept => dept.id === departmentId);
+  const handleFloorChange = (rowId, floor) => {
+    console.log('Changing floor for row:', rowId, 'to:', floor);
     
     const newRows = rows.map(row => {
       if (row.id === rowId) {
         const updatedRow = {
           ...row,
-          department_id: departmentId,
-          department_name: department?.name || '',
-          // Reset doctors when department changes
+          floor: floor,
+          // Reset doctors when floor changes
           consultations: row.consultations.map(cons => ({
             ...cons,
             doctor_id_1: null,
@@ -346,7 +355,7 @@ const ConsolidatedContentComponent = ({
     }
     
     const newRows = [...rows];
-    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    const swapIndex = direction === 'up' ? index - 1 : direction === 'down' ? index + 1 : index;
     
     // Swap rows
     [newRows[index], newRows[swapIndex]] = [newRows[swapIndex], newRows[index]];
@@ -368,12 +377,11 @@ const ConsolidatedContentComponent = ({
         row.consultations.forEach(consultation => {
           flatData.push({
             sequence_no: row.sequence_no,
-            department_id: row.department_id,
+            floor: row.floor,
             consultation_type: consultation.type,
             doctor_id_1: consultation.doctor_id_1,
             doctor_id_2: consultation.doctor_id_2,
-            doctor_id_3: consultation.doctor_id_3,
-            patient_count: consultation.patient_count
+            doctor_id_3: consultation.doctor_id_3
           });
         });
       });
@@ -382,34 +390,38 @@ const ConsolidatedContentComponent = ({
     }
   };
 
-  const calculateRowTotal = (rowId) => {
-    const row = rows.find(r => r.id === rowId);
-    if (!row) return 0;
-    
-    return row.consultations.reduce((sum, consultation) => {
-      return sum + (consultation.patient_count || 0);
-    }, 0);
-  };
-
-  const calculateGrandTotal = () => {
-    return rows.reduce((total, row) => {
-      return total + calculateRowTotal(row.id);
-    }, 0);
-  };
-
-  const calculateDepartmentStats = (rowsData) => {
-    const stats = {};
-    rowsData.forEach(row => {
-      stats[row.id] = calculateRowTotal(row.id);
-    });
-    setDepartmentStats(stats);
-  };
-
-  // Check if department is already used in other rows
-  const isDepartmentAlreadyUsed = (departmentId, currentRowId) => {
+  // Check if floor is already used in other rows
+  const isFloorAlreadyUsed = (floor, currentRowId) => {
     return rows.some(row => 
-      row.id !== currentRowId && row.department_id === departmentId
+      row.id !== currentRowId && row.floor === floor
     );
+  };
+
+  // Get available floors with doctor counts
+  const getAvailableFloors = () => {
+    const floors = Object.keys(doctorOptions);
+    
+    // Sort floors: "未設定" first, then numeric floors, then others
+    return floors.sort((a, b) => {
+      if (a === '未設定') return -1;
+      if (b === '未設定') return 1;
+      
+      const numA = parseInt(a.match(/^(\d+)/)?.[0] || 9999);
+      const numB = parseInt(b.match(/^(\d+)/)?.[0] || 9999);
+      
+      if (numA !== numB) return numA - numB;
+      return a.localeCompare(b);
+    }).map(floor => ({
+      value: floor,
+      label: formatFloorDisplay(floor),
+      doctorCount: doctorOptions[floor]?.length || 0,
+      departmentCount: departmentOptions.filter(dept => dept.floor === floor).length
+    }));
+  };
+
+  // Get departments for a specific floor
+  const getDepartmentsForFloor = (floor) => {
+    return departmentOptions.filter(dept => dept.floor === floor);
   };
 
   // Responsive values
@@ -434,7 +446,7 @@ const ConsolidatedContentComponent = ({
       }}>
         <CircularProgress />
         <Typography sx={{ color: '#666', fontSize: fontSize.medium }}>
-          診療区と医師データを読み込み中...
+          階と医師データを読み込み中...
         </Typography>
       </Box>
     );
@@ -463,11 +475,13 @@ const ConsolidatedContentComponent = ({
           fontSize: fontSize.medium,
           color: '#95a5a6'
         }}>
-          診療区データを表示するには病院を選択してください
+          階データを表示するには病院を選択してください
         </Typography>
       </Box>
     );
   }
+
+  const availableFloors = getAvailableFloors();
 
   return (
     <Box
@@ -507,88 +521,77 @@ const ConsolidatedContentComponent = ({
                 backgroundColor: '#3498db',
                 borderRadius: '2px'
               }} />
-              診療部門別集計
+              診療階別集計
             </Typography>
             <Typography sx={{ 
               fontSize: fontSize.medium,
               color: "#666",
               mt: 0.5
             }}>
-              診療区ごとに担当医と患者数を入力してください
+              階ごとに担当医を選択してください（同じ階の全診療区の医師から選択可）
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Tooltip title="合計患者数">
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                px: 2,
-                py: 1,
-                backgroundColor: '#0A6AE3',
-                borderRadius: '8px',
-                color: 'white'
-              }}>
-                <Typography sx={{ fontSize: fontSize.medium, fontWeight: 600 }}>
-                  総合計:
-                </Typography>
-                <Typography sx={{ 
-                  fontSize: fontSize.large,
-                  fontWeight: 700,
-                  minWidth: '40px',
-                  textAlign: 'center'
-                }}>
-                  {calculateGrandTotal()}
-                </Typography>
-              </Box>
-            </Tooltip>
-            
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleAddRow}
-              size="small"
-              sx={{
-                backgroundColor: '#27ae60',
-                '&:hover': {
-                  backgroundColor: '#219955'
-                }
-              }}
-            >
-              診療区追加
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAddRow}
+            size="small"
+            sx={{
+              backgroundColor: '#27ae60',
+              '&:hover': {
+                backgroundColor: '#219955'
+              }
+            }}
+          >
+            階追加
+          </Button>
         </Box>
         
-        {/* Department Stats */}
-        {departmentOptions.length > 0 && (
+        {/* Floor Stats */}
+        {availableFloors.length > 0 && (
           <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 2,
             mt: 2,
-            flexWrap: 'wrap'
           }}>
             <Typography sx={{ 
               fontSize: fontSize.medium,
               color: "#666",
               display: 'flex',
               alignItems: 'center',
-              gap: 0.5
+              gap: 0.5,
+              mb: 1
             }}>
               <InfoOutlinedIcon fontSize="small" />
-              利用可能な診療区:
+              利用可能な階:
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {departmentOptions.map(dept => {
-                const isSelected = rows.some(row => row.department_id === dept.id);
-                const doctorCount = doctorOptions[dept.id]?.length || 0;
+              {availableFloors.map(floor => {
+                const isSelected = rows.some(row => row.floor === floor.value);
+                const departments = getDepartmentsForFloor(floor.value);
                 
                 return (
                   <Tooltip 
-                    key={dept.id} 
-                    title={`${doctorCount}名の医師が登録されています`}
+                    key={floor.value} 
+                    title={
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                          {floor.label}
+                        </Typography>
+                        <Typography variant="caption">
+                          {floor.doctorCount}名の医師
+                        </Typography>
+                        <Typography variant="caption" display="block">
+                          {departments.length}診療区
+                        </Typography>
+                        {departments.length > 0 && (
+                          <Box sx={{ mt: 0.5 }}>
+                            <Typography variant="caption" sx={{ fontStyle: 'italic' }}>
+                              診療区: {departments.map(d => d.name).join(', ')}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    }
                   >
                     <Box
                       sx={{
@@ -600,29 +603,62 @@ const ConsolidatedContentComponent = ({
                         borderRadius: '12px',
                         backgroundColor: isSelected ? '#e3f2fd' : '#f5f5f5',
                         border: `1px solid ${isSelected ? '#0A6AE3' : '#e0e0e0'}`,
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: isSelected ? '#d8eafb' : '#f0f0f0'
+                        }
+                      }}
+                      onClick={() => {
+                        // Find first row without a floor or create new one
+                        const emptyRow = rows.find(row => !row.floor);
+                        if (emptyRow) {
+                          handleFloorChange(emptyRow.id, floor.value);
+                        } else {
+                          handleAddRow();
+                          setTimeout(() => {
+                            const newRows = [...rows];
+                            const lastRow = newRows[newRows.length - 1];
+                            handleFloorChange(lastRow.id, floor.value);
+                          }, 100);
+                        }
                       }}
                     >
+                      <LocationOnIcon fontSize="small" sx={{ 
+                        color: isSelected ? '#0A6AE3' : '#666'
+                      }} />
                       <Typography sx={{ 
                         fontSize: fontSize.medium,
                         color: isSelected ? '#0A6AE3' : '#666',
                         fontWeight: isSelected ? 600 : 400
                       }}>
-                        {dept.name}
+                        {floor.label}
                       </Typography>
-                      {doctorCount > 0 && (
-                        <Box sx={{ 
-                          backgroundColor: isSelected ? '#0A6AE3' : '#757575',
-                          color: 'white',
-                          fontSize: fontSize.small,
-                          px: 0.5,
-                          py: 0.25,
-                          borderRadius: '4px',
-                          minWidth: '20px',
-                          textAlign: 'center'
-                        }}>
-                          {doctorCount}
-                        </Box>
-                      )}
+                      <Box sx={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5
+                      }}>
+                        <Chip
+                          label={`${floor.doctorCount}医師`}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: fontSize.small,
+                            backgroundColor: isSelected ? '#0A6AE3' : '#757575',
+                            color: 'white'
+                          }}
+                        />
+                        <Chip
+                          label={`${departments.length}区`}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: fontSize.small,
+                            backgroundColor: isSelected ? '#27ae60' : '#4caf50',
+                            color: 'white'
+                          }}
+                        />
+                      </Box>
                     </Box>
                   </Tooltip>
                 );
@@ -666,7 +702,7 @@ const ConsolidatedContentComponent = ({
           }
         },
       }}>
-        <Table sx={{ minWidth: isMobile ? '1000px' : '1200px' }}>
+        <Table sx={{ minWidth: isMobile ? '900px' : '1000px' }}>
           <TableHead>
             <TableRow>
               <TableCell
@@ -701,8 +737,9 @@ const ConsolidatedContentComponent = ({
                 backgroundColor: '#F9FAFB',
                 zIndex: 2
               }}>
-                診療区
+                階
               </TableCell>
+
               <TableCell sx={{ 
                 backgroundColor: "#F9FAFB",
                 border: "1px solid #e0e0e0",
@@ -743,30 +780,6 @@ const ConsolidatedContentComponent = ({
                 fontWeight: 700,
                 fontSize: fontSize.medium,
                 color: "#2c3e50",
-                minWidth: '100px'
-              }}>
-                患者数
-              </TableCell>
-              <TableCell sx={{ 
-                backgroundColor: "#F9FAFB",
-                border: "1px solid #e0e0e0",
-                padding: cellPadding,
-                textAlign: 'center',
-                fontWeight: 700,
-                fontSize: fontSize.medium,
-                color: "#2c3e50",
-                minWidth: '100px'
-              }}>
-                合計
-              </TableCell>
-              <TableCell sx={{ 
-                backgroundColor: "#F9FAFB",
-                border: "1px solid #e0e0e0",
-                padding: cellPadding,
-                textAlign: 'center',
-                fontWeight: 700,
-                fontSize: fontSize.medium,
-                color: "#2c3e50",
                 minWidth: '120px'
               }}>
                 操作
@@ -779,10 +792,9 @@ const ConsolidatedContentComponent = ({
               <React.Fragment key={`row-fragment-${row.id}`}>
                 {row.consultations.map((consultation, consultationIndex) => {
                   const typeConfig = consultationTypes.find(t => t.value === consultation.type);
-                  const rowError = validationErrors[`department_${rowIndex}`];
-                  const patientError = validationErrors[`patientCount_${rowIndex}_${consultationIndex}`];
-                  const departmentDoctors = getDoctorsForDepartment(row.department_id);
-                  const isDeptAlreadyUsed = isDepartmentAlreadyUsed(row.department_id, row.id);
+                  const rowError = validationErrors[`floor_${rowIndex}`];
+                  const floorDoctors = getDoctorsForFloor(row.floor);
+                  const isFloorAlreadyUsedInOtherRows = isFloorAlreadyUsed(row.floor, row.id);
                   
                   return (
                     <TableRow 
@@ -816,7 +828,7 @@ const ConsolidatedContentComponent = ({
                         </TableCell>
                       )}
                       
-                      {/* Department - spans 3 rows */}
+                      {/* Floor - spans 3 rows */}
                       {consultationIndex === 0 && (
                         <TableCell 
                           rowSpan={3}
@@ -831,10 +843,10 @@ const ConsolidatedContentComponent = ({
                             zIndex: 1
                           }}
                         >
-                          <FormControl fullWidth size="small" error={!!rowError || isDeptAlreadyUsed}>
+                          <FormControl fullWidth size="small" error={!!rowError || isFloorAlreadyUsedInOtherRows}>
                             <Select
-                              value={row.department_id || ''}
-                              onChange={(e) => handleDepartmentChange(row.id, e.target.value)}
+                              value={row.floor || ''}
+                              onChange={(e) => handleFloorChange(row.id, e.target.value)}
                               displayEmpty
                               sx={{
                                 height: selectHeight,
@@ -849,32 +861,51 @@ const ConsolidatedContentComponent = ({
                                 if (!selected) {
                                   return (
                                     <Box sx={{ display: 'flex', alignItems: 'center', color: '#999' }}>
-                                      <PersonSearchIcon sx={{ fontSize: 16, mr: 1 }} />
-                                      診療区を選択
+                                      <LocationOnIcon sx={{ fontSize: 16, mr: 1 }} />
+                                      階を選択
                                     </Box>
                                   );
                                 }
                                 
-                                const selectedDept = departmentOptions.find(d => d.id === selected);
-                                const doctorCount = departmentDoctors.length;
+                                const selectedFloor = availableFloors.find(f => f.value === selected);
+                                const departments = getDepartmentsForFloor(selected);
                                 
                                 return (
-                                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                    <Typography sx={{ 
-                                      fontWeight: 600,
-                                      color: isDeptAlreadyUsed ? '#ff9800' : rowError ? '#df1c41' : '#2c3e50',
-                                      fontSize: fontSize.medium
-                                    }}>
-                                      {selectedDept?.name || 'Unknown'}
-                                      {isDeptAlreadyUsed && ' (重複)'}
-                                    </Typography>
-                                    <Typography sx={{ 
-                                      fontSize: fontSize.small,
-                                      color: '#666',
-                                      mt: 0.25
-                                    }}>
-                                      {doctorCount}名の医師
-                                    </Typography>
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                      <LocationOnIcon sx={{ fontSize: 14, color: isFloorAlreadyUsedInOtherRows ? '#ff9800' : '#0A6AE3' }} />
+                                      <Typography sx={{ 
+                                        fontWeight: 600,
+                                        color: isFloorAlreadyUsedInOtherRows ? '#ff9800' : rowError ? '#df1c41' : '#2c3e50',
+                                        fontSize: fontSize.medium,
+                                        flex: 1
+                                      }}>
+                                        {formatFloorDisplay(selected)}
+                                        {isFloorAlreadyUsedInOtherRows && ' (重複)'}
+                                      </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                                      <Chip
+                                        label={`${selectedFloor?.doctorCount || 0}医師`}
+                                        size="small"
+                                        sx={{
+                                          height: 18,
+                                          fontSize: fontSize.small,
+                                          backgroundColor: '#0A6AE3',
+                                          color: 'white'
+                                        }}
+                                      />
+                                      <Chip
+                                        label={`${departments.length}診療区`}
+                                        size="small"
+                                        sx={{
+                                          height: 18,
+                                          fontSize: fontSize.small,
+                                          backgroundColor: '#27ae60',
+                                          color: 'white'
+                                        }}
+                                      />
+                                    </Box>
                                   </Box>
                                 );
                               }}
@@ -889,17 +920,17 @@ const ConsolidatedContentComponent = ({
                             >
                               <MenuItem value="" disabled>
                                 <Typography sx={{ color: '#999', fontSize: fontSize.medium }}>
-                                  診療区を選択してください
+                                  階を選択してください
                                 </Typography>
                               </MenuItem>
-                              {departmentOptions.map((dept) => {
-                                const deptDoctorCount = doctorOptions[dept.id]?.length || 0;
-                                const isUsed = isDepartmentAlreadyUsed(dept.id, row.id);
+                              {availableFloors.map((floor) => {
+                                const isUsed = isFloorAlreadyUsed(floor.value, row.id);
+                                const departments = getDepartmentsForFloor(floor.value);
                                 
                                 return (
                                   <MenuItem 
-                                    key={dept.id} 
-                                    value={dept.id}
+                                    key={floor.value} 
+                                    value={floor.value}
                                     disabled={isUsed}
                                     sx={{ 
                                       fontSize: fontSize.medium,
@@ -911,48 +942,95 @@ const ConsolidatedContentComponent = ({
                                   >
                                     <Box sx={{ 
                                       display: 'flex', 
-                                      justifyContent: 'space-between',
-                                      alignItems: 'center',
-                                      width: '100%'
+                                      flexDirection: 'column',
+                                      alignItems: 'flex-start',
+                                      width: '100%',
+                                      py: 0.5
                                     }}>
-                                      <Typography sx={{ fontWeight: 500 }}>
-                                        {dept.name}
-                                        {isUsed && ' (使用中)'}
-                                      </Typography>
                                       <Box sx={{ 
                                         display: 'flex', 
+                                        justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        gap: 1
+                                        width: '100%'
                                       }}>
-                                        {deptDoctorCount > 0 ? (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <LocationOnIcon fontSize="small" sx={{ color: '#0A6AE3' }} />
+                                          <Typography sx={{ fontWeight: 500 }}>
+                                            {floor.label}
+                                            {isUsed && ' (使用中)'}
+                                          </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                          <Chip
+                                            label={`${floor.doctorCount}医師`}
+                                            size="small"
+                                            sx={{
+                                              height: 20,
+                                              fontSize: fontSize.small,
+                                              backgroundColor: '#0A6AE3',
+                                              color: 'white'
+                                            }}
+                                          />
+                                          <Chip
+                                            label={`${departments.length}区`}
+                                            size="small"
+                                            sx={{
+                                              height: 20,
+                                              fontSize: fontSize.small,
+                                              backgroundColor: '#27ae60',
+                                              color: 'white'
+                                            }}
+                                          />
+                                        </Box>
+                                      </Box>
+                                      
+                                      {departments.length > 0 && (
+                                        <Box sx={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          mt: 0.5,
+                                          flexWrap: 'wrap'
+                                        }}>
+                                          <MedicalServicesIcon fontSize="small" sx={{ color: '#666', fontSize: 14 }} />
+                                          <Typography sx={{ 
+                                            fontSize: fontSize.small,
+                                            color: '#666',
+                                            fontStyle: 'italic'
+                                          }}>
+                                            診療区: {departments.map(d => d.name).join(', ')}
+                                          </Typography>
+                                        </Box>
+                                      )}
+                                      
+                                      {floor.doctorCount > 0 && (
+                                        <Box sx={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          mt: 0.5
+                                        }}>
+                                          <GroupsIcon fontSize="small" sx={{ color: '#666', fontSize: 14 }} />
                                           <Typography sx={{ 
                                             fontSize: fontSize.small,
                                             color: '#666'
                                           }}>
-                                            {deptDoctorCount}名
+                                            医師: {floor.doctorCount}名
                                           </Typography>
-                                        ) : (
-                                          <Typography sx={{ 
-                                            fontSize: fontSize.small,
-                                            color: '#ff9800',
-                                            fontStyle: 'italic'
-                                          }}>
-                                            医師なし
-                                          </Typography>
-                                        )}
-                                      </Box>
+                                        </Box>
+                                      )}
                                     </Box>
                                   </MenuItem>
                                 );
                               })}
                             </Select>
-                            {(rowError || isDeptAlreadyUsed) && (
+                            {(rowError || isFloorAlreadyUsedInOtherRows) && (
                               <Typography sx={{ 
-                                color: isDeptAlreadyUsed ? '#ff9800' : '#df1c41', 
+                                color: isFloorAlreadyUsedInOtherRows ? '#ff9800' : '#df1c41', 
                                 fontSize: fontSize.medium,
                                 mt: 0.5
                               }}>
-                                {isDeptAlreadyUsed ? 'この診療区は既に使用されています' : rowError}
+                                {isFloorAlreadyUsedInOtherRows ? 'この階は既に使用されています' : rowError}
                               </Typography>
                             )}
                           </FormControl>
@@ -1008,7 +1086,7 @@ const ConsolidatedContentComponent = ({
                           onChange={(e) => handleDoctorChange(row.id, consultationIndex, 'doctor_id_1', e.target.value)}
                           displayEmpty
                           size="small"
-                          disabled={!row.department_id || departmentDoctors.length === 0 || isDeptAlreadyUsed}
+                          disabled={!row.floor || floorDoctors.length === 0 || isFloorAlreadyUsedInOtherRows}
                           IconComponent={KeyboardArrowDownIcon}
                           sx={{
                             width: '100%',
@@ -1029,13 +1107,13 @@ const ConsolidatedContentComponent = ({
                           }}
                           renderValue={(selected) => {
                             if (!selected) {
-                              if (!row.department_id) {
-                                return "診療区を先に選択";
+                              if (!row.floor) {
+                                return "階を先に選択";
                               }
-                              if (isDeptAlreadyUsed) {
-                                return "診療区が重複";
+                              if (isFloorAlreadyUsedInOtherRows) {
+                                return "階が重複";
                               }
-                              if (departmentDoctors.length === 0) {
+                              if (floorDoctors.length === 0) {
                                 return "医師がいません";
                               }
                               return "医師を選択";
@@ -1056,7 +1134,7 @@ const ConsolidatedContentComponent = ({
                               医師を選択
                             </Typography>
                           </MenuItem>
-                          {departmentDoctors.map((doctor) => (
+                          {floorDoctors.map((doctor) => (
                             <MenuItem 
                               key={`${row.id}-${consultation.type}-doctor1-${doctor.id}`}
                               value={doctor.id}
@@ -1067,25 +1145,40 @@ const ConsolidatedContentComponent = ({
                                 }
                               }}
                             >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Box sx={{ 
-                                  width: 8, 
-                                  height: 8, 
-                                  borderRadius: '50%',
-                                  backgroundColor: '#0A6AE3'
-                                }} />
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
-                                </Typography>
-                                {doctor.license_no && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    {doctor.license_no}
+                              <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                width: '100%'
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                                  <Box sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%',
+                                    backgroundColor: '#0A6AE3'
+                                  }} />
+                                  <Typography sx={{ fontWeight: 500, flex: 1 }}>
+                                    {doctor.name}
                                   </Typography>
-                                )}
+                                  {doctor.license_no && (
+                                    <Typography sx={{ 
+                                      fontSize: fontSize.small, 
+                                      color: '#666',
+                                    }}>
+                                      {doctor.license_no}
+                                    </Typography>
+                                  )}
+                                </Box>
+                                <Typography sx={{ 
+                                  fontSize: fontSize.small,
+                                  color: '#666',
+                                  fontStyle: 'italic',
+                                  ml: 3,
+                                  mt: 0.25
+                                }}>
+                                  {getDoctorDepartment(doctor.id)}
+                                </Typography>
                               </Box>
                             </MenuItem>
                           ))}
@@ -1103,7 +1196,7 @@ const ConsolidatedContentComponent = ({
                           onChange={(e) => handleDoctorChange(row.id, consultationIndex, 'doctor_id_2', e.target.value)}
                           displayEmpty
                           size="small"
-                          disabled={!row.department_id || departmentDoctors.length === 0 || isDeptAlreadyUsed}
+                          disabled={!row.floor || floorDoctors.length === 0 || isFloorAlreadyUsedInOtherRows}
                           IconComponent={KeyboardArrowDownIcon}
                           sx={{
                             width: '100%',
@@ -1121,13 +1214,13 @@ const ConsolidatedContentComponent = ({
                           }}
                           renderValue={(selected) => {
                             if (!selected) {
-                              if (!row.department_id) {
-                                return "診療区を先に選択";
+                              if (!row.floor) {
+                                return "階を先に選択";
                               }
-                              if (isDeptAlreadyUsed) {
-                                return "診療区が重複";
+                              if (isFloorAlreadyUsedInOtherRows) {
+                                return "階が重複";
                               }
-                              if (departmentDoctors.length === 0) {
+                              if (floorDoctors.length === 0) {
                                 return "医師がいません";
                               }
                               return "医師を選択";
@@ -1136,25 +1229,44 @@ const ConsolidatedContentComponent = ({
                           }}
                         >
                           <MenuItem value="">医師を選択</MenuItem>
-                          {departmentDoctors.map((doctor) => (
+                          {floorDoctors.map((doctor) => (
                             <MenuItem 
                               key={`${row.id}-${consultation.type}-doctor2-${doctor.id}`}
                               value={doctor.id}
-                              sx={{ fontSize: fontSize.medium }}
+                              sx={{ 
+                                fontSize: fontSize.medium,
+                                '&.Mui-selected': {
+                                  backgroundColor: '#e3f2fd'
+                                }
+                              }}
                             >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
-                                </Typography>
-                                {doctor.license_no && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    ({doctor.license_no})
+                              <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                width: '100%'
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                  <Typography sx={{ fontWeight: 500, flex: 1 }}>
+                                    {doctor.name}
                                   </Typography>
-                                )}
+                                  {doctor.license_no && (
+                                    <Typography sx={{ 
+                                      fontSize: fontSize.small, 
+                                      color: '#666',
+                                    }}>
+                                      ({doctor.license_no})
+                                    </Typography>
+                                  )}
+                                </Box>
+                                <Typography sx={{ 
+                                  fontSize: fontSize.small,
+                                  color: '#666',
+                                  fontStyle: 'italic',
+                                  mt: 0.25
+                                }}>
+                                  {getDoctorDepartment(doctor.id)}
+                                </Typography>
                               </Box>
                             </MenuItem>
                           ))}
@@ -1172,7 +1284,7 @@ const ConsolidatedContentComponent = ({
                           onChange={(e) => handleDoctorChange(row.id, consultationIndex, 'doctor_id_3', e.target.value)}
                           displayEmpty
                           size="small"
-                          disabled={!row.department_id || departmentDoctors.length === 0 || isDeptAlreadyUsed}
+                          disabled={!row.floor || floorDoctors.length === 0 || isFloorAlreadyUsedInOtherRows}
                           IconComponent={KeyboardArrowDownIcon}
                           sx={{
                             width: '100%',
@@ -1190,13 +1302,13 @@ const ConsolidatedContentComponent = ({
                           }}
                           renderValue={(selected) => {
                             if (!selected) {
-                              if (!row.department_id) {
-                                return "診療区を先に選択";
+                              if (!row.floor) {
+                                return "階を先に選択";
                               }
-                              if (isDeptAlreadyUsed) {
-                                return "診療区が重複";
+                              if (isFloorAlreadyUsedInOtherRows) {
+                                return "階が重複";
                               }
-                              if (departmentDoctors.length === 0) {
+                              if (floorDoctors.length === 0) {
                                 return "医師がいません";
                               }
                               return "医師を選択";
@@ -1205,120 +1317,44 @@ const ConsolidatedContentComponent = ({
                           }}
                         >
                           <MenuItem value="">医師を選択</MenuItem>
-                          {departmentDoctors.map((doctor) => (
+                          {floorDoctors.map((doctor) => (
                             <MenuItem 
                               key={`${row.id}-${consultation.type}-doctor3-${doctor.id}`}
                               value={doctor.id}
                               sx={{ fontSize: fontSize.medium }}
                             >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
-                                </Typography>
-                                {doctor.license_no && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    ({doctor.license_no})
+                              <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                width: '100%'
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                  <Typography sx={{ fontWeight: 500, flex: 1 }}>
+                                    {doctor.name}
                                   </Typography>
-                                )}
+                                  {doctor.license_no && (
+                                    <Typography sx={{ 
+                                      fontSize: fontSize.small, 
+                                      color: '#666',
+                                    }}>
+                                      ({doctor.license_no})
+                                    </Typography>
+                                  )}
+                                </Box>
+                                <Typography sx={{ 
+                                  fontSize: fontSize.small,
+                                  color: '#666',
+                                  fontStyle: 'italic',
+                                  mt: 0.25
+                                }}>
+                                  {getDoctorDepartment(doctor.id)}
+                                </Typography>
                               </Box>
                             </MenuItem>
                           ))}
                         </Select>
                       </TableCell>
-                      
-                      {/* Patient Count */}
-                      <TableCell sx={{ 
-                        border: "1px solid #e0e0e0",
-                        padding: cellPadding,
-                        textAlign: 'center'
-                      }}>
-                        <TextField
-                          value={consultation.patient_count || ''}
-                          onChange={(e) => handlePatientCountChange(row.id, consultationIndex, e.target.value)}
-                          variant="outlined"
-                          size="small"
-                          type="number"
-                          error={!!patientError}
-                          helperText={patientError}
-                          disabled={isDeptAlreadyUsed}
-                          inputProps={{
-                            min: 0,
-                            style: {
-                              textAlign: 'center',
-                              fontSize: fontSize.medium,
-                              padding: isMobile ? '6px 8px' : '8px 12px',
-                              height: selectHeight - 8,
-                              fontWeight: 600,
-                              color: consultation.patient_count > 0 ? '#2c3e50' : '#999'
-                            },
-                          }}
-                          InputProps={{
-                            endAdornment: (
-                              <InputAdornment position="end">
-                                <Typography sx={{ 
-                                  fontSize: fontSize.medium,
-                                  color: '#666'
-                                }}>
-                                  名
-                                </Typography>
-                              </InputAdornment>
-                            ),
-                          }}
-                          sx={{
-                            width: '100%',
-                            '& .MuiOutlinedInput-root': {
-                              height: selectHeight,
-                              backgroundColor: consultation.patient_count > 0 ? '#f0f7ff' : '#ffffff',
-                              '& fieldset': {
-                                borderColor: patientError ? '#df1c41' : consultation.patient_count > 0 ? '#0A6AE3' : '#dfe1e7',
-                              },
-                              '&:hover fieldset': {
-                                borderColor: patientError ? '#df1c41' : '#0A6AE3',
-                              }
-                            },
-                          }}
-                        />
-                      </TableCell>
-                      
-                      {/* Subtotal - spans 3 rows */}
-                      {consultationIndex === 0 && (
-                        <TableCell 
-                          rowSpan={3}
-                          sx={{ 
-                            backgroundColor: "#EFF6FF",
-                            border: "1px solid #e0e0e0",
-                            padding: cellPadding,
-                            textAlign: 'center',
-                            verticalAlign: 'middle',
-                            position: 'relative'
-                          }}
-                        >
-                          <Box sx={{ position: 'relative' }}>
-                            <Typography
-                              sx={{
-                                fontWeight: 800,
-                                fontSize: fontSize.large,
-                                color: "#0A6AE3",
-                              }}
-                            >
-                              {calculateRowTotal(row.id)}
-                            </Typography>
-                            <Typography
-                              sx={{
-                                fontSize: fontSize.medium,
-                                color: "#666",
-                                mt: 0.5
-                              }}
-                            >
-                              患者数
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                      )}
                       
                       {/* Actions - spans 3 rows */}
                       {consultationIndex === 0 && (
@@ -1339,7 +1375,7 @@ const ConsolidatedContentComponent = ({
                           }}>
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
                               <Tooltip title="上に移動">
-                                <span> {/* Added span wrapper for disabled button */}
+                                <span>
                                   <IconButton
                                     size="small"
                                     onClick={() => handleMoveRow(row.id, 'up')}
@@ -1363,7 +1399,7 @@ const ConsolidatedContentComponent = ({
                               </Tooltip>
                               
                               <Tooltip title="下に移動">
-                                <span> {/* Added span wrapper for disabled button */}
+                                <span>
                                   <IconButton
                                     size="small"
                                     onClick={() => handleMoveRow(row.id, 'down')}
@@ -1388,7 +1424,7 @@ const ConsolidatedContentComponent = ({
                             </Box>
                             
                             {rows.length > 1 && (
-                              <Tooltip title="この診療区を削除">
+                              <Tooltip title="この階を削除">
                                 <IconButton
                                   size="small"
                                   onClick={() => handleRemoveRow(row.id)}
@@ -1419,7 +1455,7 @@ const ConsolidatedContentComponent = ({
             {/* Empty State */}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} sx={{ 
+                <TableCell colSpan={7} sx={{ 
                   textAlign: 'center', 
                   py: 6,
                   border: '1px solid #e0e0e0'
@@ -1439,7 +1475,7 @@ const ConsolidatedContentComponent = ({
                       color: '#7f8c8d',
                       fontWeight: 600
                     }}>
-                      診療区が追加されていません
+                      階が追加されていません
                     </Typography>
                     <Typography sx={{ 
                       fontSize: fontSize.medium,
@@ -1447,7 +1483,7 @@ const ConsolidatedContentComponent = ({
                       maxWidth: '400px',
                       textAlign: 'center'
                     }}>
-                      「診療区追加」ボタンをクリックして、最初の診療区を追加してください
+                      「階追加」ボタンをクリックして、最初の階を追加してください
                     </Typography>
                     <Button
                       variant="contained"
@@ -1462,18 +1498,18 @@ const ConsolidatedContentComponent = ({
                         }
                       }}
                     >
-                      診療区を追加
+                      階を追加
                     </Button>
                   </Box>
                 </TableCell>
               </TableRow>
             )}
             
-            {/* Grand Total Row */}
+            {/* Summary Row */}
             {rows.length > 0 && (
               <TableRow>
                 <TableCell 
-                  colSpan={7} 
+                  colSpan={6} 
                   sx={{ 
                     border: "1px solid #e0e0e0",
                     padding: cellPadding,
@@ -1491,31 +1527,15 @@ const ConsolidatedContentComponent = ({
                       borderRadius: '50%',
                       backgroundColor: '#0A6AE3'
                     }} />
-                    総合計
+                    総診療階数
                   </Box>
-                </TableCell>
-                <TableCell sx={{ 
-                  backgroundColor: "#0A6AE3",
-                  border: "1px solid #0A6AE3",
-                  padding: cellPadding,
-                  textAlign: 'center',
-                }}>
-                  <Typography
-                    sx={{
-                      fontWeight: 800,
-                      fontSize: fontSize.large,
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    {calculateGrandTotal()}
-                  </Typography>
                 </TableCell>
                 <TableCell sx={{ 
                   border: "1px solid #e0e0e0",
                   padding: cellPadding,
                   backgroundColor: '#f8f9fa'
                 }}>
-                  <Tooltip title={`${rows.length}部門`}>
+                  <Tooltip title={`${rows.length}階`}>
                     <Box sx={{ 
                       display: 'flex', 
                       alignItems: 'center', 
@@ -1524,16 +1544,10 @@ const ConsolidatedContentComponent = ({
                     }}>
                       <Typography sx={{ 
                         fontSize: fontSize.medium,
-                        color: '#666'
-                      }}>
-                        部門数:
-                      </Typography>
-                      <Typography sx={{ 
-                        fontSize: fontSize.medium,
                         fontWeight: 600,
                         color: '#2c3e50'
                       }}>
-                        {rows.length}
+                        {rows.length} 階
                       </Typography>
                     </Box>
                   </Tooltip>
@@ -1563,31 +1577,14 @@ const ConsolidatedContentComponent = ({
                 color: "#666",
                 mb: 0.5
               }}>
-                総患者数
-              </Typography>
-              <Typography sx={{ 
-                fontSize: fontSize.large,
-                fontWeight: 700,
-                color: "#0A6AE3"
-              }}>
-                {calculateGrandTotal()} 名
-              </Typography>
-            </Box>
-            
-            <Box>
-              <Typography sx={{ 
-                fontSize: fontSize.medium,
-                color: "#666",
-                mb: 0.5
-              }}>
-                診療部門数
+                診療階数
               </Typography>
               <Typography sx={{ 
                 fontSize: fontSize.large,
                 fontWeight: 700,
                 color: "#27ae60"
               }}>
-                {rows.length} 部門
+                {rows.length} 階
               </Typography>
             </Box>
             
@@ -1614,14 +1611,48 @@ const ConsolidatedContentComponent = ({
                 color: "#666",
                 mb: 0.5
               }}>
-                利用可能な診療区
+                利用可能な階
               </Typography>
               <Typography sx={{ 
                 fontSize: fontSize.large,
                 fontWeight: 700,
                 color: "#9b59b6"
               }}>
-                {departmentOptions.length} 部門
+                {availableFloors.length} 階
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography sx={{ 
+                fontSize: fontSize.medium,
+                color: "#666",
+                mb: 0.5
+              }}>
+                総医師数
+              </Typography>
+              <Typography sx={{ 
+                fontSize: fontSize.large,
+                fontWeight: 700,
+                color: "#3498db"
+              }}>
+                {Object.keys(doctorCache).length} 名
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography sx={{ 
+                fontSize: fontSize.medium,
+                color: "#666",
+                mb: 0.5
+              }}>
+                総診療区数
+              </Typography>
+              <Typography sx={{ 
+                fontSize: fontSize.large,
+                fontWeight: 700,
+                color: "#f39c12"
+              }}>
+                {departmentOptions.length} 区
               </Typography>
             </Box>
           </Box>
@@ -1635,7 +1666,7 @@ const ConsolidatedContentComponent = ({
               fontSize: fontSize.medium
             }}
           >
-            さらに診療区を追加
+            さらに階を追加
           </Button>
         </Box>
       )}

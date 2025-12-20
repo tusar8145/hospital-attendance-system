@@ -324,17 +324,17 @@ const FrameScreen = React.memo(({
     }
     
     // Validate ConsolidatedContentComponent data
-    consolidatedData.forEach((item, index) => {
+   /* consolidatedData.forEach((item, index) => {
       if (!item.department_id) {
         errors[`doctor_dept_${index}`] = "診療科の選択が必要です";
       }
       if (!item.patient_count && item.patient_count !== 0) {
         errors[`doctor_patientCount_${index}`] = "患者数が必要です";
       }
-    });
+    });*/
     
     // Validate ConsolidatedContentComponentCount data
-    consolidatedDataCount.forEach((item, index) => {
+    /*consolidatedDataCount.forEach((item, index) => {
       if (!item.department_id) {
         errors[`count_dept_${index}`] = "診療科の選択が必要です";
       }
@@ -344,7 +344,7 @@ const FrameScreen = React.memo(({
       if (!item.new_patients && item.new_patients !== 0) {
         errors[`count_new_${index}`] = "新規患者数が必要です";
       }
-    });
+    });*/
     
     setValidationErrors(errors);
     
@@ -511,6 +511,7 @@ const FrameScreen = React.memo(({
   };
 
   const handleConsolidatedDataChange = (newData) => {
+    console.log(newData,'xxxxxx')
     setConsolidatedData(newData);
     // Clear consolidated data error if data is added
     if (validationErrors.consolidatedData && (newData.length > 0 || consolidatedDataCount.length > 0)) {

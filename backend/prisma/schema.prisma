@@ -356,7 +356,8 @@ model report_detail {
   id                      Int         @id @default(autoincrement())
   report_id               Int         // Parent report
   sequence_no             Int         // 通番 within report (01, 02, etc.)
-  department_id           Int         // 診療区 (内科, 外科, etc.)
+  department_id           Int?        // 診療区 (内科, 外科, etc.) - NOW OPTIONAL
+  floor                   String?     // Floor field with relation to department floor
   
   // Consultation types - using enum ConsultationType
   consultation_type       ConsultationType // 0: 午前診, 1: 午後診, 2: 夜診
@@ -370,7 +371,7 @@ model report_detail {
   
   // Relations
   report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
-  department              department  @relation(fields: [department_id], references: [id])
+  department              department? @relation(fields: [department_id], references: [id])
   doctor1                 doctor?     @relation("ReportDoctor1", fields: [doctor_id_1], references: [id])
   doctor2                 doctor?     @relation("ReportDoctor2", fields: [doctor_id_2], references: [id])
   doctor3                 doctor?     @relation("ReportDoctor3", fields: [doctor_id_3], references: [id])
@@ -385,8 +386,6 @@ model report_detail {
   @@index([doctor_id_2])
   @@index([doctor_id_3])
 }
-
-
 
 /////////////////////////////
 // Report Detail Mid (Child Table for Hospital Type 2)
