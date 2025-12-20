@@ -1,7 +1,7 @@
 generator client {
   provider        = "prisma-client-js"
   binaryTargets   = ["native", "debian-openssl-1.1.x"]
-  previewFeatures = ["clientExtensions"]
+  previewFeatures = ["jsonProtocol", "clientExtensions"]
 }
 
 datasource db {
@@ -330,6 +330,8 @@ model report {
   approved_by_admin       admins?     @relation("ReportApprovedBy", fields: [approved_by], references: [id])
   
   hospital_type           String?
+
+  external_consultation_details Json?   @db.Json
 
   // Relations
   report_details          report_detail[]  // Child records

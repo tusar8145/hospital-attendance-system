@@ -827,7 +827,8 @@ function ReportEntryMid({newHospital}) {
             post_transport_admission: report.post_transport_admission || 0,
             visit_count: report.visit_count || 0,
             report_details: report.report_details || [],
-            report_details_mid: report.report_details_mid || []
+            report_details_mid: report.report_details_mid || [],
+            external_consultation_details: report.external_consultation_details || null
           };
           
           sethospital_type(report.hospital_type || 'hospital');
@@ -910,7 +911,8 @@ function ReportEntryMid({newHospital}) {
             post_transport_admission: report.post_transport_admission || 0,
             visit_count: report.visit_count || 0,
             report_details: report.report_details || [],
-            report_details_mid: report.report_details_mid || []
+            report_details_mid: report.report_details_mid || [],
+            external_consultation_details: report.external_consultation_details || null
           };
           
           sethospital_type(report.hospital_type || 'hospital');
@@ -1197,32 +1199,33 @@ function ReportEntryMid({newHospital}) {
   };
 
   // Handle form data change
-  const handleFormDataChange = useCallback((newData) => {
-    console.log('dddddddd', newData)
-    // Don't update if we're currently loading data
-    if (isLoadingDataRef.current) {
-      return;
-    }
+// Handle form data change
+const handleFormDataChange = useCallback((newData) => {
+  // Don't update if we're currently loading data
+  if (isLoadingDataRef.current) {
+    return;
+  }
 
-    const currentData = formDataRef.current;
-    
-    // Check if data has actually changed
-    if (currentData && JSON.stringify(newData) === JSON.stringify(currentData)) {
-      return;
-    }
-    
-    setformDataSubmit(newData);
-    formDataRef.current = newData;
-    
-    // Check if there are changes from initial data
-    const initialData = initialFormDataRef.current;
-    if (initialData) {
-      const hasActualChanges = hasFormDataChanged(newData, initialData);
-      setHasUnsavedChanges(hasActualChanges);
-    } else {
-      setHasUnsavedChanges(true);
-    }
-  }, []);
+  const currentData = formDataRef.current;
+  
+  // Check if data has actually changed
+  if (currentData && JSON.stringify(newData) === JSON.stringify(currentData)) {
+    return;
+  }
+  
+  console.log('Form data changed:', newData);
+  setformDataSubmit(newData);
+  formDataRef.current = newData;
+  
+  // Check if there are changes from initial data
+  const initialData = initialFormDataRef.current;
+  if (initialData) {
+    const hasActualChanges = hasFormDataChanged(newData, initialData);
+    setHasUnsavedChanges(hasActualChanges);
+  } else {
+    setHasUnsavedChanges(true);
+  }
+}, []);
 
   // Handle form validation request
   const handleValidate = () => {

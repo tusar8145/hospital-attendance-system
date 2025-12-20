@@ -30,6 +30,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
 import ConsolidatedContentComponent from './ConsolidatedContentComponent';
 import ConsolidatedContentComponentCount from './ConsolidatedContentComponentCount';
+import ExternalConsultationToggle from './ExternalConsultationToggle';
 
 import apiConfig from '../../../configs/apiConfig';
 import axios from 'axios';
@@ -77,10 +78,18 @@ const FrameScreen = React.memo(({
   // Timer for 3 second hold
   const [timerActive, setTimerActive] = useState(true);
   
+  // External consultation summary fields (for backward compatibility)
   const [externalConsultation, setExternalConsultation] = useState({
     PET: "0",
     MR: "0",
     CT: "0"
+  });
+
+  // Detailed PET/MR/CT data for toggle component
+  const [externalConsultationDetails, setExternalConsultationDetails] = useState({
+    PET: null,
+    MR: null,
+    CT: null
   });
 
   const [currentStatus, setCurrentStatus] = useState({
@@ -162,6 +171,31 @@ const FrameScreen = React.memo(({
     }
   }, [consolidatedDataCount, timerActive]);
 
+  // Calculate total from external consultation details
+  useEffect(() => {
+    const calculateTotal = (section) => {
+      if (!section) return 0;
+      let total = 0;
+      Object.values(section).forEach(item => {
+        if (item.enabled) {
+          total += parseInt(item.value) || 0;
+        }
+      });
+      return total;
+    };
+
+    // Update summary fields based on detailed data
+    const petTotal = calculateTotal(externalConsultationDetails.PET);
+    const mrTotal = calculateTotal(externalConsultationDetails.MR);
+    const ctTotal = calculateTotal(externalConsultationDetails.CT);
+
+    setExternalConsultation({
+      PET: petTotal.toString(),
+      MR: mrTotal.toString(),
+      CT: ctTotal.toString()
+    });
+  }, [externalConsultationDetails]);
+
   // Format date for API (YYYY-MM-DD)
   const formatDateForAPI = (date) => {
     const d = new Date(date);
@@ -214,60 +248,94 @@ const FrameScreen = React.memo(({
   }, [formData, loading]);
 
   // Load form data from existing report
-  const loadFormData = async (data) => {
+// Load form data from existing report
+// Load form data from existing report
+const loadFormData = async (data) => {
+  console.log('Loading form data:', data);
+  
+  // Reset the initialization flag
+  dataInitializedRef.current = false;
+  
+  // Mark that we've loaded form data
+  setFormDataLoaded(true);
+  
+  // Load initial values from API response
+  setInitialMorning(data.admission_count?.toString() || "0");
+  setInitialAfternoon(data.discharge_count?.toString() || "0");
+  setInitialNight(data.external_duty?.toString() || "0");
+  
+  // Also set calculated values to initial values initially
+  setCalculatedMorning(parseInt(data.admission_count) || 0);
+  setCalculatedAfternoon(parseInt(data.discharge_count) || 0);
+  setCalculatedNight(parseInt(data.external_duty) || 0);
+  
+  // Load external consultation summary fields
+  setExternalConsultation({
+    PET: data.emergency_transport?.toString() || "0",
+    MR: data.post_transport_admission?.toString() || "0",
+    CT: data.visit_count?.toString() || "0"
+  });
+  
+  // Load detailed external consultation data if available
+  if (data.external_consultation_details) {
+    console.log('external_consultation_details from server:', data.external_consultation_details);
     
-    // Reset the initialization flag
-    dataInitializedRef.current = false;
-    
-    // Mark that we've loaded form data
-    setFormDataLoaded(true);
-    
-    // Load initial values from API response
-    setInitialMorning(data.admission_count?.toString() || "0");
-    setInitialAfternoon(data.discharge_count?.toString() || "0");
-    setInitialNight(data.external_duty?.toString() || "0");
-    
-    // Also set calculated values to initial values initially
-    setCalculatedMorning(parseInt(data.admission_count) || 0);
-    setCalculatedAfternoon(parseInt(data.discharge_count) || 0);
-    setCalculatedNight(parseInt(data.external_duty) || 0);
-    
-    // External consultation - ALWAYS load from form data when we have it
-    setExternalConsultation({
-      PET: data.emergency_transport?.toString() || "0",
-      MR: data.post_transport_admission?.toString() || "0",
-      CT: data.visit_count?.toString() || "0"
+    // Directly set the data from server
+    setExternalConsultationDetails(data.external_consultation_details);
+  } else {
+    console.log('No external_consultation_details in data, using defaults');
+    // Initialize with default structure if no data
+    setExternalConsultationDetails({
+      PET: {
+        "PET-CT": { enabled: true, value: data.emergency_transport?.toString() || "0" },
+        "エグゼクティブ": { enabled: true, value: "0" },
+        "保険": { enabled: true, value: "0" },
+        "〇〇〇〇": { enabled: true, value: "0" },
+      },
+      MR: {
+        "頭蓋骨盤": { enabled: true, value: data.post_transport_admission?.toString() || "0" },
+        "エコー": { enabled: true, value: "0" },
+        "脳ドック": { enabled: true, value: "0" },
+        "保険": { enabled: true, value: "0" },
+      },
+      CT: {
+        "〇〇〇〇": { enabled: true, value: data.visit_count?.toString() || "0" },
+        "〇〇〇〇2": { enabled: true, value: "0" },
+        "〇〇〇〇3": { enabled: true, value: "0" },
+        "〇〇〇〇4": { enabled: true, value: "0" },
+      }
     });
-    
-    // Special notes
-    setSpecialNotes(data.special_notes || "");
-    
-    // Load data for both components
-    // For ConsolidatedContentComponent (doctor-based)
-    if (data.report_details && Array.isArray(data.report_details) && data.report_details.length > 0) {
-      console.log('Setting consolidated data for doctor-based component:', data.report_details.length, 'items');
-      setConsolidatedData(data.report_details);
-    } else {
-      // CRITICAL: Reset to empty array when no data exists
-      console.log('Resetting consolidatedData to empty array');
-      setConsolidatedData([]);
-    }
-    
-    // For ConsolidatedContentComponentCount (patient count-based)
-    if (data.report_details_mid && Array.isArray(data.report_details_mid) && data.report_details_mid.length > 0) {
-      console.log('Setting consolidated data for count-based component:', data.report_details_mid, 'items');
-      setConsolidatedDataCount(data.report_details_mid);
-    } else {
-      // CRITICAL: Reset to empty array when no data exists
-      console.log('Resetting consolidatedDataCount to empty array');
-      setConsolidatedDataCount([]);
-    }
-    
-    // Clear validation errors when loading data
-    setValidationErrors({});
-    
-    console.log('Form data loading complete');
-  };
+  }
+  
+  // Special notes
+  setSpecialNotes(data.special_notes || "");
+  
+  // Load data for both components
+  // For ConsolidatedContentComponent (doctor-based)
+  if (data.report_details && Array.isArray(data.report_details) && data.report_details.length > 0) {
+    console.log('Setting consolidated data for doctor-based component:', data.report_details.length, 'items');
+    setConsolidatedData(data.report_details);
+  } else {
+    // CRITICAL: Reset to empty array when no data exists
+    console.log('Resetting consolidatedData to empty array');
+    setConsolidatedData([]);
+  }
+  
+  // For ConsolidatedContentComponentCount (patient count-based)
+  if (data.report_details_mid && Array.isArray(data.report_details_mid) && data.report_details_mid.length > 0) {
+    console.log('Setting consolidated data for count-based component:', data.report_details_mid, 'items');
+    setConsolidatedDataCount(data.report_details_mid);
+  } else {
+    // CRITICAL: Reset to empty array when no data exists
+    console.log('Resetting consolidatedDataCount to empty array');
+    setConsolidatedDataCount([]);
+  }
+  
+  // Clear validation errors when loading data
+  setValidationErrors({});
+  
+  console.log('Form data loading complete');
+};
 
   // Reset form to initial state (complete reset)
   const resetForm = () => {
@@ -291,6 +359,28 @@ const FrameScreen = React.memo(({
       PET: "0", 
       MR: "0", 
       CT: "0" 
+    });
+    
+    // Reset detailed external consultation
+    setExternalConsultationDetails({
+      PET: {
+        "PET-CT": { enabled: true, value: "0" },
+        "エグゼクティブ": { enabled: true, value: "0" },
+        "保険": { enabled: true, value: "0" },
+        "〇〇〇〇": { enabled: true, value: "0" },
+      },
+      MR: {
+        "頭蓋骨盤": { enabled: true, value: "0" },
+        "エコー": { enabled: true, value: "0" },
+        "脳ドック": { enabled: true, value: "0" },
+        "保険": { enabled: true, value: "0" },
+      },
+      CT: {
+        "〇〇〇〇": { enabled: true, value: "0" },
+        "〇〇〇〇2": { enabled: true, value: "0" },
+        "〇〇〇〇3": { enabled: true, value: "0" },
+        "〇〇〇〇4": { enabled: true, value: "0" },
+      }
     });
     
     setCurrentStatus({ 
@@ -444,6 +534,7 @@ const FrameScreen = React.memo(({
     console.log('consolidatedData length:', consolidatedData.length);
     console.log('consolidatedDataCount (count-based):', consolidatedDataCount);
     console.log('consolidatedDataCount length:', consolidatedDataCount.length);
+    console.log('External consultation details:', externalConsultationDetails);
     
     // Filter out empty consolidated data for both components
     const filteredConsolidatedData = consolidatedData.filter(item => 
@@ -459,6 +550,21 @@ const FrameScreen = React.memo(({
     console.log('Filtered doctor-based data length:', filteredConsolidatedData.length);
     console.log('Filtered count-based data:', filteredConsolidatedDataCount);
     console.log('Filtered count-based data length:', filteredConsolidatedDataCount.length);
+    
+    // Prepare external consultation details for submission
+    // Only include sections that are toggled ON
+    const submissionExternalDetails = {};
+    if (externalConsultationDetails.PET) {
+      submissionExternalDetails.PET = externalConsultationDetails.PET;
+    }
+    if (externalConsultationDetails.MR) {
+      submissionExternalDetails.MR = externalConsultationDetails.MR;
+    }
+    if (externalConsultationDetails.CT) {
+      submissionExternalDetails.CT = externalConsultationDetails.CT;
+    }
+    
+    console.log('Submission external details:', submissionExternalDetails);
     console.log('==========================');
 
     // Use current display values
@@ -476,6 +582,8 @@ const FrameScreen = React.memo(({
       special_notes: specialNotes.trim(),
       report_details: filteredConsolidatedData,
       report_details_mid: filteredConsolidatedDataCount,
+      // Add detailed external consultation data to payload
+      external_consultation_details: submissionExternalDetails,
       hospital_type: hospital_type,
     };
   };
@@ -512,7 +620,7 @@ const FrameScreen = React.memo(({
     }
   };
 
-  // Handle external consultation change
+  // Handle external consultation change (for backward compatibility)
   const handlePETChange = (e) => {
     const value = e.target.value;
     if (/^\d*$/.test(value)) {
@@ -561,6 +669,21 @@ const FrameScreen = React.memo(({
     }
   };
 
+  // Handle external consultation details change from toggle component
+const handleExternalConsultationDetailsChange = useCallback((details) => {
+  console.log('External consultation details updated:', details);
+  
+  // Only update if the data actually changed
+  const currentDetailsStr = JSON.stringify(externalConsultationDetails);
+  const newDetailsStr = JSON.stringify(details);
+  
+  if (currentDetailsStr !== newDetailsStr) {
+    setExternalConsultationDetails(details);
+  }
+}, [externalConsultationDetails]);
+
+
+
   const handleSpecialNotesChange = (e) => {
     setSpecialNotes(e.target.value);
   };
@@ -605,25 +728,32 @@ const FrameScreen = React.memo(({
   };
 
   // Notify parent of form data changes
-  useEffect(() => {
-    if (onFormDataChange && !loadingRef.current) {
+// Notify parent of form data changes - with debouncing
+useEffect(() => {
+  if (onFormDataChange && !loadingRef.current) {
+    // Use a timeout to debounce rapid updates
+    const timeoutId = setTimeout(() => {
       const currentFormData = prepareFormData();
       onFormDataChange(currentFormData);
-    }
-  }, [
-    initialMorning,
-    initialAfternoon,
-    initialNight,
-    calculatedMorning,
-    calculatedAfternoon,
-    calculatedNight,
-    timerActive,
-    externalConsultation,
-    currentStatus,
-    specialNotes,
-    consolidatedData,
-    consolidatedDataCount
-  ]);
+    }, 100); // 100ms debounce
+    
+    return () => clearTimeout(timeoutId);
+  }
+}, [
+  initialMorning,
+  initialAfternoon,
+  initialNight,
+  calculatedMorning,
+  calculatedAfternoon,
+  calculatedNight,
+  timerActive,
+  externalConsultation,
+  externalConsultationDetails,
+  currentStatus,
+  specialNotes,
+  consolidatedData,
+  consolidatedDataCount
+]);
 
   // Create a function that the parent can call to trigger save draft
   const triggerSaveDraft = useCallback(() => {
@@ -975,6 +1105,16 @@ const FrameScreen = React.memo(({
                       },
                     }}
                   />
+                  {timerActive && (
+                    <Typography sx={{ 
+                      fontSize: fontSize.small, 
+                      color: '#ff9800',
+                      fontStyle: 'italic',
+                      textAlign: 'center'
+                    }}>
+                      ⏱️ 3秒後に自動計算に切り替わります
+                    </Typography>
+                  )}
                 </Stack>
               </Grid>
 
@@ -1071,7 +1211,7 @@ const FrameScreen = React.memo(({
           </Stack>
         </Paper>
 
-        {/* Emergency Section - Renamed to 患者数 (PET / MR / CT) */}
+        {/* External Consultation Section */}
         <Paper
           elevation={0}
           sx={{
@@ -1110,6 +1250,7 @@ const FrameScreen = React.memo(({
               </Tooltip>
             </Box>
 
+            {/* Simple summary fields (for backward compatibility) */}
             <Grid container spacing={isMobile ? 2 : 3}>
               {/* PET */}
               <Grid item xs={12} sm={6} md={4}>
@@ -1130,16 +1271,18 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={externalConsultation.PET}
                     onChange={handlePETChange}
+                    onFocus={(e) => e.target.select()}
                     variant="outlined"
                     fullWidth
                     size="small"
                     error={!!validationErrors.PET}
-                    helperText={validationErrors.PET}
+                    helperText={validationErrors.PET || "合計値（詳細設定から変更可能）"}
                     disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
+                      readOnly: true,
                       sx: {
                         borderRadius: "8px",
-                        bgcolor: "#ffffff",
+                        bgcolor: "#f5f5f5",
                         height: textFieldHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
                           borderColor: validationErrors.PET ? "#df1c41" : "#dfe1e7",
@@ -1176,16 +1319,18 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={externalConsultation.MR}
                     onChange={handleMRChange}
+                    onFocus={(e) => e.target.select()}
                     variant="outlined"
                     fullWidth
                     size="small"
                     error={!!validationErrors.MR}
-                    helperText={validationErrors.MR}
+                    helperText={validationErrors.MR || "合計値（詳細設定から変更可能）"}
                     disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
+                      readOnly: true,
                       sx: {
                         borderRadius: "8px",
-                        bgcolor: "#ffffff",
+                        bgcolor: "#f5f5f5",
                         height: textFieldHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
                           borderColor: validationErrors.MR ? "#df1c41" : "#dfe1e7",
@@ -1222,16 +1367,18 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={externalConsultation.CT}
                     onChange={handleCTChange}
+                    onFocus={(e) => e.target.select()}
                     variant="outlined"
                     fullWidth
                     size="small"
                     error={!!validationErrors.CT}
-                    helperText={validationErrors.CT}
+                    helperText={validationErrors.CT || "合計値（詳細設定から変更可能）"}
                     disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
+                      readOnly: true,
                       sx: {
                         borderRadius: "8px",
-                        bgcolor: "#ffffff",
+                        bgcolor: "#f5f5f5",
                         height: textFieldHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
                           borderColor: validationErrors.CT ? "#df1c41" : "#dfe1e7",
@@ -1249,20 +1396,22 @@ const FrameScreen = React.memo(({
                 </Stack>
               </Grid>
             </Grid>
+
+            {/* Detailed Toggle Component */}
+            <Box sx={{ mt: 3 }}>
+              <ExternalConsultationToggle
+                initialValues={externalConsultationDetails}
+                onValuesChange={handleExternalConsultationDetailsChange}
+                readOnly={readOnly || reportStatus === 'submitted'}
+                reportStatus={reportStatus}
+              />
+            </Box>
           </Stack>
         </Paper>
 
-        {/* Consolidated Content Section with Tabs */}
-        <Paper
-          elevation={0}
-          sx={{
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          {/* Tab Content */}
-          <Box sx={{ p: sectionPadding }}>
+
+        {/* Consolidated Content Section */}
+ 
             <ConsolidatedContentComponentCount
               data={consolidatedDataCount}
               departments={departments}
@@ -1272,19 +1421,11 @@ const FrameScreen = React.memo(({
               readOnly={readOnly || reportStatus === 'submitted'}
               loading={loading}
             />
-          </Box>
-        </Paper>
+  
 
-        {/* Consolidated Content Section with Tabs */}
-        <Paper
-          elevation={0}
-          sx={{
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Box sx={{ p: sectionPadding }}>
+        {/* Consolidated Content Section */}
+ 
+          
             <ConsolidatedContentComponent
               data={consolidatedData}
               departments={departments}
@@ -1295,9 +1436,7 @@ const FrameScreen = React.memo(({
               readOnly={readOnly || reportStatus === 'submitted'}
               loading={loading}
             />
-          </Box>
-        </Paper>
-
+ 
         {/* Administrative Matters Section */}
         <Paper
           elevation={0}

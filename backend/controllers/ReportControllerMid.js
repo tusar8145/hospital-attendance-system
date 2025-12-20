@@ -73,8 +73,6 @@ export const getReportByDate = async (req, res, next) => {
       }
     });
 
-
-
     if (!existingReport) {
       const report = await prisma.report.findFirst({
         where: {
@@ -90,7 +88,6 @@ export const getReportByDate = async (req, res, next) => {
       });
 
       if (report) {
-
         // Get report details for report_detail_mid
         const reportDetails = await prisma.report_detail_mid.findMany({
           where: {
@@ -122,7 +119,6 @@ export const getReportByDate = async (req, res, next) => {
           doctors,
           exists: true
         }, res);
-
       }
     }
 
@@ -132,7 +128,6 @@ export const getReportByDate = async (req, res, next) => {
       doctors,
       exists: !!existingReport
     }, res);
-
 
   } catch (error) {
     console.error('Error in getReportByDate:', error);
@@ -234,6 +229,7 @@ export const submitReport = async (req, res, next) => {
         special_notes,
         report_details,           // For ConsolidatedContentComponent (doctor-based)
         report_details_mid,       // For ConsolidatedContentComponentCount (patient count-based)
+        external_consultation_details, // NEW: External consultation details
         is_draft = false,
         hospital_type,
       } = req.body;
@@ -271,6 +267,11 @@ export const submitReport = async (req, res, next) => {
         updated_at: new Date(),
       };
 
+      // NEW: Add external_consultation_details if provided
+      if (external_consultation_details) {
+        reportData.external_consultation_details = external_consultation_details;
+      }
+
       if (!existingReport) {
         reportData.created_by = userId;
       }
@@ -302,12 +303,10 @@ export const submitReport = async (req, res, next) => {
             report_id: report.id,
             sequence_no: parseInt(detail.sequence_no) || 1,
             floor: detail.floor,
-           // department_id: parseInt(detail.department_id),
             consultation_type: detail.consultation_type,
             doctor_id_1: detail.doctor_id_1 ? parseInt(detail.doctor_id_1) : null,
             doctor_id_2: detail.doctor_id_2 ? parseInt(detail.doctor_id_2) : null,
             doctor_id_3: detail.doctor_id_3 ? parseInt(detail.doctor_id_3) : null,
-           // patient_count: parseInt(detail.patient_count) || 0
           }));
 
           await tx.report_detail.createMany({
@@ -489,8 +488,6 @@ export const getHospitalDepartmentsDoctors = async (req, res, next) => {
   }
 };
 
-
-// In your backend controller
 // In your backend controller (report-mid controller)
 export const getDepartmentsWithDoctors = async (req, res, next) => {
   try {
