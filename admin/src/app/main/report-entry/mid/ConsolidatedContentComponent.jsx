@@ -73,7 +73,7 @@ const ConsolidatedContentComponent = ({
   // Initialize rows when data or departments change
   useEffect(() => {
     // Only initialize from data once when component mounts
-    if (data && data.length > 0) {
+    if (data && data.length > 0 && rows.length === 0) {
       console.log('Initializing rows from data for the first time');
       initializeRowsFromData(data);
     } else if (departmentOptions.length > 0 && rows.length === 0) {
@@ -149,11 +149,11 @@ const ConsolidatedContentComponent = ({
     const groupedData = {};
     
     reportData.forEach(item => {
-      const floor = '未設定'; // Default floor
+      const floor = item.floor || '未設定';
       const key = `${item.sequence_no}_${floor}`;
       if (!groupedData[key]) {
         groupedData[key] = {
-          id: `row-${key}`,
+          id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           sequence_no: item.sequence_no,
           floor: floor,
           consultations: {}
@@ -189,16 +189,19 @@ const ConsolidatedContentComponent = ({
       };
     });
     
+    // Sort by sequence_no
+    newRows.sort((a, b) => a.sequence_no - b.sequence_no);
+    
     console.log('Created rows from data:', newRows.length, 'rows');
     setRows(newRows);
   };
 
   const initializeRowsFromFloors = () => {
     // Start with one empty row if no data
-    if (Object.keys(doctorOptions).length > 0 && rows.length === 0) {
+    if (rows.length === 0) {
       console.log('Creating initial empty row');
       const initialRow = {
-        id: `new-${Date.now()}`,
+        id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         sequence_no: 1,
         floor: '',
         consultations: consultationTypes.map(type => ({
@@ -392,6 +395,7 @@ const ConsolidatedContentComponent = ({
 
   // Check if floor is already used in other rows
   const isFloorAlreadyUsed = (floor, currentRowId) => {
+    if (!floor) return false;
     return rows.some(row => 
       row.id !== currentRowId && row.floor === floor
     );
@@ -422,6 +426,13 @@ const ConsolidatedContentComponent = ({
   // Get departments for a specific floor
   const getDepartmentsForFloor = (floor) => {
     return departmentOptions.filter(dept => dept.floor === floor);
+  };
+
+  // Get used floors (excluding current row)
+  const getUsedFloors = (currentRowId = null) => {
+    return rows
+      .filter(row => row.id !== currentRowId && row.floor)
+      .map(row => row.floor);
   };
 
   // Responsive values
@@ -566,7 +577,7 @@ const ConsolidatedContentComponent = ({
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {availableFloors.map(floor => {
-                const isSelected = rows.some(row => row.floor === floor.value);
+                const isUsed = rows.some(row => row.floor === floor.value);
                 const departments = getDepartmentsForFloor(floor.value);
                 
                 return (
@@ -590,6 +601,13 @@ const ConsolidatedContentComponent = ({
                             </Typography>
                           </Box>
                         )}
+                        {isUsed && (
+                          <Box sx={{ mt: 0.5 }}>
+                            <Typography variant="caption" sx={{ color: '#ff9800', fontWeight: 600 }}>
+                              ※既に選択済みの階です
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
                     }
                   >
@@ -601,14 +619,17 @@ const ConsolidatedContentComponent = ({
                         px: 1.5,
                         py: 0.5,
                         borderRadius: '12px',
-                        backgroundColor: isSelected ? '#e3f2fd' : '#f5f5f5',
-                        border: `1px solid ${isSelected ? '#0A6AE3' : '#e0e0e0'}`,
-                        cursor: 'pointer',
+                        backgroundColor: isUsed ? '#fff3e0' : '#f5f5f5',
+                        border: `1px solid ${isUsed ? '#ff9800' : '#e0e0e0'}`,
+                        cursor: isUsed ? 'not-allowed' : 'pointer',
+                        opacity: isUsed ? 0.7 : 1,
                         '&:hover': {
-                          backgroundColor: isSelected ? '#d8eafb' : '#f0f0f0'
+                          backgroundColor: isUsed ? '#fff3e0' : '#f0f0f0'
                         }
                       }}
                       onClick={() => {
+                        if (isUsed) return;
+                        
                         // Find first row without a floor or create new one
                         const emptyRow = rows.find(row => !row.floor);
                         if (emptyRow) {
@@ -624,12 +645,12 @@ const ConsolidatedContentComponent = ({
                       }}
                     >
                       <LocationOnIcon fontSize="small" sx={{ 
-                        color: isSelected ? '#0A6AE3' : '#666'
+                        color: isUsed ? '#ff9800' : '#666'
                       }} />
                       <Typography sx={{ 
                         fontSize: fontSize.medium,
-                        color: isSelected ? '#0A6AE3' : '#666',
-                        fontWeight: isSelected ? 600 : 400
+                        color: isUsed ? '#ff9800' : '#666',
+                        fontWeight: isUsed ? 600 : 400
                       }}>
                         {floor.label}
                       </Typography>
@@ -644,7 +665,7 @@ const ConsolidatedContentComponent = ({
                           sx={{
                             height: 20,
                             fontSize: fontSize.small,
-                            backgroundColor: isSelected ? '#0A6AE3' : '#757575',
+                            backgroundColor: isUsed ? '#ff9800' : '#757575',
                             color: 'white'
                           }}
                         />
@@ -654,7 +675,7 @@ const ConsolidatedContentComponent = ({
                           sx={{
                             height: 20,
                             fontSize: fontSize.small,
-                            backgroundColor: isSelected ? '#27ae60' : '#4caf50',
+                            backgroundColor: isUsed ? '#ff9800' : '#4caf50',
                             color: 'white'
                           }}
                         />
@@ -795,6 +816,7 @@ const ConsolidatedContentComponent = ({
                   const rowError = validationErrors[`floor_${rowIndex}`];
                   const floorDoctors = getDoctorsForFloor(row.floor);
                   const isFloorAlreadyUsedInOtherRows = isFloorAlreadyUsed(row.floor, row.id);
+                  const usedFloors = getUsedFloors(row.id);
                   
                   return (
                     <TableRow 
@@ -869,19 +891,23 @@ const ConsolidatedContentComponent = ({
                                 
                                 const selectedFloor = availableFloors.find(f => f.value === selected);
                                 const departments = getDepartmentsForFloor(selected);
+                                const isUsedByOthers = isFloorAlreadyUsed(selected, row.id);
                                 
                                 return (
                                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                                      <LocationOnIcon sx={{ fontSize: 14, color: isFloorAlreadyUsedInOtherRows ? '#ff9800' : '#0A6AE3' }} />
+                                      <LocationOnIcon sx={{ 
+                                        fontSize: 14, 
+                                        color: isUsedByOthers ? '#ff9800' : '#0A6AE3' 
+                                      }} />
                                       <Typography sx={{ 
                                         fontWeight: 600,
-                                        color: isFloorAlreadyUsedInOtherRows ? '#ff9800' : rowError ? '#df1c41' : '#2c3e50',
+                                        color: isUsedByOthers ? '#ff9800' : rowError ? '#df1c41' : '#2c3e50',
                                         fontSize: fontSize.medium,
                                         flex: 1
                                       }}>
                                         {formatFloorDisplay(selected)}
-                                        {isFloorAlreadyUsedInOtherRows && ' (重複)'}
+                                        {isUsedByOthers && ' (他で使用中)'}
                                       </Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
@@ -891,7 +917,7 @@ const ConsolidatedContentComponent = ({
                                         sx={{
                                           height: 18,
                                           fontSize: fontSize.small,
-                                          backgroundColor: '#0A6AE3',
+                                          backgroundColor: isUsedByOthers ? '#ff9800' : '#0A6AE3',
                                           color: 'white'
                                         }}
                                       />
@@ -901,7 +927,7 @@ const ConsolidatedContentComponent = ({
                                         sx={{
                                           height: 18,
                                           fontSize: fontSize.small,
-                                          backgroundColor: '#27ae60',
+                                          backgroundColor: isUsedByOthers ? '#ff9800' : '#27ae60',
                                           color: 'white'
                                         }}
                                       />
@@ -924,20 +950,21 @@ const ConsolidatedContentComponent = ({
                                 </Typography>
                               </MenuItem>
                               {availableFloors.map((floor) => {
-                                const isUsed = isFloorAlreadyUsed(floor.value, row.id);
+                                const isUsedByOthers = usedFloors.includes(floor.value);
+                                const isCurrentFloor = row.floor === floor.value;
                                 const departments = getDepartmentsForFloor(floor.value);
                                 
                                 return (
                                   <MenuItem 
                                     key={floor.value} 
                                     value={floor.value}
-                                    disabled={isUsed}
+                                    disabled={isUsedByOthers && !isCurrentFloor}
                                     sx={{ 
                                       fontSize: fontSize.medium,
                                       '&.Mui-selected': {
                                         backgroundColor: '#e3f2fd'
                                       },
-                                      opacity: isUsed ? 0.6 : 1
+                                      opacity: isUsedByOthers && !isCurrentFloor ? 0.6 : 1
                                     }}
                                   >
                                     <Box sx={{ 
@@ -954,10 +981,12 @@ const ConsolidatedContentComponent = ({
                                         width: '100%'
                                       }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                          <LocationOnIcon fontSize="small" sx={{ color: '#0A6AE3' }} />
+                                          <LocationOnIcon fontSize="small" sx={{ 
+                                            color: isUsedByOthers ? '#ff9800' : '#0A6AE3' 
+                                          }} />
                                           <Typography sx={{ fontWeight: 500 }}>
                                             {floor.label}
-                                            {isUsed && ' (使用中)'}
+                                            {isUsedByOthers && !isCurrentFloor && ' (使用中)'}
                                           </Typography>
                                         </Box>
                                         <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -967,7 +996,7 @@ const ConsolidatedContentComponent = ({
                                             sx={{
                                               height: 20,
                                               fontSize: fontSize.small,
-                                              backgroundColor: '#0A6AE3',
+                                              backgroundColor: isUsedByOthers ? '#ff9800' : '#0A6AE3',
                                               color: 'white'
                                             }}
                                           />
@@ -977,7 +1006,7 @@ const ConsolidatedContentComponent = ({
                                             sx={{
                                               height: 20,
                                               fontSize: fontSize.small,
-                                              backgroundColor: '#27ae60',
+                                              backgroundColor: isUsedByOthers ? '#ff9800' : '#27ae60',
                                               color: 'white'
                                             }}
                                           />
@@ -1019,6 +1048,24 @@ const ConsolidatedContentComponent = ({
                                           </Typography>
                                         </Box>
                                       )}
+                                      
+                                      {isUsedByOthers && !isCurrentFloor && (
+                                        <Box sx={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          mt: 0.5,
+                                          color: '#ff9800'
+                                        }}>
+                                          <InfoOutlinedIcon fontSize="small" sx={{ fontSize: 14 }} />
+                                          <Typography sx={{ 
+                                            fontSize: fontSize.small,
+                                            fontWeight: 500
+                                          }}>
+                                            既に選択済みの階です
+                                          </Typography>
+                                        </Box>
+                                      )}
                                     </Box>
                                   </MenuItem>
                                 );
@@ -1030,7 +1077,7 @@ const ConsolidatedContentComponent = ({
                                 fontSize: fontSize.medium,
                                 mt: 0.5
                               }}>
-                                {isFloorAlreadyUsedInOtherRows ? 'この階は既に使用されています' : rowError}
+                                {isFloorAlreadyUsedInOtherRows ? 'この階は既に他の行で使用されています' : rowError}
                               </Typography>
                             )}
                           </FormControl>
