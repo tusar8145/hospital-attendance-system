@@ -61,11 +61,22 @@ const FrameScreen = React.memo(({
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   // State management
-    const [allow, setallow] = useState(false);
+  const [allow, setallow] = useState(false);
   const [date, setDate] = useState(reportDate || new Date());
-  const [patientsCount, setPatientsCount] = useState("0");
-  const [outpatientsCount, setOutpatientsCount] = useState("0");
-  const [nightConsultation, setNightConsultation] = useState("0");
+  
+  // Initial values from API response
+  const [initialMorning, setInitialMorning] = useState("0");
+  const [initialAfternoon, setInitialAfternoon] = useState("0");
+  const [initialNight, setInitialNight] = useState("0");
+  
+  // Calculated fields for runtime updates
+  const [calculatedMorning, setCalculatedMorning] = useState(0);
+  const [calculatedAfternoon, setCalculatedAfternoon] = useState(0);
+  const [calculatedNight, setCalculatedNight] = useState(0);
+  
+  // Timer for 3 second hold
+  const [timerActive, setTimerActive] = useState(true);
+  
   const [externalConsultation, setExternalConsultation] = useState({
     PET: "0",
     MR: "0",
@@ -101,6 +112,55 @@ const FrameScreen = React.memo(({
     message: '',
     severity: 'success'
   });
+
+  // Start 3 second timer when component mounts or when formData is loaded
+  useEffect(() => {
+    if (formDataLoaded) {
+      setTimerActive(true);
+      const timer = setTimeout(() => {
+        setTimerActive(false);
+        console.log('3 second timer completed, switching to calculated values');
+      }, 3000); // 3 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formDataLoaded]);
+
+  // Calculate sums whenever consolidatedDataCount changes (but only if timer is not active)
+  useEffect(() => {
+    if (!timerActive && consolidatedDataCount && consolidatedDataCount.length > 0) {
+      let morningSum = 0;
+      let afternoonSum = 0;
+      let nightSum = 0;
+      
+      consolidatedDataCount.forEach(item => {
+        const totalPatients = parseInt(item.total_patients) || 0;
+        
+        switch (item.consultation_type) {
+          case 'morning':
+            morningSum += totalPatients;
+            break;
+          case 'afternoon':
+            afternoonSum += totalPatients;
+            break;
+          case 'night':
+            nightSum += totalPatients;
+            break;
+          default:
+            break;
+        }
+      });
+      
+      setCalculatedMorning(morningSum);
+      setCalculatedAfternoon(afternoonSum);
+      setCalculatedNight(nightSum);
+    } else if (!timerActive) {
+      // Reset to 0 if no data and timer is not active
+      setCalculatedMorning(0);
+      setCalculatedAfternoon(0);
+      setCalculatedNight(0);
+    }
+  }, [consolidatedDataCount, timerActive]);
 
   // Format date for API (YYYY-MM-DD)
   const formatDateForAPI = (date) => {
@@ -162,10 +222,15 @@ const FrameScreen = React.memo(({
     // Mark that we've loaded form data
     setFormDataLoaded(true);
     
-    // Basic stats - always load from form data
-    setPatientsCount(data.admission_count?.toString() || "0");
-    setOutpatientsCount(data.discharge_count?.toString() || "0");
-    setNightConsultation(data.external_duty?.toString() || "0");
+    // Load initial values from API response
+    setInitialMorning(data.admission_count?.toString() || "0");
+    setInitialAfternoon(data.discharge_count?.toString() || "0");
+    setInitialNight(data.external_duty?.toString() || "0");
+    
+    // Also set calculated values to initial values initially
+    setCalculatedMorning(parseInt(data.admission_count) || 0);
+    setCalculatedAfternoon(parseInt(data.discharge_count) || 0);
+    setCalculatedNight(parseInt(data.external_duty) || 0);
     
     // External consultation - ALWAYS load from form data when we have it
     setExternalConsultation({
@@ -190,109 +255,12 @@ const FrameScreen = React.memo(({
     
     // For ConsolidatedContentComponentCount (patient count-based)
     if (data.report_details_mid && Array.isArray(data.report_details_mid) && data.report_details_mid.length > 0) {
-          console.log('vvvvvvvv','11111')
       console.log('Setting consolidated data for count-based component:', data.report_details_mid, 'items');
       setConsolidatedDataCount(data.report_details_mid);
     } else {
-      console.log('vvvvvvvv','11111')
       // CRITICAL: Reset to empty array when no data exists
       console.log('Resetting consolidatedDataCount to empty array');
-      console.log('Resetting consolidatedDataCount to egggggggggggmpty array');
       setConsolidatedDataCount([]);
-
-     /* if (hospitalId) {
-        const response = await axios.post(`${apiConfig.baseURL}/report-mid/get-last-report-mid-data`, {
-          hospital_id: hospitalId,
-          report_date: date
-        })
-
-        if (response.data.success && response.data.data) {
-          const departmentsData = response.data.data;
-          // Create a new array with patient_count set to 0
-          const modifiedData = departmentsData.map(item => ({
-            ...item
-          }));
-          console.log(modifiedData,'Resetting consolidatedDataCount to')
-          setConsolidatedDataCount(modifiedData);
-        }else{
-          setConsolidatedDataCount([]);
-        }
-      } */
-
-
-  /*   setConsolidatedDataCount([
-    {
-        "id": 13,
-        "report_id": 1,
-        "sequence_no": 1,
-        "department_id": 11,
-        "consultation_type": "morning",
-        "total_patients": 2,
-        "new_patients": 0,
-        "created_at": "pppppppppppppppppppppppppppppppp",
-        "updated_at": "2025-12-20T10:05:15.719Z",
-        "department": {
-            "id": 11,
-            "name": "Cardiology",
-            "floor": "2x",
-            "medical_center_id": 11,
-            "status": 1,
-            "created_by": 10,
-            "created_at": "2025-12-10T20:32:29.773Z",
-            "updated_by": 15,
-            "updated_at": "2025-12-20T08:42:19.209Z"
-        }
-    },
-    {
-        "id": 14,
-        "report_id": 1,
-        "sequence_no": 1,
-        "department_id": 11,
-        "consultation_type": "afternoon",
-        "total_patients": 8,
-        "new_patients": 8,
-        "created_at": "2025-12-20T10:05:15.719Z",
-        "updated_at": "2025-12-20T10:05:15.719Z",
-        "department": {
-            "id": 11,
-            "name": "Cardiology",
-            "floor": "2x",
-            "medical_center_id": 11,
-            "status": 1,
-            "created_by": 10,
-            "created_at": "2025-12-10T20:32:29.773Z",
-            "updated_by": 15,
-            "updated_at": "2025-12-20T08:42:19.209Z"
-        }
-    },
-    {
-        "id": 15,
-        "report_id": 1,
-        "sequence_no": 1,
-        "department_id": 11,
-        "consultation_type": "night",
-        "total_patients": 11,
-        "new_patients": 7,
-        "created_at": "2025-12-20T10:05:15.719Z",
-        "updated_at": "2025-12-20T10:05:15.719Z",
-        "department": {
-            "id": 11,
-            "name": "Cardiology",
-            "floor": "2x",
-            "medical_center_id": 11,
-            "status": 1,
-            "created_by": 10,
-            "created_at": "2025-12-10T20:32:29.773Z",
-            "updated_by": 15,
-            "updated_at": "2025-12-20T08:42:19.209Z"
-        }
-    },
-]);*/
-
-
-
-
-
     }
     
     // Clear validation errors when loading data
@@ -301,22 +269,22 @@ const FrameScreen = React.memo(({
     console.log('Form data loading complete');
   };
 
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if(!(consolidatedDataCount?.length>0)){
-        setallow(true)
-      }     
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []); // Empty dependency array means run only once
-
   // Reset form to initial state (complete reset)
   const resetForm = () => {
     console.log('Resetting form completely');
-    setPatientsCount("0");
-    setOutpatientsCount("0");
-    setNightConsultation("0");
+    
+    // Reset initial values
+    setInitialMorning("0");
+    setInitialAfternoon("0");
+    setInitialNight("0");
+    
+    // Reset calculated fields
+    setCalculatedMorning(0);
+    setCalculatedAfternoon(0);
+    setCalculatedNight(0);
+    
+    // Reset timer
+    setTimerActive(true);
     
     // Reset external consultation
     setExternalConsultation({ 
@@ -337,9 +305,24 @@ const FrameScreen = React.memo(({
     setConsolidatedData([]);
     setConsolidatedDataCount([]);
     
+    setFormDataLoaded(false);
+    
     setValidationErrors({});
     
     console.log('Form reset complete');
+  };
+
+  // Get the current display value based on timer status
+  const getDisplayMorning = () => {
+    return timerActive ? initialMorning : calculatedMorning;
+  };
+
+  const getDisplayAfternoon = () => {
+    return timerActive ? initialAfternoon : calculatedAfternoon;
+  };
+
+  const getDisplayNight = () => {
+    return timerActive ? initialNight : calculatedNight;
   };
 
   // Handle date navigation
@@ -407,15 +390,22 @@ const FrameScreen = React.memo(({
       errors.hospital = "病院の選択が必要です";
     }
     
-    if (!patientsCount || isNaN(parseInt(patientsCount))) {
+    // Validate the current display values
+    const morningValue = getDisplayMorning();
+    const afternoonValue = getDisplayAfternoon();
+    const nightValue = getDisplayNight();
+    
+    // These fields are always readonly, so validation is minimal
+    // Just check if they are valid numbers
+    if (morningValue === undefined || morningValue === null || isNaN(parseInt(morningValue))) {
       errors.patientsCount = "有効な患者数が必要です";
     }
     
-    if (!outpatientsCount || isNaN(parseInt(outpatientsCount))) {
+    if (afternoonValue === undefined || afternoonValue === null || isNaN(parseInt(afternoonValue))) {
       errors.outpatientsCount = "有効な午後診数が必要です";
     }
     
-    if (!nightConsultation || isNaN(parseInt(nightConsultation))) {
+    if (nightValue === undefined || nightValue === null || isNaN(parseInt(nightValue))) {
       errors.nightConsultation = "有効な夜診数が必要です";
     }
     
@@ -437,9 +427,6 @@ const FrameScreen = React.memo(({
     if (consolidatedData.length === 0 && consolidatedDataCount.length === 0) {
       errors.consolidatedData = "少なくとも1つの診療科エントリが必要です";
     }
-    
- 
- 
     
     setValidationErrors(errors);
     
@@ -474,10 +461,15 @@ const FrameScreen = React.memo(({
     console.log('Filtered count-based data length:', filteredConsolidatedDataCount.length);
     console.log('==========================');
 
+    // Use current display values
+    const morningValue = getDisplayMorning();
+    const afternoonValue = getDisplayAfternoon();
+    const nightValue = getDisplayNight();
+
     return {
-      admission_count: parseInt(patientsCount) || 0,
-      discharge_count: parseInt(outpatientsCount) || 0,
-      external_duty: parseInt(nightConsultation) || 0,
+      admission_count: parseInt(morningValue) || 0,
+      discharge_count: parseInt(afternoonValue) || 0,
+      external_duty: parseInt(nightValue) || 0,
       emergency_transport: parseInt(externalConsultation.PET) || 0,
       post_transport_admission: parseInt(externalConsultation.MR) || 0,
       visit_count: parseInt(externalConsultation.CT) || 0,
@@ -516,51 +508,6 @@ const FrameScreen = React.memo(({
         showSnackbar('フォームにエラーがあります。確認してください。', 'error');
       } else {
         showLocalSnackbar('フォームにエラーがあります。確認してください。', 'error');
-      }
-    }
-  };
-
-  // Handler functions for form fields with select all on focus
-  const handlePatientsChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
-      setPatientsCount(value);
-      // Clear error if fixed
-      if (validationErrors.patientsCount && value && !isNaN(parseInt(value))) {
-        const newErrors = { ...validationErrors };
-        delete newErrors.patientsCount;
-        setValidationErrors(newErrors);
-      }
-    }
-  };
-
-  // Handle focus event to select all text
-  const handleFocusSelect = (e) => {
-    e.target.select();
-  };
-
-  const handleOutpatientsChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
-      setOutpatientsCount(value);
-      // Clear error if fixed
-      if (validationErrors.outpatientsCount && value && !isNaN(parseInt(value))) {
-        const newErrors = { ...validationErrors };
-        delete newErrors.outpatientsCount;
-        setValidationErrors(newErrors);
-      }
-    }
-  };
-
-  const handleNightConsultationChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
-      setNightConsultation(value);
-      // Clear error if fixed
-      if (validationErrors.nightConsultation && value && !isNaN(parseInt(value))) {
-        const newErrors = { ...validationErrors };
-        delete newErrors.nightConsultation;
-        setValidationErrors(newErrors);
       }
     }
   };
@@ -619,7 +566,6 @@ const FrameScreen = React.memo(({
   };
 
   const handleConsolidatedDataChange = (newData) => {
-    console.log(newData,'xxxxxx')
     setConsolidatedData(newData);
     // Clear consolidated data error if data is added
     if (validationErrors.consolidatedData && (newData.length > 0 || consolidatedDataCount.length > 0)) {
@@ -630,6 +576,7 @@ const FrameScreen = React.memo(({
   };
 
   const handleConsolidatedDataCountChange = (newData) => {
+    console.log(newData,'newDatanewData')
     setConsolidatedDataCount(newData);
     // Clear consolidated data error if data is added
     if (validationErrors.consolidatedData && (consolidatedData.length > 0 || newData.length > 0)) {
@@ -664,9 +611,13 @@ const FrameScreen = React.memo(({
       onFormDataChange(currentFormData);
     }
   }, [
-    patientsCount,
-    outpatientsCount,
-    nightConsultation,
+    initialMorning,
+    initialAfternoon,
+    initialNight,
+    calculatedMorning,
+    calculatedAfternoon,
+    calculatedNight,
+    timerActive,
     externalConsultation,
     currentStatus,
     specialNotes,
@@ -974,14 +925,16 @@ const FrameScreen = React.memo(({
                 }} />
                 患者数
               </Typography>
-              <Tooltip title="患者数に関する統計情報">
+              <Tooltip title={timerActive ? 
+                "患者数に関する統計情報（初期値、3秒間保持）" : 
+                "患者数に関する統計情報（自動計算）"}>
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>
 
             <Grid container spacing={isMobile ? 2 : 3}>
               {/* Patients Count */}
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
                     fontWeight: 600, 
@@ -992,33 +945,32 @@ const FrameScreen = React.memo(({
                     gap: 0.5
                   }}>
                     患者数
-                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
-                    </Typography>
                   </Typography>
                   <TextField
-                    value={patientsCount}
-                    onChange={handlePatientsChange}
-                    onFocus={handleFocusSelect}
+                    value={timerActive ? initialMorning : calculatedMorning}
                     variant="outlined"
                     fullWidth
                     size="small"
                     error={!!validationErrors.patientsCount}
-                    helperText={validationErrors.patientsCount}
-                    disabled={readOnly || reportStatus === 'submitted'} 
+                    helperText={timerActive ? 
+                      "初期値（3秒間保持）" : 
+                      "朝診の合計患者数（自動計算）"}
+                    disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
+                      readOnly: true,
                       sx: {
                         borderRadius: "8px",
-                        bgcolor: "#ffffff",
+                        bgcolor: "#f5f5f5",
                         height: textFieldHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.patientsCount ? "#df1c41" : "#dfe1e7",
+                          borderColor: validationErrors.patientsCount ? "#df1c41" : "#bdbdbd",
                         },
                         "& input": {
                           fontSize: fontSize.medium,
-                          textAlign: 'right',
-                          paddingRight: 2,
-                          fontWeight: 500
+                          textAlign: 'left',
+                          paddingLeft: 2,
+                          fontWeight: 500,
+                          color: "#666",
                         },
                       },
                     }}
@@ -1027,7 +979,7 @@ const FrameScreen = React.memo(({
               </Grid>
 
               {/* Outpatients Count */}
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
                     fontWeight: 600, 
@@ -1038,33 +990,32 @@ const FrameScreen = React.memo(({
                     gap: 0.5
                   }}>
                     午後診
-                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
-                    </Typography>
                   </Typography>
                   <TextField
-                    value={outpatientsCount}
-                    onChange={handleOutpatientsChange}
-                    onFocus={handleFocusSelect}
+                    value={timerActive ? initialAfternoon : calculatedAfternoon}
                     variant="outlined"
                     fullWidth
                     size="small"
                     error={!!validationErrors.outpatientsCount}
-                    helperText={validationErrors.outpatientsCount}
+                    helperText={timerActive ? 
+                      "初期値（3秒間保持）" : 
+                      "午後診の合計患者数（自動計算）"}
                     disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
+                      readOnly: true,
                       sx: {
                         borderRadius: "8px",
-                        bgcolor: "#ffffff",
+                        bgcolor: "#f5f5f5",
                         height: textFieldHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.outpatientsCount ? "#df1c41" : "#dfe1e7",
+                          borderColor: validationErrors.outpatientsCount ? "#df1c41" : "#bdbdbd",
                         },
                         "& input": {
                           fontSize: fontSize.medium,
-                          textAlign: 'right',
-                          paddingRight: 2,
-                          fontWeight: 500
+                          textAlign: 'left',
+                          paddingLeft: 2,
+                          fontWeight: 500,
+                          color: "#666",
                         },
                       },
                     }}
@@ -1073,7 +1024,7 @@ const FrameScreen = React.memo(({
               </Grid>
 
               {/* Night Consultation */}
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
                     fontWeight: 600, 
@@ -1084,33 +1035,32 @@ const FrameScreen = React.memo(({
                     gap: 0.5
                   }}>
                     夜診
-                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
-                    </Typography>
                   </Typography>
                   <TextField
-                    value={nightConsultation}
-                    onChange={handleNightConsultationChange}
-                    onFocus={handleFocusSelect}
+                    value={timerActive ? initialNight : calculatedNight}
                     variant="outlined"
                     fullWidth
                     size="small"
                     error={!!validationErrors.nightConsultation}
-                    helperText={validationErrors.nightConsultation}
+                    helperText={timerActive ? 
+                      "初期値（3秒間保持）" : 
+                      "夜診の合計患者数（自動計算）"}
                     disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
+                      readOnly: true,
                       sx: {
                         borderRadius: "8px",
-                        bgcolor: "#ffffff",
+                        bgcolor: "#f5f5f5",
                         height: textFieldHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.nightConsultation ? "#df1c41" : "#dfe1e7",
+                          borderColor: validationErrors.nightConsultation ? "#df1c41" : "#bdbdbd",
                         },
                         "& input": {
                           fontSize: fontSize.medium,
-                          textAlign: 'right',
-                          paddingRight: 2,
-                          fontWeight: 500
+                          textAlign: 'left',
+                          paddingLeft: 2,
+                          fontWeight: 500,
+                          color: "#666",
                         },
                       },
                     }}
@@ -1180,7 +1130,6 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={externalConsultation.PET}
                     onChange={handlePETChange}
-                    onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -1227,7 +1176,6 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={externalConsultation.MR}
                     onChange={handleMRChange}
-                    onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -1274,7 +1222,6 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={externalConsultation.CT}
                     onChange={handleCTChange}
-                    onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -1325,13 +1272,10 @@ const FrameScreen = React.memo(({
               readOnly={readOnly || reportStatus === 'submitted'}
               loading={loading}
             />
- 
           </Box>
         </Paper>
 
-
-
-                {/* Consolidated Content Section with Tabs */}
+        {/* Consolidated Content Section with Tabs */}
         <Paper
           elevation={0}
           sx={{
@@ -1340,8 +1284,7 @@ const FrameScreen = React.memo(({
             backgroundColor: '#ffffff',
           }}
         >
- <Box sx={{ p: sectionPadding }}>
-
+          <Box sx={{ p: sectionPadding }}>
             <ConsolidatedContentComponent
               data={consolidatedData}
               departments={departments}
