@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -15,14 +15,11 @@ import {
   IconButton,
   CircularProgress,
   Button,
-  Paper,
   Alert,
   Tooltip,
   FormControl,
-  InputAdornment,
   Grid
 } from "@mui/material";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -48,85 +45,46 @@ const ConsolidatedContentComponentCount = ({
   const [loading, setLoading] = useState(false);
   const [departmentOptions, setDepartmentOptions] = useState([]);
 
-  // Refs to track initialization state
-  const initializedRef = useRef(false);
-  const dataInitializedRef = useRef(false);
+  // Refs to track previous values
+  const prevHospitalIdRef = useRef(null);
+  const prevDataRef = useRef(null);
+  const hasInitializedRef = useRef(false);
 
   // Consultation types
-  const consultationTypes = [
+  const consultationTypes = useMemo(() => [
     { value: 'morning', label: '午前診', color: '#3498db', short: 'AM' },
     { value: 'afternoon', label: '午後診', color: '#9b59b6', short: 'PM' },
     { value: 'night', label: '夜診', color: '#e74c3c', short: '夜' }
-  ];
+  ], []);
 
-  // Load departments
-  useEffect(() => {
-    if (hospitalId && !initializedRef.current) {
-      loadDepartments();
-      initializedRef.current = true;
+  // Transform data prop to rows format - Pure function
+  const transformDataToRows = useCallback((reportData, deptOptions) => {
+    console.log('transformDataToRows called with:', {
+      dataLength: reportData?.length || 0,
+      deptOptionsLength: deptOptions?.length || 0,
+      dataSample: reportData?.[0]
+    });
+
+    // If no data, return empty array
+    if (!reportData || !Array.isArray(reportData) || reportData.length === 0) {
+      console.log('No data in transformDataToRows');
+      return [];
     }
-  }, [hospitalId]);
 
-  // Initialize rows when data or departments change
-  useEffect(() => {
-    // Only initialize from data once when component mounts
-    if (data && data.length > 0) {
-      console.log('Initializing rows from data for the first time');
-      initializeRowsFromData(data);
-    } else if (departmentOptions.length > 0 && rows.length === 0) {
-      console.log('Initializing empty rows from departments');
-      initializeRowsFromDepartments();
-    }
-  }, [data, departmentOptions]);
-
-  const loadDepartments = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.post(`${apiConfig.baseURL}/report-mid/departments`, { 
-        hospital_id: hospitalId
-      });
-
-      if (response.data.success && Array.isArray(response.data.data)) {
-        const departmentsData = response.data.data;
-        
-        // Format department options
-        const formattedDepartments = departmentsData.map(dept => ({
-          id: dept.id,
-          name: dept.name
-        }));
-        
-        setDepartmentOptions(formattedDepartments);
-      } else {
-        setDepartmentOptions([]);
-      }
-    } catch (error) {
-      console.error('Error loading departments:', error);
-      setDepartmentOptions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const initializeRowsFromData = (reportData) => {
-    if (!reportData || !Array.isArray(reportData)) {
-      console.log('No valid report data, initializing from departments');
-      initializeRowsFromDepartments();
-      return;
-    }
-    
-    console.log('Initializing rows from data:', reportData.length, 'items');
-    
     // Group data by sequence_no and department_id
     const groupedData = {};
     
     reportData.forEach(item => {
       const key = `${item.sequence_no}_${item.department_id}`;
       if (!groupedData[key]) {
+        // Find department name from options
+        const department = deptOptions?.find(dept => String(dept.id) === String(item.department_id));
+        
         groupedData[key] = {
-          id: `row-${key}`,
+          id: `row-${key}-${Date.now()}`,
           sequence_no: item.sequence_no,
           department_id: item.department_id,
-          department_name: item.department?.name || item.department_name,
+          department_name: department?.name || '',
           consultations: {}
         };
       }
@@ -137,7 +95,13 @@ const ConsolidatedContentComponentCount = ({
       };
     });
     
-    const newRows = Object.values(groupedData).map(group => {
+    // Convert to array and sort by sequence_no
+    const sortedGroups = Object.values(groupedData).sort((a, b) => 
+      (a.sequence_no || 0) - (b.sequence_no || 0)
+    );
+    
+    // Add missing consultation types and re-index sequence numbers
+    const newRows = sortedGroups.map((group, index) => {
       // Ensure all consultation types exist
       const consultationsMap = {};
       consultationTypes.forEach(type => {
@@ -149,6 +113,8 @@ const ConsolidatedContentComponentCount = ({
       
       return {
         ...group,
+        id: group.id,
+        sequence_no: index + 1,
         consultations: consultationTypes.map(type => ({
           type: type.value,
           total_patients: consultationsMap[type.value]?.total_patients || 0,
@@ -157,31 +123,182 @@ const ConsolidatedContentComponentCount = ({
       };
     });
     
-    console.log('Created rows from data:', newRows.length, 'rows');
-    setRows(newRows);
-    calculateDepartmentStats(newRows);
-  };
-
-  const initializeRowsFromDepartments = () => {
-    // Start with one empty row if no data
-    if (departmentOptions.length > 0 && rows.length === 0) {
-      console.log('Creating initial empty row');
-      const initialRow = {
-        id: `new-${Date.now()}`,
-        sequence_no: 1,
-        department_id: null,
-        department_name: '',
-        consultations: consultationTypes.map(type => ({
-          type: type.value,
-          total_patients: 0,
-          new_patients: 0
-        }))
-      };
-      
-      setRows([initialRow]);
-      calculateDepartmentStats([initialRow]);
+    console.log('Transformed rows:', newRows.length, 'rows');
+    if (newRows.length > 0) {
+      console.log('First transformed row:', newRows[0]);
     }
-  };
+    return newRows;
+  }, [consultationTypes]);
+
+  // Load departments
+  const loadDepartments = useCallback(async (forceReload = false) => {
+    if (!hospitalId) {
+      console.log('No hospital ID, skipping department load');
+      setDepartmentOptions([]);
+      return;
+    }
+
+    // Skip if already loaded and not forcing reload
+    if (!forceReload && departmentOptions.length > 0 && hasInitializedRef.current) {
+      console.log('Departments already loaded, skipping');
+      return;
+    }
+
+    console.log('Loading departments for hospital:', hospitalId);
+    setLoading(true);
+    
+    try {
+      const response = await axios.post(`${apiConfig.baseURL}/report-mid/departments`, { 
+        hospital_id: hospitalId
+      });
+
+      if (response.data.success && Array.isArray(response.data.data)) {
+        const departmentsData = response.data.data.map(dept => ({
+          id: dept.id,
+          name: dept.name
+        }));
+        
+        console.log('Departments loaded:', departmentsData.length);
+        setDepartmentOptions(departmentsData);
+        hasInitializedRef.current = true;
+        
+        // If we have data, transform it with the new departments
+        if (data && Array.isArray(data) && data.length > 0) {
+          console.log('Transforming existing data with new departments');
+          const newRows = transformDataToRows(data, departmentsData);
+          setRows(newRows);
+          if (onDataChange && newRows.length > 0) {
+            notifyParent(newRows);
+          }
+        } else if (rows.length === 0) {
+          // Create empty row if no rows exist
+          console.log('Creating empty row as no data exists');
+          const emptyRow = createEmptyRow();
+          setRows([emptyRow]);
+          notifyParent([emptyRow]);
+        }
+      } else {
+        console.log('Failed to load departments');
+        setDepartmentOptions([]);
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      setDepartmentOptions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [hospitalId, data, departmentOptions.length, rows.length, transformDataToRows, onDataChange]);
+
+  // Create empty row
+  const createEmptyRow = useCallback((sequenceNo = 1) => ({
+    id: `new-${Date.now()}`,
+    sequence_no: sequenceNo,
+    department_id: null,
+    department_name: '',
+    consultations: consultationTypes.map(type => ({
+      type: type.value,
+      total_patients: 0,
+      new_patients: 0
+    }))
+  }), [consultationTypes]);
+
+  // Initialize rows from external data
+  const initializeRowsFromData = useCallback(() => {
+    console.log('initializeRowsFromData called:', {
+      dataLength: data?.length || 0,
+      deptOptionsLength: departmentOptions.length,
+      rowsLength: rows.length,
+      prevDataLength: prevDataRef.current?.length || 0
+    });
+
+    // If no data, create empty row if needed
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      if (rows.length === 0) {
+        console.log('No data and no rows, creating empty row');
+        const emptyRow = createEmptyRow();
+        setRows([emptyRow]);
+        notifyParent([emptyRow]);
+      }
+      return;
+    }
+
+    // Check if data actually changed
+    const dataChanged = !prevDataRef.current || 
+      JSON.stringify(prevDataRef.current) !== JSON.stringify(data);
+    
+    if (!dataChanged) {
+      console.log('Data not changed, skipping initialization');
+      return;
+    }
+
+    console.log('Data changed, initializing rows');
+    
+    // If we have department options, transform data immediately
+    if (departmentOptions.length > 0) {
+      const newRows = transformDataToRows(data, departmentOptions);
+      console.log('Setting rows from transformed data:', newRows.length);
+      setRows(newRows);
+      if (onDataChange && newRows.length > 0) {
+        notifyParent(newRows);
+      }
+    } else {
+      // Load departments first
+      console.log('No department options, loading departments first');
+      loadDepartments();
+    }
+    
+    prevDataRef.current = data;
+  }, [data, departmentOptions, rows.length, transformDataToRows, createEmptyRow, loadDepartments, onDataChange]);
+
+  // Main effect for hospital ID changes
+  useEffect(() => {
+    console.log('=== HOSPITAL ID EFFECT ===');
+    console.log('Previous hospital:', prevHospitalIdRef.current);
+    console.log('Current hospital:', hospitalId);
+    
+    if (hospitalId !== prevHospitalIdRef.current) {
+      console.log('Hospital changed, resetting state');
+      // Reset state when hospital changes
+      setRows([]);
+      setDepartmentOptions([]);
+      hasInitializedRef.current = false;
+      prevDataRef.current = null;
+      prevHospitalIdRef.current = hospitalId;
+      
+      if (hospitalId) {
+        loadDepartments(true);
+      }
+    }
+  }, [hospitalId, loadDepartments]);
+
+  // Main effect for data changes
+  useEffect(() => {
+    console.log('=== DATA EFFECT ===');
+    console.log('Data length:', data?.length || 0);
+    
+    // If we have data, initialize rows
+    if (data && Array.isArray(data) && data.length > 0) {
+      initializeRowsFromData();
+    } else if (!data || data.length === 0) {
+      // If data is empty and we have no rows, create empty row
+      if (rows.length === 0 && departmentOptions.length > 0) {
+        console.log('Empty data with no rows, creating empty row');
+        const emptyRow = createEmptyRow();
+        setRows([emptyRow]);
+        notifyParent([emptyRow]);
+      }
+    }
+  }, [data, initializeRowsFromData, rows.length, departmentOptions.length, createEmptyRow]);
+
+  // Initial load effect
+  useEffect(() => {
+    if (hospitalId && !hasInitializedRef.current) {
+      console.log('Initial mount with hospital ID:', hospitalId);
+      loadDepartments();
+    }
+  }, [hospitalId, loadDepartments]);
+
+
 
   // Handler functions
   const handleTotalPatientsChange = (rowId, consultationIndex, value) => {
@@ -204,7 +321,6 @@ const ConsolidatedContentComponentCount = ({
     });
     
     setRows(newRows);
-    calculateDepartmentStats(newRows);
     notifyParent(newRows);
   };
 
@@ -228,30 +344,15 @@ const ConsolidatedContentComponentCount = ({
     });
     
     setRows(newRows);
-    calculateDepartmentStats(newRows);
     notifyParent(newRows);
   };
 
   const handleAddRow = () => {
-    console.log('Current rows before adding:', rows.length);
-    const newRowId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const newRow = {
-      id: newRowId,
-      sequence_no: rows.length + 1,
-      department_id: null,
-      department_name: '',
-      consultations: consultationTypes.map(type => ({
-        type: type.value,
-        total_patients: 0,
-        new_patients: 0
-      }))
-    };
-    
-    console.log('Adding new row:', newRow);
+    console.log('Adding new row');
+    const newRow = createEmptyRow(rows.length + 1);
     const newRows = [...rows, newRow];
     console.log('New rows after adding:', newRows.length);
     setRows(newRows);
-    calculateDepartmentStats(newRows);
     notifyParent(newRows);
   };
 
@@ -266,23 +367,20 @@ const ConsolidatedContentComponentCount = ({
     
     console.log('After removal:', newRows.length, 'rows');
     setRows(newRows);
-    calculateDepartmentStats(newRows);
     notifyParent(newRows);
   };
 
   const handleDepartmentChange = (rowId, departmentId) => {
     console.log('Changing department for row:', rowId, 'to:', departmentId);
-    const department = departmentOptions.find(dept => dept.id === departmentId);
+    const department = departmentOptions.find(dept => String(dept.id) === String(departmentId));
     
     const newRows = rows.map(row => {
       if (row.id === rowId) {
-        const updatedRow = {
+        return {
           ...row,
           department_id: departmentId,
           department_name: department?.name || ''
         };
-        console.log('Updated row:', updatedRow);
-        return updatedRow;
       }
       return row;
     });
@@ -317,15 +415,17 @@ const ConsolidatedContentComponentCount = ({
     if (onDataChange) {
       const flatData = [];
       updatedRows.forEach(row => {
-        row.consultations.forEach(consultation => {
-          flatData.push({
-            sequence_no: row.sequence_no,
-            department_id: row.department_id,
-            consultation_type: consultation.type,
-            total_patients: consultation.total_patients,
-            new_patients: consultation.new_patients
+        if (row.department_id) { // Only include rows with department selected
+          row.consultations.forEach(consultation => {
+            flatData.push({
+              sequence_no: row.sequence_no,
+              department_id: row.department_id,
+              consultation_type: consultation.type,
+              total_patients: consultation.total_patients,
+              new_patients: consultation.new_patients
+            });
           });
-        });
+        }
       });
       console.log('Flat data for parent:', flatData.length, 'items');
       onDataChange(flatData);
@@ -362,14 +462,11 @@ const ConsolidatedContentComponentCount = ({
     }, 0);
   };
 
-  const calculateDepartmentStats = (rowsData) => {
-    // Stats are now handled differently since we don't have doctor stats
-  };
-
   // Check if department is already used in other rows
   const isDepartmentAlreadyUsed = (departmentId, currentRowId) => {
+    if (!departmentId) return false;
     return rows.some(row => 
-      row.id !== currentRowId && row.department_id === departmentId
+      row.id !== currentRowId && String(row.department_id) === String(departmentId)
     );
   };
 
@@ -469,6 +566,13 @@ const ConsolidatedContentComponentCount = ({
                 borderRadius: '2px'
               }} />
               診療部門別集計 (患者数)
+              <Typography component="span" sx={{ 
+                fontSize: fontSize.small,
+                color: '#666',
+                ml: 2
+              }}>
+                データ数: {rows.length}行 ({rows.length * 3}時間帯)
+              </Typography>
             </Typography>
             <Typography sx={{ 
               fontSize: fontSize.medium,
@@ -541,11 +645,11 @@ const ConsolidatedContentComponentCount = ({
               gap: 0.5
             }}>
               <InfoOutlinedIcon fontSize="small" />
-              利用可能な診療区:
+              利用可能な診療区 ({departmentOptions.length}):
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {departmentOptions.map(dept => {
-                const isSelected = rows.some(row => row.department_id === dept.id);
+              {departmentOptions.slice(0, 10).map(dept => {
+                const isSelected = rows.some(row => String(row.department_id) === String(dept.id));
                 
                 return (
                   <Box
@@ -571,6 +675,11 @@ const ConsolidatedContentComponentCount = ({
                   </Box>
                 );
               })}
+              {departmentOptions.length > 10 && (
+                <Typography sx={{ fontSize: fontSize.small, color: '#666' }}>
+                  ...他{departmentOptions.length - 10}部門
+                </Typography>
+              )}
             </Box>
           </Box>
         )}
@@ -782,7 +891,7 @@ const ConsolidatedContentComponentCount = ({
                                   );
                                 }
                                 
-                                const selectedDept = departmentOptions.find(d => d.id === selected);
+                                const selectedDept = departmentOptions.find(d => String(d.id) === String(selected));
                                 
                                 return (
                                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>

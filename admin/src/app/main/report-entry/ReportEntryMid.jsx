@@ -434,7 +434,7 @@ const validateReportData = (formData) => {
   }
 
   // Validate both types of consolidated data
-  const hasDoctorData = formData.report_details && formData.report_details.length > 0;
+  /*const hasDoctorData = formData.report_details && formData.report_details.length > 0;
   const hasCountData = formData.report_details_mid && formData.report_details_mid.length > 0;
   
   if (!hasDoctorData && !hasCountData) {
@@ -466,7 +466,7 @@ const validateReportData = (formData) => {
         errors[`report_details_mid_${index}_new_patients`] = '新規患者数は必須です';
       }
     });
-  }
+  }*/
 
   return {
     isValid: Object.keys(errors).length === 0,
@@ -1430,7 +1430,7 @@ function ReportEntryMid({newHospital}) {
               flexDirection: 'column',
               position: 'relative'
             }}
-          >
+          > 
             {/* Loading Overlay - only show during initial load */}
             {loading && (
               <Box sx={{

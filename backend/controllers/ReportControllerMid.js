@@ -15,13 +15,13 @@ function generateReportNo(medicalCenterId, date) {
 export const getReportByDate = async (req, res, next) => {
   try {
     const { date, hospital_id } = req.body;
-    
+
     if (!date || !hospital_id) {
       return response.error("Date and hospital_id are required", res, next);
     }
 
     const reportDate = new Date(date);
-    
+
     // Get existing report
     const existingReport = await prisma.report.findUnique({
       where: {
@@ -73,12 +73,66 @@ export const getReportByDate = async (req, res, next) => {
       }
     });
 
+
+
+    if (!existingReport) {
+      const report = await prisma.report.findFirst({
+        where: {
+          medical_center_id: parseInt(hospital_id),
+        },
+        select: {
+          id: true,
+          report_date: true
+        },
+        orderBy: {
+          id: 'desc'
+        }
+      });
+
+      if (report) {
+
+        // Get report details for report_detail_mid
+        const reportDetails = await prisma.report_detail_mid.findMany({
+          where: {
+            report_id: report.id
+          },
+          include: {
+            department: true
+          },
+          orderBy: [
+            { sequence_no: 'asc' },
+            { consultation_type: 'asc' }
+          ]
+        });
+
+        // Format the response: Set total_patients to 0 and new_patients to 0
+        const formattedResponse = reportDetails.map(detail => {
+          // Create a new object without patient_count
+          const { patient_count, ...rest } = detail;
+          return {
+            ...rest,
+            total_patients: 0,
+            new_patients: 0
+          };
+        });
+
+        return response.success({
+          report: { "report_details_mid": formattedResponse },
+          departments,
+          doctors,
+          exists: true
+        }, res);
+
+      }
+    }
+
     response.success({
       report: existingReport,
       departments,
       doctors,
       exists: !!existingReport
     }, res);
+
 
   } catch (error) {
     console.error('Error in getReportByDate:', error);
@@ -487,6 +541,70 @@ export const getDepartmentsWithDoctors = async (req, res, next) => {
     response.success(formattedDepartments, res);
   } catch (error) {
     console.error('Error in getDepartmentsWithDoctors:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+export const getLastReportMidData = async (req, res, next) => {
+  try {
+    const { hospital_id, report_date } = req.body;
+    
+    // Validate required parameters
+    if (!hospital_id) {
+      return response.error("Hospital ID is required", res, next);
+    }
+ 
+    // Find the report for the calculated date
+    const report = await prisma.report.findFirst({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+      },
+      select: {
+        id: true,
+        report_date: true
+      },
+      orderBy: {
+        id: 'desc'
+      }
+    });
+
+    console.log('xxxxxx', report)
+
+    // If no report found for the calculated date, return error
+    if (!report) {
+      const dateString = searchDate.toISOString().split('T')[0];
+      return response.error(`No report found for date: ${dateString} (7 days before ${report_date})`, res, next);
+    }
+
+    // Get report details for report_detail_mid
+    const reportDetails = await prisma.report_detail_mid.findMany({
+      where: {
+        report_id: report.id
+      },
+      include: {
+        department: true
+      },
+      orderBy: [
+        { sequence_no: 'asc' },
+        { consultation_type: 'asc' }
+      ]
+    });
+
+    // Format the response: Set total_patients to 0 and new_patients to 0
+    const formattedResponse = reportDetails.map(detail => {
+      // Create a new object without patient_count
+      const { patient_count, ...rest } = detail;
+      return {
+        ...rest,
+        total_patients: 0,
+        new_patients: 0
+      };
+    });
+console.log(formattedResponse,'formattedResponse')
+    response.success(formattedResponse, res);
+
+  } catch (error) {
+    console.error('Error in getLastReportMidData:', error);
     response.error(error.message, res, next);
   }
 };

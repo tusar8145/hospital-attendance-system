@@ -14,13 +14,10 @@ import {
   IconButton,
   CircularProgress,
   Button,
-  Paper,
   Alert,
   Tooltip,
   FormControl,
-  Chip,
-  Avatar,
-  AvatarGroup
+  Chip
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -52,8 +49,9 @@ const ConsolidatedContentComponent = ({
   const [doctorOptions, setDoctorOptions] = useState({});
   const [doctorCache, setDoctorCache] = useState({});
 
-  // Refs to track initialization state
-  const initializedRef = useRef(false);
+  // Refs to track previous values
+  const prevDataRef = useRef(data);
+  const prevHospitalIdRef = useRef(hospitalId);
 
   // Consultation types
   const consultationTypes = [
@@ -62,27 +60,84 @@ const ConsolidatedContentComponent = ({
     { value: 'night', label: '夜診', color: '#e74c3c', short: '夜' }
   ];
 
+  // Create empty row
+  const createEmptyRow = useCallback((sequenceNo = 1) => ({
+    id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    sequence_no: sequenceNo,
+    floor: '',
+    consultations: consultationTypes.map(type => ({
+      type: type.value,
+      doctor_id_1: null,
+      doctor_id_2: null,
+      doctor_id_3: null
+    }))
+  }), [consultationTypes]);
+
+  // Transform data to rows format
+  const transformDataToRows = useCallback((reportData) => {
+    if (!reportData || !Array.isArray(reportData) || reportData.length === 0) {
+      return [];
+    }
+
+    // Group data by sequence_no and floor
+    const groupedData = {};
+    
+    reportData.forEach(item => {
+      const floor = item.floor || '未設定';
+      const key = `${item.sequence_no}_${floor}`;
+      if (!groupedData[key]) {
+        groupedData[key] = {
+          id: `row-${key}-${Date.now()}`,
+          sequence_no: item.sequence_no,
+          floor: floor,
+          consultations: {}
+        };
+      }
+      
+      groupedData[key].consultations[item.consultation_type] = {
+        doctor_id_1: item.doctor_id_1,
+        doctor_id_2: item.doctor_id_2,
+        doctor_id_3: item.doctor_id_3
+      };
+    });
+    
+    const newRows = Object.values(groupedData).map(group => {
+      // Ensure all consultation types exist
+      const consultationsMap = {};
+      consultationTypes.forEach(type => {
+        consultationsMap[type.value] = group.consultations[type.value] || {
+          doctor_id_1: null,
+          doctor_id_2: null,
+          doctor_id_3: null
+        };
+      });
+      
+      return {
+        ...group,
+        consultations: consultationTypes.map(type => ({
+          type: type.value,
+          doctor_id_1: consultationsMap[type.value]?.doctor_id_1 || null,
+          doctor_id_2: consultationsMap[type.value]?.doctor_id_2 || null,
+          doctor_id_3: consultationsMap[type.value]?.doctor_id_3 || null
+        }))
+      };
+    });
+    
+    // Sort by sequence_no
+    newRows.sort((a, b) => a.sequence_no - b.sequence_no);
+    
+    return newRows;
+  }, [consultationTypes]);
+
   // Load departments with doctors from API
-  useEffect(() => {
-    if (hospitalId && !initializedRef.current) {
-      loadDepartmentsWithDoctors();
-      initializedRef.current = true;
+  const loadDepartmentsWithDoctors = useCallback(async () => {
+    if (!hospitalId) {
+      setDepartmentOptions([]);
+      setDoctorOptions({});
+      setDoctorCache({});
+      return;
     }
-  }, [hospitalId]);
 
-  // Initialize rows when data or departments change
-  useEffect(() => {
-    // Only initialize from data once when component mounts
-    if (data && data.length > 0 && rows.length === 0) {
-      console.log('Initializing rows from data for the first time');
-      initializeRowsFromData(data);
-    } else if (departmentOptions.length > 0 && rows.length === 0) {
-      console.log('Initializing empty rows from floors');
-      initializeRowsFromFloors();
-    }
-  }, [data, departmentOptions]);
-
-  const loadDepartmentsWithDoctors = async () => {
     setLoading(true);
     try {
       const response = await axios.post(`${apiConfig.baseURL}/report-mid/departments-with-doctors`, { 
@@ -102,7 +157,7 @@ const ConsolidatedContentComponent = ({
         
         setDepartmentOptions(formattedDepartments);
         
-        // Build doctor options by floor (not by department)
+        // Build doctor options by floor
         const doctorsByFloor = {};
         const allDoctorsCache = {};
         
@@ -115,12 +170,10 @@ const ConsolidatedContentComponent = ({
           // Add doctors from this department to the floor
           if (dept.doctors) {
             dept.doctors.forEach(doctor => {
-              // Check if doctor already exists in this floor to avoid duplicates
               const exists = doctorsByFloor[floor].some(d => d.id === doctor.id);
               if (!exists) {
                 doctorsByFloor[floor].push(doctor);
               }
-              // Cache doctors by ID for quick lookup
               allDoctorsCache[doctor.id] = doctor;
             });
           }
@@ -134,149 +187,85 @@ const ConsolidatedContentComponent = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [hospitalId]);
 
-const initializeRowsFromData = (reportData) => {
-  if (!reportData || !Array.isArray(reportData)) {
-    console.log('No valid report data, initializing from floors');
-    initializeRowsFromFloors();
-    return;
-  }
-  
-  console.log('=== initializeRowsFromData called ===');
-  console.log('Received reportData:', reportData);
-  console.log('Number of items:', reportData.length);
-  console.log('First item:', reportData[0]);
-  console.log('===============================');
-  
-  // Group data by sequence_no and floor (instead of department_id)
-  const groupedData = {};
-  
-  reportData.forEach(item => {
-    console.log('Processing item:', item);
-    const floor = item.floor || '未設定';
-    const key = `${item.sequence_no}_${floor}`;
-    if (!groupedData[key]) {
-      groupedData[key] = {
-        id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        sequence_no: item.sequence_no,
-        floor: floor,
-        consultations: {}
-      };
+  // Handle data changes
+  useEffect(() => {
+    // Check if data actually changed
+    const dataChanged = prevDataRef.current !== data && 
+      JSON.stringify(prevDataRef.current) !== JSON.stringify(data);
+    
+    if (!dataChanged) return;
+    
+    if (data && Array.isArray(data) && data.length > 0) {
+      // We have data, transform it
+      const newRows = transformDataToRows(data);
+      setRows(newRows);
+      notifyParent(newRows);
+    } else {
+      // Data is empty, clear rows
+      setRows([]);
+      notifyParent([]);
     }
     
-    groupedData[key].consultations[item.consultation_type] = {
-      doctor_id_1: item.doctor_id_1,
-      doctor_id_2: item.doctor_id_2,
-      doctor_id_3: item.doctor_id_3
-    };
-  });
-  
-  console.log('Grouped data:', groupedData);
-  
-  const newRows = Object.values(groupedData).map(group => {
-    // Ensure all consultation types exist
-    const consultationsMap = {};
-    consultationTypes.forEach(type => {
-      consultationsMap[type.value] = group.consultations[type.value] || {
-        doctor_id_1: null,
-        doctor_id_2: null,
-        doctor_id_3: null
-      };
-    });
-    
-    return {
-      ...group,
-      consultations: consultationTypes.map(type => ({
-        type: type.value,
-        doctor_id_1: consultationsMap[type.value]?.doctor_id_1 || null,
-        doctor_id_2: consultationsMap[type.value]?.doctor_id_2 || null,
-        doctor_id_3: consultationsMap[type.value]?.doctor_id_3 || null
-      }))
-    };
-  });
-  
-  // Sort by sequence_no
-  newRows.sort((a, b) => a.sequence_no - b.sequence_no);
-  
-  console.log('Created rows:', newRows);
-  console.log('Number of rows:', newRows.length);
-  setRows(newRows);
-  
-  // Immediately notify parent with the initialized data
-  notifyParent(newRows);
-};
+    prevDataRef.current = data;
+  }, [data, transformDataToRows]);
 
-  const initializeRowsFromFloors = () => {
-    // Start with one empty row if no data
-    if (rows.length === 0) {
-      console.log('Creating initial empty row');
-      const initialRow = {
-        id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        sequence_no: 1,
-        floor: '',
-        consultations: consultationTypes.map(type => ({
-          type: type.value,
-          doctor_id_1: null,
-          doctor_id_2: null,
-          doctor_id_3: null
-        }))
-      };
+  // Handle hospital ID changes
+  useEffect(() => {
+    if (hospitalId !== prevHospitalIdRef.current) {
+      // Reset everything when hospital changes
+      setRows([]);
+      setDepartmentOptions([]);
+      setDoctorOptions({});
+      setDoctorCache({});
+      prevHospitalIdRef.current = hospitalId;
+      prevDataRef.current = null;
       
-      setRows([initialRow]);
+      if (hospitalId) {
+        loadDepartmentsWithDoctors();
+      }
     }
-  };
+  }, [hospitalId, loadDepartmentsWithDoctors]);
 
-  const getDoctorsForFloor = (floor) => {
-    return doctorOptions[floor] || [];
-  };
-
-  const findDoctorById = (doctorId) => {
-    return doctorCache[doctorId];
-  };
-
-  const getDoctorDisplayName = (doctorId) => {
-    const doctor = findDoctorById(doctorId);
-    if (!doctor) return '';
-    
-    return doctor.license_no ? `${doctor.name} (${doctor.license_no})` : doctor.name;
-  };
-
-  const getDoctorDepartment = (doctorId) => {
-    const doctor = findDoctorById(doctorId);
-    if (!doctor) return '';
-    
-    // Find which department(s) this doctor belongs to
-    const departmentsForDoctor = departmentOptions.filter(dept => 
-      doctorOptions[dept.floor]?.some(d => d.id === doctorId)
-    );
-    
-    if (departmentsForDoctor.length === 0) return '';
-    if (departmentsForDoctor.length === 1) return departmentsForDoctor[0].name;
-    
-    return `${departmentsForDoctor.length}診療区`;
-  };
-
-  // Format floor display
-  const formatFloorDisplay = (floor) => {
-    if (!floor || floor === '未設定') return '未選択';
-    
-    // Check if floor contains Japanese "階" character
-    if (floor.includes('階')) {
-      return floor;
+  // Load departments when component mounts or hospital changes
+  useEffect(() => {
+    if (hospitalId) {
+      loadDepartmentsWithDoctors();
     }
-    
-    // Check if it's a simple number or number with suffix
-    const match = floor.match(/^(\d+)([a-zA-Z]*)$/);
-    if (match) {
-      const number = match[1];
-      const suffix = match[2] || '';
-      return `${number}階${suffix}`;
+  }, [hospitalId, loadDepartmentsWithDoctors]);
+
+  // Initialize with empty row when departments are loaded and no data exists
+  useEffect(() => {
+    // If we have loaded departments, no external data, and no rows, create empty row
+    if (departmentOptions.length > 0 && (!data || data.length === 0) && rows.length === 0) {
+      const emptyRow = createEmptyRow();
+      setRows([emptyRow]);
+      notifyParent([emptyRow]);
     }
-    
-    // Return as is with 階 appended
-    return `${floor}階`;
-  };
+  }, [departmentOptions, data, rows.length, createEmptyRow]);
+
+  // Notify parent of changes
+  const notifyParent = useCallback((updatedRows) => {
+    if (onDataChange) {
+      const flatData = [];
+      updatedRows.forEach(row => {
+        if (row.floor) { // Only include rows with floor selected
+          row.consultations.forEach(consultation => {
+            flatData.push({
+              sequence_no: row.sequence_no,
+              floor: row.floor,
+              consultation_type: consultation.type,
+              doctor_id_1: consultation.doctor_id_1,
+              doctor_id_2: consultation.doctor_id_2,
+              doctor_id_3: consultation.doctor_id_3
+            });
+          });
+        }
+      });
+      onDataChange(flatData);
+    }
+  }, [onDataChange]);
 
   // Handler functions
   const handleDoctorChange = (rowId, consultationIndex, doctorField, doctorId) => {
@@ -301,47 +290,35 @@ const initializeRowsFromData = (reportData) => {
   };
 
   const handleAddRow = () => {
-    console.log('Current rows before adding:', rows.length);
-    const newRowId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const newRow = {
-      id: newRowId,
-      sequence_no: rows.length + 1,
-      floor: '',
-      consultations: consultationTypes.map(type => ({
-        type: type.value,
-        doctor_id_1: null,
-        doctor_id_2: null,
-        doctor_id_3: null
-      }))
-    };
-    
-    console.log('Adding new row:', newRow);
+    const newRow = createEmptyRow(rows.length + 1);
     const newRows = [...rows, newRow];
-    console.log('New rows after adding:', newRows.length);
     setRows(newRows);
     notifyParent(newRows);
   };
 
   const handleRemoveRow = (rowId) => {
-    console.log('Removing row:', rowId);
-    const newRows = rows.filter(row => row.id !== rowId);
-    
-    // Update sequence numbers
-    newRows.forEach((row, index) => {
-      row.sequence_no = index + 1;
-    });
-    
-    console.log('After removal:', newRows.length, 'rows');
-    setRows(newRows);
-    notifyParent(newRows);
+    // Don't remove if it's the only row left - just clear it
+    if (rows.length === 1) {
+      const clearedRow = createEmptyRow(1);
+      setRows([clearedRow]);
+      notifyParent([clearedRow]);
+    } else {
+      const newRows = rows.filter(row => row.id !== rowId);
+      
+      // Update sequence numbers
+      newRows.forEach((row, index) => {
+        row.sequence_no = index + 1;
+      });
+      
+      setRows(newRows);
+      notifyParent(newRows);
+    }
   };
 
   const handleFloorChange = (rowId, floor) => {
-    console.log('Changing floor for row:', rowId, 'to:', floor);
-    
     const newRows = rows.map(row => {
       if (row.id === rowId) {
-        const updatedRow = {
+        return {
           ...row,
           floor: floor,
           // Reset doctors when floor changes
@@ -352,8 +329,6 @@ const initializeRowsFromData = (reportData) => {
             doctor_id_3: null
           }))
         };
-        console.log('Updated row:', updatedRow);
-        return updatedRow;
       }
       return row;
     });
@@ -369,7 +344,7 @@ const initializeRowsFromData = (reportData) => {
     }
     
     const newRows = [...rows];
-    const swapIndex = direction === 'up' ? index - 1 : direction === 'down' ? index + 1 : index;
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
     
     // Swap rows
     [newRows[index], newRows[swapIndex]] = [newRows[swapIndex], newRows[index]];
@@ -383,38 +358,53 @@ const initializeRowsFromData = (reportData) => {
     notifyParent(newRows);
   };
 
-  const notifyParent = (updatedRows) => {
-    console.log('=== ConsolidatedContentComponent notifyParent ===');
-    console.log('Rows to send:', updatedRows);
-    console.log('Rows structure:', JSON.stringify(updatedRows, null, 2));
-    
-    if (onDataChange) {
-      const flatData = [];
-      updatedRows.forEach(row => {
-        row.consultations.forEach(consultation => {
-          const item = {
-            sequence_no: row.sequence_no,
-            floor: row.floor,
-            consultation_type: consultation.type,
-            doctor_id_1: consultation.doctor_id_1,
-            doctor_id_2: consultation.doctor_id_2,
-            doctor_id_3: consultation.doctor_id_3
-          };
-          console.log('Adding item to flatData:', item);
-          flatData.push(item);
-        });
-      });
-      
-      console.log('=== Final flat data ===');
-      console.log('Number of items:', flatData.length);
-      console.log('All items:', JSON.stringify(flatData, null, 2));
-      console.log('==========================');
-      
-      onDataChange(flatData);
-    }
+  // Helper functions
+  const getDoctorsForFloor = (floor) => {
+    return doctorOptions[floor] || [];
   };
 
-  // Check if floor is already used in other rows
+  const findDoctorById = (doctorId) => {
+    return doctorCache[doctorId];
+  };
+
+  const getDoctorDisplayName = (doctorId) => {
+    const doctor = findDoctorById(doctorId);
+    if (!doctor) return '';
+    
+    return doctor.license_no ? `${doctor.name} (${doctor.license_no})` : doctor.name;
+  };
+
+  const getDoctorDepartment = (doctorId) => {
+    const doctor = findDoctorById(doctorId);
+    if (!doctor) return '';
+    
+    const departmentsForDoctor = departmentOptions.filter(dept => 
+      doctorOptions[dept.floor]?.some(d => d.id === doctorId)
+    );
+    
+    if (departmentsForDoctor.length === 0) return '';
+    if (departmentsForDoctor.length === 1) return departmentsForDoctor[0].name;
+    
+    return `${departmentsForDoctor.length}診療区`;
+  };
+
+  const formatFloorDisplay = (floor) => {
+    if (!floor || floor === '未設定') return '未選択';
+    
+    if (floor.includes('階')) {
+      return floor;
+    }
+    
+    const match = floor.match(/^(\d+)([a-zA-Z]*)$/);
+    if (match) {
+      const number = match[1];
+      const suffix = match[2] || '';
+      return `${number}階${suffix}`;
+    }
+    
+    return `${floor}階`;
+  };
+
   const isFloorAlreadyUsed = (floor, currentRowId) => {
     if (!floor) return false;
     return rows.some(row => 
@@ -422,11 +412,9 @@ const initializeRowsFromData = (reportData) => {
     );
   };
 
-  // Get available floors with doctor counts
   const getAvailableFloors = () => {
     const floors = Object.keys(doctorOptions);
     
-    // Sort floors: "未設定" first, then numeric floors, then others
     return floors.sort((a, b) => {
       if (a === '未設定') return -1;
       if (b === '未設定') return 1;
@@ -444,12 +432,10 @@ const initializeRowsFromData = (reportData) => {
     }));
   };
 
-  // Get departments for a specific floor
   const getDepartmentsForFloor = (floor) => {
     return departmentOptions.filter(dept => dept.floor === floor);
   };
 
-  // Get used floors (excluding current row)
   const getUsedFloors = (currentRowId = null) => {
     return rows
       .filter(row => row.id !== currentRowId && row.floor)
@@ -466,6 +452,7 @@ const initializeRowsFromData = (reportData) => {
   };
   const selectHeight = isMobile ? 36 : isTablet ? 40 : 44;
 
+  // Loading state
   if (externalLoading || loading) {
     return (
       <Box sx={{ 
@@ -484,6 +471,7 @@ const initializeRowsFromData = (reportData) => {
     );
   }
 
+  // No hospital selected
   if (!hospitalId) {
     return (
       <Box sx={{ 
@@ -515,6 +503,9 @@ const initializeRowsFromData = (reportData) => {
 
   const availableFloors = getAvailableFloors();
 
+  // Keep all the rest of your JSX exactly as it was...
+  // ... (all the UI rendering code from your original component)
+
   return (
     <Box
       sx={{
@@ -525,7 +516,7 @@ const initializeRowsFromData = (reportData) => {
         width: "100%",
       }}
     >
-      {/* Header Section */}
+      {/* Header Section - Same as before */}
       <Box sx={{ 
         p: isMobile ? 2 : 3,
         borderBottom: '1px solid #e0e0e0',
@@ -1520,7 +1511,7 @@ const initializeRowsFromData = (reportData) => {
               </React.Fragment>
             ))}
             
-            {/* Empty State */}
+            {/* Empty State - Modified to not show when we have rows */}
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} sx={{ 
@@ -1551,23 +1542,8 @@ const initializeRowsFromData = (reportData) => {
                       maxWidth: '400px',
                       textAlign: 'center'
                     }}>
-                      「階追加」ボタンをクリックして、最初の階を追加してください
+                      データを読み込み中...
                     </Typography>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddRow}
-                      sx={{
-                        mt: 2,
-                        backgroundColor: '#27ae60',
-                        fontSize: fontSize.medium,
-                        '&:hover': {
-                          backgroundColor: '#219955'
-                        }
-                      }}
-                    >
-                      階を追加
-                    </Button>
                   </Box>
                 </TableCell>
               </TableRow>

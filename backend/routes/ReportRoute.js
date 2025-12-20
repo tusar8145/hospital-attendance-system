@@ -45,6 +45,7 @@ router.post("/report-mid/get-by-date", auth, ReportControllerMid.getReportByDate
 router.post("/report-mid/departments", auth, ReportControllerMid.getDepartments);
 router.post("/report-mid/submit", auth, ReportControllerMid.submitReport);
 router.post("/report-mid/departments-with-doctors", auth, ReportControllerMid.getDepartmentsWithDoctors);
+router.post('/report-mid/get-last-report-mid-data', auth, ReportControllerMid.getLastReportMidData);
 
 
 export { router as ReportRoute };

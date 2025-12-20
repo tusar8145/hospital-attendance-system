@@ -61,6 +61,7 @@ const FrameScreen = React.memo(({
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   // State management
+    const [allow, setallow] = useState(false);
   const [date, setDate] = useState(reportDate || new Date());
   const [patientsCount, setPatientsCount] = useState("0");
   const [outpatientsCount, setOutpatientsCount] = useState("0");
@@ -92,6 +93,7 @@ const FrameScreen = React.memo(({
   const isInitialMountRef = useRef(true);
   const previousFormDataRef = useRef(null);
   const loadingRef = useRef(false);
+  const dataInitializedRef = useRef(false);
 
   // Local state for snackbar
   const [localSnackbar, setLocalSnackbar] = useState({
@@ -153,15 +155,9 @@ const FrameScreen = React.memo(({
 
   // Load form data from existing report
   const loadFormData = async (data) => {
-      console.log('=== FrameScreen loadFormData ===');
-  console.log('Full data received:', data);
-  console.log('report_details:', data.report_details);
-  console.log('report_details_mid:', data.report_details_mid);
-  console.log('report_details type:', typeof data.report_details);
-  console.log('report_details is array?', Array.isArray(data.report_details));
-  console.log('==========================');
-
-    console.log('Loading form data:', data);
+    
+    // Reset the initialization flag
+    dataInitializedRef.current = false;
     
     // Mark that we've loaded form data
     setFormDataLoaded(true);
@@ -187,16 +183,116 @@ const FrameScreen = React.memo(({
       console.log('Setting consolidated data for doctor-based component:', data.report_details.length, 'items');
       setConsolidatedData(data.report_details);
     } else {
+      // CRITICAL: Reset to empty array when no data exists
+      console.log('Resetting consolidatedData to empty array');
       setConsolidatedData([]);
     }
     
     // For ConsolidatedContentComponentCount (patient count-based)
     if (data.report_details_mid && Array.isArray(data.report_details_mid) && data.report_details_mid.length > 0) {
-      console.log('Setting consolidated data for count-based component:', data.report_details_mid.length, 'items');
+          console.log('vvvvvvvv','11111')
+      console.log('Setting consolidated data for count-based component:', data.report_details_mid, 'items');
       setConsolidatedDataCount(data.report_details_mid);
     } else {
-      console.log('nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn')
+      console.log('vvvvvvvv','11111')
+      // CRITICAL: Reset to empty array when no data exists
+      console.log('Resetting consolidatedDataCount to empty array');
+      console.log('Resetting consolidatedDataCount to egggggggggggmpty array');
       setConsolidatedDataCount([]);
+
+     /* if (hospitalId) {
+        const response = await axios.post(`${apiConfig.baseURL}/report-mid/get-last-report-mid-data`, {
+          hospital_id: hospitalId,
+          report_date: date
+        })
+
+        if (response.data.success && response.data.data) {
+          const departmentsData = response.data.data;
+          // Create a new array with patient_count set to 0
+          const modifiedData = departmentsData.map(item => ({
+            ...item
+          }));
+          console.log(modifiedData,'Resetting consolidatedDataCount to')
+          setConsolidatedDataCount(modifiedData);
+        }else{
+          setConsolidatedDataCount([]);
+        }
+      } */
+
+
+  /*   setConsolidatedDataCount([
+    {
+        "id": 13,
+        "report_id": 1,
+        "sequence_no": 1,
+        "department_id": 11,
+        "consultation_type": "morning",
+        "total_patients": 2,
+        "new_patients": 0,
+        "created_at": "pppppppppppppppppppppppppppppppp",
+        "updated_at": "2025-12-20T10:05:15.719Z",
+        "department": {
+            "id": 11,
+            "name": "Cardiology",
+            "floor": "2x",
+            "medical_center_id": 11,
+            "status": 1,
+            "created_by": 10,
+            "created_at": "2025-12-10T20:32:29.773Z",
+            "updated_by": 15,
+            "updated_at": "2025-12-20T08:42:19.209Z"
+        }
+    },
+    {
+        "id": 14,
+        "report_id": 1,
+        "sequence_no": 1,
+        "department_id": 11,
+        "consultation_type": "afternoon",
+        "total_patients": 8,
+        "new_patients": 8,
+        "created_at": "2025-12-20T10:05:15.719Z",
+        "updated_at": "2025-12-20T10:05:15.719Z",
+        "department": {
+            "id": 11,
+            "name": "Cardiology",
+            "floor": "2x",
+            "medical_center_id": 11,
+            "status": 1,
+            "created_by": 10,
+            "created_at": "2025-12-10T20:32:29.773Z",
+            "updated_by": 15,
+            "updated_at": "2025-12-20T08:42:19.209Z"
+        }
+    },
+    {
+        "id": 15,
+        "report_id": 1,
+        "sequence_no": 1,
+        "department_id": 11,
+        "consultation_type": "night",
+        "total_patients": 11,
+        "new_patients": 7,
+        "created_at": "2025-12-20T10:05:15.719Z",
+        "updated_at": "2025-12-20T10:05:15.719Z",
+        "department": {
+            "id": 11,
+            "name": "Cardiology",
+            "floor": "2x",
+            "medical_center_id": 11,
+            "status": 1,
+            "created_by": 10,
+            "created_at": "2025-12-10T20:32:29.773Z",
+            "updated_by": 15,
+            "updated_at": "2025-12-20T08:42:19.209Z"
+        }
+    },
+]);*/
+
+
+
+
+
     }
     
     // Clear validation errors when loading data
@@ -204,6 +300,16 @@ const FrameScreen = React.memo(({
     
     console.log('Form data loading complete');
   };
+
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if(!(consolidatedDataCount?.length>0)){
+        setallow(true)
+      }     
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []); // Empty dependency array means run only once
 
   // Reset form to initial state (complete reset)
   const resetForm = () => {
@@ -332,28 +438,8 @@ const FrameScreen = React.memo(({
       errors.consolidatedData = "少なくとも1つの診療科エントリが必要です";
     }
     
-    // Validate ConsolidatedContentComponent data
-   /* consolidatedData.forEach((item, index) => {
-      if (!item.department_id) {
-        errors[`doctor_dept_${index}`] = "診療科の選択が必要です";
-      }
-      if (!item.patient_count && item.patient_count !== 0) {
-        errors[`doctor_patientCount_${index}`] = "患者数が必要です";
-      }
-    });*/
-    
-    // Validate ConsolidatedContentComponentCount data
-    /*consolidatedDataCount.forEach((item, index) => {
-      if (!item.department_id) {
-        errors[`count_dept_${index}`] = "診療科の選択が必要です";
-      }
-      if (!item.total_patients && item.total_patients !== 0) {
-        errors[`count_total_${index}`] = "合計患者数が必要です";
-      }
-      if (!item.new_patients && item.new_patients !== 0) {
-        errors[`count_new_${index}`] = "新規患者数が必要です";
-      }
-    });*/
+ 
+ 
     
     setValidationErrors(errors);
     
@@ -1228,33 +1314,44 @@ const FrameScreen = React.memo(({
             backgroundColor: '#ffffff',
           }}
         >
- 
-
           {/* Tab Content */}
           <Box sx={{ p: sectionPadding }}>
-
-
-              <ConsolidatedContentComponentCount
-                data={consolidatedDataCount}
-                departments={departments}
-                hospitalId={hospitalId}
-                onDataChange={handleConsolidatedDataCountChange}
-                validationErrors={validationErrors}
-                readOnly={readOnly || reportStatus === 'submitted'}
-              />
-
-              <ConsolidatedContentComponent
-                data={consolidatedData}
-                departments={departments}
-                doctors={doctors}
-                hospitalId={hospitalId}
-                onDataChange={handleConsolidatedDataChange}
-                validationErrors={validationErrors}
-                readOnly={readOnly || reportStatus === 'submitted'}
-              />
+            <ConsolidatedContentComponentCount
+              data={consolidatedDataCount}
+              departments={departments}
+              hospitalId={hospitalId}
+              onDataChange={handleConsolidatedDataCountChange}
+              validationErrors={validationErrors}
+              readOnly={readOnly || reportStatus === 'submitted'}
+              loading={loading}
+            />
+ 
+          </Box>
+        </Paper>
 
 
 
+                {/* Consolidated Content Section with Tabs */}
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: '12px',
+            border: '1px solid #e0e0e0',
+            backgroundColor: '#ffffff',
+          }}
+        >
+ <Box sx={{ p: sectionPadding }}>
+
+            <ConsolidatedContentComponent
+              data={consolidatedData}
+              departments={departments}
+              doctors={doctors}
+              hospitalId={hospitalId}
+              onDataChange={handleConsolidatedDataChange}
+              validationErrors={validationErrors}
+              readOnly={readOnly || reportStatus === 'submitted'}
+              loading={loading}
+            />
           </Box>
         </Paper>
 
