@@ -38,6 +38,9 @@ import {
   validateForm as validateFormUtil
 } from './utils/frameScreenUtils';
 
+import apiConfig from '../../../configs/apiConfig';
+import axios from 'axios';
+
 const FrameScreen = React.memo(({
   formData = null,
   departments = [],
@@ -308,7 +311,32 @@ const FrameScreen = React.memo(({
     } else {
       // CRITICAL: Reset to empty array when no data exists
       console.log('Resetting consolidatedData to empty array');
-      setConsolidatedData([]);
+
+
+      try {
+          if (hospitalId) {
+            const response = await axios.post(apiConfig.reportHospitalDepartmentsDoctors, {
+              hospital_id: hospitalId,
+              report_date: date
+            });
+
+            if (response.data.success && response.data.data) {
+              const departmentsData = response.data.data;
+
+              // Create a new array with patient_count set to 0
+              const modifiedData = departmentsData.map(item => ({
+                ...item,
+                patient_count: 0
+              }));
+              setConsolidatedData(modifiedData);
+            }else{
+                      setConsolidatedData([]);
+            }
+          }        
+      } catch (error) {
+        setConsolidatedData([]);
+      }
+
     }
     
     // For ConsolidatedContentComponentCount (patient count-based)
@@ -539,8 +567,8 @@ const FrameScreen = React.memo(({
   };
 
   const handleConsolidatedDataCountChange = (newData) => {
-    console.log(newData,'newDatanewData')
-    //setConsolidatedDataCount(newData);
+    console.log(newData,'newDatanewDataccccccc')
+    setConsolidatedDataCount(newData);
     // Clear consolidated data error if data is added
     if (validationErrors.consolidatedData && (consolidatedData.length > 0 || newData.length > 0)) {
       const newErrors = { ...validationErrors };
@@ -866,7 +894,7 @@ const FrameScreen = React.memo(({
                     alignItems: 'center',
                     gap: 0.5
                   }}>
-                    患者数
+                    午前診
                   </Typography>
                   <TextField
                     value={timerActive ? initialMorning : calculatedMorning}
@@ -1204,7 +1232,6 @@ const FrameScreen = React.memo(({
 
           </Stack>
         </Paper>
-{JSON.stringify(consolidatedDataCount)}?
         {/* Consolidated Content Section */}
         <ConsolidatedContentComponentCount
           data={consolidatedDataCount}

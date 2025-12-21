@@ -6,7 +6,7 @@ import {authRoles} from '../../auth';
 
 i18next.addResourceBundle('en', 'shared-components', en);
 i18next.addResourceBundle('ja', 'shared-components', ja);
-const ReportView = lazy(() => import('./ReportView'));
+const ReportViewParent = lazy(() => import('./ReportView'));
 /**
  * The ReportView page config.
  */
@@ -18,7 +18,7 @@ const ReportViewConfig = {
 	routes: [
 		{
 			path: 'report-view',
-			element: <ReportView />
+			element: <ReportViewParent />
 		}
 	]
 };

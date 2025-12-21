@@ -45,10 +45,12 @@ const ConsolidatedContentComponentCount = ({
   const [loading, setLoading] = useState(false);
   const [departmentOptions, setDepartmentOptions] = useState([]);
 
-  // Refs to track previous values
+  // Refs to track previous values - optimized with deep equality
   const prevHospitalIdRef = useRef(null);
-  const prevDataRef = useRef(null);
-  const hasInitializedRef = useRef(false);
+  const prevDataRef = useRef([]);
+  const prevDepartmentOptionsRef = useRef([]);
+  const isInitializedRef = useRef(false);
+  const isUpdatingRef = useRef(false);
 
   // Consultation types
   const consultationTypes = useMemo(() => [
@@ -57,12 +59,29 @@ const ConsolidatedContentComponentCount = ({
     { value: 'night', label: '夜診', color: '#e74c3c', short: '夜' }
   ], []);
 
-  // Transform data prop to rows format - Pure function
+  // Stable row ID generation
+  const generateRowId = useCallback((sequenceNo, departmentId, index) => {
+    return `${sequenceNo}_${departmentId}_${index}`;
+  }, []);
+
+  // Create empty row with stable ID
+  const createEmptyRow = useCallback((sequenceNo = 1, index = 0) => ({
+    id: generateRowId(sequenceNo, null, index),
+    sequence_no: sequenceNo,
+    department_id: null,
+    department_name: '',
+    consultations: consultationTypes.map(type => ({
+      type: type.value,
+      total_patients: 0,
+      new_patients: 0
+    }))
+  }), [consultationTypes, generateRowId]);
+
+  // Transform data prop to rows format - Pure function with stable IDs
   const transformDataToRows = useCallback((reportData, deptOptions) => {
     console.log('transformDataToRows called with:', {
       dataLength: reportData?.length || 0,
-      deptOptionsLength: deptOptions?.length || 0,
-      dataSample: reportData?.[0]
+      deptOptionsLength: deptOptions?.length || 0
     });
 
     // If no data, return empty array
@@ -74,14 +93,14 @@ const ConsolidatedContentComponentCount = ({
     // Group data by sequence_no and department_id
     const groupedData = {};
     
-    reportData.forEach(item => {
+    reportData.forEach((item, index) => {
       const key = `${item.sequence_no}_${item.department_id}`;
       if (!groupedData[key]) {
         // Find department name from options
         const department = deptOptions?.find(dept => String(dept.id) === String(item.department_id));
         
         groupedData[key] = {
-          id: `row-${key}-${Date.now()}`,
+          id: generateRowId(item.sequence_no, item.department_id, index),
           sequence_no: item.sequence_no,
           department_id: item.department_id,
           department_name: department?.name || '',
@@ -113,7 +132,7 @@ const ConsolidatedContentComponentCount = ({
       
       return {
         ...group,
-        id: group.id,
+        id: group.id, // Keep the stable ID
         sequence_no: index + 1,
         consultations: consultationTypes.map(type => ({
           type: type.value,
@@ -124,23 +143,14 @@ const ConsolidatedContentComponentCount = ({
     });
     
     console.log('Transformed rows:', newRows.length, 'rows');
-    if (newRows.length > 0) {
-      console.log('First transformed row:', newRows[0]);
-    }
     return newRows;
-  }, [consultationTypes]);
+  }, [consultationTypes, generateRowId]);
 
-  // Load departments
+  // Load departments - single responsibility
   const loadDepartments = useCallback(async (forceReload = false) => {
     if (!hospitalId) {
       console.log('No hospital ID, skipping department load');
       setDepartmentOptions([]);
-      return;
-    }
-
-    // Skip if already loaded and not forcing reload
-    if (!forceReload && departmentOptions.length > 0 && hasInitializedRef.current) {
-      console.log('Departments already loaded, skipping');
       return;
     }
 
@@ -160,23 +170,6 @@ const ConsolidatedContentComponentCount = ({
         
         console.log('Departments loaded:', departmentsData.length);
         setDepartmentOptions(departmentsData);
-        hasInitializedRef.current = true;
-        
-        // If we have data, transform it with the new departments
-        if (data && Array.isArray(data) && data.length > 0) {
-          console.log('Transforming existing data with new departments');
-          const newRows = transformDataToRows(data, departmentsData);
-          setRows(newRows);
-          if (onDataChange && newRows.length > 0) {
-            notifyParent(newRows);
-          }
-        } else if (rows.length === 0) {
-          // Create empty row if no rows exist
-          console.log('Creating empty row as no data exists');
-          const emptyRow = createEmptyRow();
-          setRows([emptyRow]);
-          notifyParent([emptyRow]);
-        }
       } else {
         console.log('Failed to load departments');
         setDepartmentOptions([]);
@@ -187,70 +180,72 @@ const ConsolidatedContentComponentCount = ({
     } finally {
       setLoading(false);
     }
-  }, [hospitalId, data, departmentOptions.length, rows.length, transformDataToRows, onDataChange]);
+  }, [hospitalId]);
 
-  // Create empty row
-  const createEmptyRow = useCallback((sequenceNo = 1) => ({
-    id: `new-${Date.now()}`,
-    sequence_no: sequenceNo,
-    department_id: null,
-    department_name: '',
-    consultations: consultationTypes.map(type => ({
-      type: type.value,
-      total_patients: 0,
-      new_patients: 0
-    }))
-  }), [consultationTypes]);
-
-  // Initialize rows from external data
-  const initializeRowsFromData = useCallback(() => {
-    console.log('initializeRowsFromData called:', {
+  // SINGLE INITIALIZATION EFFECT - THE ONE SOURCE OF TRUTH
+  useEffect(() => {
+    console.log('=== SINGLE INITIALIZATION EFFECT ===', {
       dataLength: data?.length || 0,
       deptOptionsLength: departmentOptions.length,
-      rowsLength: rows.length,
-      prevDataLength: prevDataRef.current?.length || 0
+      isInitialized: isInitializedRef.current,
+      isUpdating: isUpdatingRef.current
     });
 
-    // If no data, create empty row if needed
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      if (rows.length === 0) {
-        console.log('No data and no rows, creating empty row');
-        const emptyRow = createEmptyRow();
-        setRows([emptyRow]);
-        notifyParent([emptyRow]);
-      }
+    // Skip if we're in the middle of an update
+    if (isUpdatingRef.current) {
+      console.log('Skipping init - update in progress');
       return;
     }
 
-    // Check if data actually changed
-    const dataChanged = !prevDataRef.current || 
-      JSON.stringify(prevDataRef.current) !== JSON.stringify(data);
-    
-    if (!dataChanged) {
-      console.log('Data not changed, skipping initialization');
+    // Skip if we don't have both data and departments loaded
+    if (!departmentOptions.length) {
+      console.log('Skipping init - no department options yet');
       return;
     }
 
-    console.log('Data changed, initializing rows');
+    // Check if data has actually changed (deep comparison)
+    const dataChanged = data !== prevDataRef.current && 
+      JSON.stringify(data) !== JSON.stringify(prevDataRef.current);
     
-    // If we have department options, transform data immediately
-    if (departmentOptions.length > 0) {
-      const newRows = transformDataToRows(data, departmentOptions);
+    // Check if departments have changed
+    const deptsChanged = departmentOptions !== prevDepartmentOptionsRef.current &&
+      JSON.stringify(departmentOptions) !== JSON.stringify(prevDepartmentOptionsRef.current);
+
+    // Skip if nothing relevant changed
+    if (!dataChanged && !deptsChanged && isInitializedRef.current) {
+      console.log('Skipping init - no relevant changes');
+      return;
+    }
+
+    console.log('Data or departments changed, initializing rows');
+    
+    let newRows = [];
+    
+    // If we have data, transform it with the current departments
+    if (data && Array.isArray(data) && data.length > 0) {
+      newRows = transformDataToRows(data, departmentOptions);
       console.log('Setting rows from transformed data:', newRows.length);
-      setRows(newRows);
-      if (onDataChange && newRows.length > 0) {
-        notifyParent(newRows);
-      }
-    } else {
-      // Load departments first
-      console.log('No department options, loading departments first');
-      loadDepartments();
+    } else if (!isInitializedRef.current) {
+      // Only create empty row on first initialization
+      console.log('Creating empty row for first initialization');
+      newRows = [createEmptyRow(1, 0)];
     }
     
+    // Only update if rows actually changed
+    if (JSON.stringify(newRows) !== JSON.stringify(rows)) {
+      console.log('Setting new rows:', newRows.length);
+      setRows(newRows);
+      // DO NOT notifyParent during initialization
+    }
+    
+    // Update refs
     prevDataRef.current = data;
-  }, [data, departmentOptions, rows.length, transformDataToRows, createEmptyRow, loadDepartments, onDataChange]);
+    prevDepartmentOptionsRef.current = departmentOptions;
+    isInitializedRef.current = true;
+    
+  }, [data, departmentOptions, transformDataToRows, createEmptyRow, rows]);
 
-  // Main effect for hospital ID changes
+  // HOSPITAL CHANGE EFFECT - ONLY resets state
   useEffect(() => {
     console.log('=== HOSPITAL ID EFFECT ===');
     console.log('Previous hospital:', prevHospitalIdRef.current);
@@ -258,50 +253,27 @@ const ConsolidatedContentComponentCount = ({
     
     if (hospitalId !== prevHospitalIdRef.current) {
       console.log('Hospital changed, resetting state');
-      // Reset state when hospital changes
+      
+      // Reset all state and refs
       setRows([]);
       setDepartmentOptions([]);
-      hasInitializedRef.current = false;
-      prevDataRef.current = null;
+      prevDataRef.current = [];
+      prevDepartmentOptionsRef.current = [];
+      isInitializedRef.current = false;
       prevHospitalIdRef.current = hospitalId;
       
+      // Load departments for new hospital
       if (hospitalId) {
         loadDepartments(true);
       }
     }
   }, [hospitalId, loadDepartments]);
 
-  // Main effect for data changes
-  useEffect(() => {
-    console.log('=== DATA EFFECT ===');
-    console.log('Data length:', data?.length || 0);
-    
-    // If we have data, initialize rows
-    if (data && Array.isArray(data) && data.length > 0) {
-      initializeRowsFromData();
-    } else if (!data || data.length === 0) {
-      // If data is empty and we have no rows, create empty row
-      if (rows.length === 0 && departmentOptions.length > 0) {
-        console.log('Empty data with no rows, creating empty row');
-        const emptyRow = createEmptyRow();
-        setRows([emptyRow]);
-        notifyParent([emptyRow]);
-      }
-    }
-  }, [data, initializeRowsFromData, rows.length, departmentOptions.length, createEmptyRow]);
-
-  // Initial load effect
-  useEffect(() => {
-    if (hospitalId && !hasInitializedRef.current) {
-      console.log('Initial mount with hospital ID:', hospitalId);
-      loadDepartments();
-    }
-  }, [hospitalId, loadDepartments]);
-
-
-
-  // Handler functions
+  // Handler functions - ONLY these should notify parent
   const handleTotalPatientsChange = (rowId, consultationIndex, value) => {
+    if (isUpdatingRef.current) return;
+    
+    isUpdatingRef.current = true;
     const numValue = parseInt(value) || 0;
     
     const newRows = rows.map(row => {
@@ -322,9 +294,13 @@ const ConsolidatedContentComponentCount = ({
     
     setRows(newRows);
     notifyParent(newRows);
+    isUpdatingRef.current = false;
   };
 
   const handleNewPatientsChange = (rowId, consultationIndex, value) => {
+    if (isUpdatingRef.current) return;
+    
+    isUpdatingRef.current = true;
     const numValue = parseInt(value) || 0;
     
     const newRows = rows.map(row => {
@@ -345,18 +321,26 @@ const ConsolidatedContentComponentCount = ({
     
     setRows(newRows);
     notifyParent(newRows);
+    isUpdatingRef.current = false;
   };
 
   const handleAddRow = () => {
+    if (isUpdatingRef.current) return;
+    
+    isUpdatingRef.current = true;
     console.log('Adding new row');
-    const newRow = createEmptyRow(rows.length + 1);
+    const newRow = createEmptyRow(rows.length + 1, rows.length);
     const newRows = [...rows, newRow];
     console.log('New rows after adding:', newRows.length);
     setRows(newRows);
     notifyParent(newRows);
+    isUpdatingRef.current = false;
   };
 
   const handleRemoveRow = (rowId) => {
+    if (isUpdatingRef.current) return;
+    
+    isUpdatingRef.current = true;
     console.log('Removing row:', rowId);
     const newRows = rows.filter(row => row.id !== rowId);
     
@@ -368,9 +352,13 @@ const ConsolidatedContentComponentCount = ({
     console.log('After removal:', newRows.length, 'rows');
     setRows(newRows);
     notifyParent(newRows);
+    isUpdatingRef.current = false;
   };
 
   const handleDepartmentChange = (rowId, departmentId) => {
+    if (isUpdatingRef.current) return;
+    
+    isUpdatingRef.current = true;
     console.log('Changing department for row:', rowId, 'to:', departmentId);
     const department = departmentOptions.find(dept => String(dept.id) === String(departmentId));
     
@@ -387,11 +375,16 @@ const ConsolidatedContentComponentCount = ({
     
     setRows(newRows);
     notifyParent(newRows);
+    isUpdatingRef.current = false;
   };
 
   const handleMoveRow = (rowId, direction) => {
+    if (isUpdatingRef.current) return;
+    
+    isUpdatingRef.current = true;
     const index = rows.findIndex(row => row.id === rowId);
     if ((direction === 'up' && index === 0) || (direction === 'down' && index === rows.length - 1)) {
+      isUpdatingRef.current = false;
       return;
     }
     
@@ -408,9 +401,11 @@ const ConsolidatedContentComponentCount = ({
     
     setRows(newRows);
     notifyParent(newRows);
+    isUpdatingRef.current = false;
   };
 
-  const notifyParent = (updatedRows) => {
+  // NOTIFY PARENT - ONLY called from user actions
+  const notifyParent = useCallback((updatedRows) => {
     console.log('Notifying parent with rows:', updatedRows.length, 'rows');
     if (onDataChange) {
       const flatData = [];
@@ -430,7 +425,7 @@ const ConsolidatedContentComponentCount = ({
       console.log('Flat data for parent:', flatData.length, 'items');
       onDataChange(flatData);
     }
-  };
+  }, [onDataChange]);
 
   const calculateRowTotal = (rowId) => {
     const row = rows.find(r => r.id === rowId);
@@ -718,7 +713,7 @@ const ConsolidatedContentComponentCount = ({
             backgroundColor: '#a8a8a8'
           }
         },
-      }}> {JSON.stringify(data)}
+      }}>
         <Table sx={{ minWidth: isMobile ? '800px' : '1000px' }}>
           <TableHead>
             <TableRow>
