@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Stack,
@@ -48,41 +48,8 @@ const ExternalConsultationToggle = ({
   onValuesChange,
   readOnly = false,
   reportStatus = null,
+  visibleBoxes = { PET: true, MR: true, CT: true }
 }) => {
-  // Toggle states for PET/MR/CT
-  const [toggleStates, setToggleStates] = useState({
-    PET: false,
-    MR: false,
-    CT: false,
-  });
-
-  // Section values state with defaults
-  const [sectionValues, setSectionValues] = useState({
-    PET: {
-      "PET-CT": { enabled: true, value: "0" },
-      "エグゼクティブ": { enabled: true, value: "0" },
-      "保険": { enabled: true, value: "0" },
-      "〇〇〇〇": { enabled: true, value: "0" },
-    },
-    MR: {
-      "頭蓋骨盤": { enabled: true, value: "0" },
-      "エコー": { enabled: true, value: "0" },
-      "脳ドック": { enabled: true, value: "0" },
-      "保険": { enabled: true, value: "0" },
-    },
-    CT: {
-      "〇〇〇〇": { enabled: true, value: "0" },
-      "〇〇〇〇2": { enabled: true, value: "0" },
-      "〇〇〇〇3": { enabled: true, value: "0" },
-      "〇〇〇〇4": { enabled: true, value: "0" },
-    },
-  });
-
-  // Use refs to track state
-  const isInitializedRef = useRef(false);
-  const previousValuesRef = useRef({});
-  const skipNextOnChangeRef = useRef(false);
-
   // Section configuration
   const sections = [
     {
@@ -123,11 +90,110 @@ const ExternalConsultationToggle = ({
     },
   ];
 
-  // Calculate totals with useMemo to prevent unnecessary recalculations
-  const sectionTotals = useMemo(() => {
-    const calculateTotal = (section) => {
-      if (!section) return 0;
-      return Object.values(section).reduce((total, item) => {
+  // Default values for each section
+  const defaultSectionValues = {
+    PET: {
+      "PET-CT": { enabled: true, value: "0" },
+      "エグゼクティブ": { enabled: true, value: "0" },
+      "保険": { enabled: true, value: "0" },
+      "〇〇〇〇": { enabled: true, value: "0" },
+    },
+    MR: {
+      "頭蓋骨盤": { enabled: true, value: "0" },
+      "エコー": { enabled: true, value: "0" },
+      "脳ドック": { enabled: true, value: "0" },
+      "保険": { enabled: true, value: "0" },
+    },
+    CT: {
+      "〇〇〇〇": { enabled: true, value: "0" },
+      "〇〇〇〇2": { enabled: true, value: "0" },
+      "〇〇〇〇3": { enabled: true, value: "0" },
+      "〇〇〇〇4": { enabled: true, value: "0" },
+    },
+  };
+
+  // State management
+  const [toggleStates, setToggleStates] = useState({ PET: false, MR: false, CT: false });
+  const [sectionValues, setSectionValues] = useState(defaultSectionValues);
+  const [totals, setTotals] = useState({ PET: 0, MR: 0, CT: 0, grandTotal: 0 });
+
+  const prevInitialValuesRef = useRef(null);
+
+  // Refs to track state
+  const isInitializedRef = useRef(false);
+  const updateTimeoutRef = useRef(null);
+  const skipNotificationRef = useRef(false);
+
+  // Initialize from props - ONLY ONCE
+useEffect(() => {
+  if (!initialValues || Object.keys(initialValues).length === 0) return;
+
+  if (
+    prevInitialValuesRef.current &&
+    JSON.stringify(prevInitialValuesRef.current) === JSON.stringify(initialValues)
+  ) {
+    return;
+  }
+
+  prevInitialValuesRef.current = initialValues;
+  skipNotificationRef.current = true;
+
+  let newToggleStates = { PET: false, MR: false, CT: false };
+  let newSectionValues = JSON.parse(JSON.stringify(defaultSectionValues));
+
+  if (initialValues.details) {
+    ["PET", "MR", "CT"].forEach(sectionId => {
+      const sectionData = initialValues.details[sectionId];
+      if (!sectionData) return;
+
+      newToggleStates[sectionId] = true;
+
+      Object.keys(sectionData).forEach(fieldKey => {
+        if (newSectionValues[sectionId][fieldKey]) {
+          newSectionValues[sectionId][fieldKey] = {
+            enabled: Boolean(sectionData[fieldKey].enabled),
+            value: String(sectionData[fieldKey].value ?? "0"),
+          };
+        }
+      });
+    });
+  }
+
+  const calculateTotal = (id) =>
+    Object.values(newSectionValues[id] || {}).reduce(
+      (sum, f) => (f.enabled ? sum + Number(f.value || 0) : sum),
+      0
+    );
+
+  const newTotals = {
+    PET: calculateTotal("PET"),
+    MR: calculateTotal("MR"),
+    CT: calculateTotal("CT"),
+  };
+  newTotals.grandTotal = newTotals.PET + newTotals.MR + newTotals.CT;
+
+  setToggleStates(newToggleStates);
+  setSectionValues(newSectionValues);
+  setTotals(newTotals);
+
+  // ✅ THIS IS THE MISSING LINE
+  isInitializedRef.current = true;
+
+  setTimeout(() => {
+    skipNotificationRef.current = false;
+  }, 100);
+}, [initialValues]);
+
+
+
+  // Calculate totals when sectionValues changes
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    
+    const calculateSectionTotal = (sectionId) => {
+      const sectionData = sectionValues[sectionId];
+      if (!sectionData) return 0;
+      return Object.values(sectionData).reduce((total, item) => {
         if (item.enabled) {
           return total + (parseInt(item.value) || 0);
         }
@@ -135,129 +201,65 @@ const ExternalConsultationToggle = ({
       }, 0);
     };
 
-    return {
-      PET: calculateTotal(sectionValues.PET),
-      MR: calculateTotal(sectionValues.MR),
-      CT: calculateTotal(sectionValues.CT),
+    const newTotals = {
+      PET: calculateSectionTotal("PET"),
+      MR: calculateSectionTotal("MR"),
+      CT: calculateSectionTotal("CT")
     };
+    newTotals.grandTotal = newTotals.PET + newTotals.MR + newTotals.CT;
+    
+    setTotals(newTotals);
+    
+    // Notify parent of changes with debounce
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+    
+    updateTimeoutRef.current = setTimeout(() => {
+      if (skipNotificationRef.current) {
+        console.log('Skipping notification during initialization');
+        return;
+      }
+      
+      notifyParent(newTotals);
+    }, 300);
   }, [sectionValues]);
 
-  // Calculate grand total
-  const grandTotal = useMemo(() => {
-    return Object.keys(sectionTotals).reduce((total, key) => {
-      if (toggleStates[key]) {
-        return total + sectionTotals[key];
-      }
-      return total;
-    }, 0);
-  }, [sectionTotals, toggleStates]);
-
-  // Initialize with props - handle only when initialValues actually changes
+  // Cleanup timeout on unmount
   useEffect(() => {
-    // Skip if already initialized with the same values
-    const currentInitialValuesStr = JSON.stringify(initialValues);
-    const previousInitialValuesStr = JSON.stringify(previousValuesRef.current.initialValues);
-    
-    if (currentInitialValuesStr === previousInitialValuesStr) {
-      return;
-    }
-    
-    console.log('ExternalConsultationToggle - initialValues changed:', initialValues);
-    
-    // Store current initial values for comparison
-    previousValuesRef.current.initialValues = initialValues;
-    
-    // Check if initialValues has data
-    if (initialValues && Object.keys(initialValues).length > 0) {
-      console.log('Processing initialValues');
-      
-      const newValues = { PET: {}, MR: {}, CT: {} };
-      const newToggleStates = { PET: false, MR: false, CT: false };
-      
-      sections.forEach(section => {
-        const sectionData = initialValues[section.id];
-        
-        if (sectionData && typeof sectionData === 'object' && Object.keys(sectionData).length > 0) {
-          console.log(`Processing section ${section.id}:`, sectionData);
-          
-          let sectionHasData = false;
-          
-          section.fields.forEach(field => {
-            const fieldData = sectionData[field.key];
-            
-            if (fieldData && (fieldData.value !== undefined || fieldData.enabled !== undefined)) {
-              // Use data from server
-              const value = fieldData.value !== undefined ? String(fieldData.value) : "0";
-              const enabled = fieldData.enabled !== undefined ? Boolean(fieldData.enabled) : true;
-              
-              newValues[section.id][field.key] = {
-                enabled: enabled,
-                value: value,
-              };
-              
-              // Check if section should be toggled based on data
-              if (value !== "0" && value !== "" && parseInt(value) > 0) {
-                sectionHasData = true;
-              }
-            } else {
-              // Field not in server data, use default
-              newValues[section.id][field.key] = {
-                enabled: true,
-                value: "0",
-              };
-            }
-          });
-          
-          // Enable toggle if section has data
-          newToggleStates[section.id] = sectionHasData;
-        } else {
-          // Section not in server data or empty, use defaults for all fields
-          section.fields.forEach(field => {
-            newValues[section.id][field.key] = {
-              enabled: true,
-              value: "0",
-            };
-          });
-          newToggleStates[section.id] = false;
-        }
-      });
-      
-      // If no sections have data, enable PET by default
-      const anySectionHasData = Object.values(newToggleStates).some(state => state);
-      if (!anySectionHasData) {
-        console.log('No sections have data, enabling PET by default');
-        newToggleStates.PET = true;
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
       }
-      
-      // Set skip flag to prevent onChange notification for initialization
-      skipNextOnChangeRef.current = true;
-      
-      setSectionValues(newValues);
-      setToggleStates(newToggleStates);
-      isInitializedRef.current = true;
-      
-      console.log('Initialization complete');
-    } else {
-      console.log('No initialValues or empty, enabling PET by default');
-      setToggleStates({
-        PET: true,
-        MR: false,
-        CT: false
-      });
-      isInitializedRef.current = true;
-    }
-  }, [initialValues]);
+    };
+  }, []);
 
   // Handle main toggle change
-  const handleToggleChange = (sectionId) => {
-    if (readOnly || reportStatus === 'submitted') return;
-    
-    const newToggleState = !toggleStates[sectionId];
-    setToggleStates((prev) => ({
+const handleToggleChange = (sectionId) => {
+  if (readOnly || reportStatus === 'submitted') return;
+
+  const newToggleState = !toggleStates[sectionId];
+  console.log(`Toggle ${sectionId}: ${toggleStates[sectionId]} -> ${newToggleState}`);
+
+  setToggleStates(prev => ({
+    ...prev,
+    [sectionId]: newToggleState,
+  }));
+
+  // ✅ If toggled OFF → clear that section's values
+  if (!newToggleState) {
+    setSectionValues(prev => ({
       ...prev,
-      [sectionId]: newToggleState,
+      [sectionId]: Object.fromEntries(
+        Object.keys(prev[sectionId]).map(key => [
+          key,
+          { ...prev[sectionId][key], value: "0" }
+        ])
+      ),
     }));
-  };
+  }
+};
+
 
   // Handle field value change
   const handleFieldValueChange = (sectionId, fieldKey, value) => {
@@ -266,7 +268,7 @@ const ExternalConsultationToggle = ({
     // Allow only numbers
     if (!/^\d*$/.test(value)) return;
     
-    setSectionValues((prev) => ({
+    setSectionValues(prev => ({
       ...prev,
       [sectionId]: {
         ...prev[sectionId],
@@ -282,7 +284,7 @@ const ExternalConsultationToggle = ({
   const handleFieldToggleChange = (sectionId, fieldKey, enabled) => {
     if (readOnly || reportStatus === 'submitted') return;
     
-    setSectionValues((prev) => ({
+    setSectionValues(prev => ({
       ...prev,
       [sectionId]: {
         ...prev[sectionId],
@@ -292,45 +294,54 @@ const ExternalConsultationToggle = ({
         },
       },
     }));
-
-    // If enabling a field, also enable the main section toggle
-    if (enabled && !toggleStates[sectionId]) {
-      setToggleStates(prev => ({
-        ...prev,
-        [sectionId]: true,
-      }));
-    }
   };
 
-  // Notify parent of value changes - but skip during initialization
-  useEffect(() => {
-    if (!isInitializedRef.current) return;
-    
-    if (skipNextOnChangeRef.current) {
-      skipNextOnChangeRef.current = false;
-      console.log('Skipping onChange notification (initialization)');
+  // Notify parent of value changes
+  const notifyParent = useCallback((currentTotals) => {
+    if (!isInitializedRef.current || skipNotificationRef.current) {
+      console.log('Skipping parent notification - not initialized or in skip mode');
       return;
     }
     
-    const currentValues = {
+    // Prepare data to send to parent
+    const detailsToSend = {
       PET: toggleStates.PET ? sectionValues.PET : null,
       MR: toggleStates.MR ? sectionValues.MR : null,
       CT: toggleStates.CT ? sectionValues.CT : null,
     };
-
-    // Compare with previous values
-    const currentValuesStr = JSON.stringify(currentValues);
-    const previousValuesStr = JSON.stringify(previousValuesRef.current.currentValues);
     
-    if (currentValuesStr !== previousValuesStr) {
-      console.log('Values changed, notifying parent:', currentValues);
-      previousValuesRef.current.currentValues = currentValues;
-      
-      if (onValuesChange) {
-        onValuesChange(currentValues);
+    // Filter out null values for consistency with API
+    Object.keys(detailsToSend).forEach(key => {
+      if (detailsToSend[key] === null) {
+        delete detailsToSend[key];
       }
+    });
+
+    const dataToSend = {
+      summary: {
+        PET: currentTotals.PET.toString(),
+        MR: currentTotals.MR.toString(),
+        CT: currentTotals.CT.toString()
+      },
+      details: detailsToSend,
+      totals: currentTotals
+    };
+
+    console.log('ExternalConsultationToggle - Notifying parent:', dataToSend);
+    
+    if (onValuesChange) {
+      onValuesChange(dataToSend);
     }
   }, [toggleStates, sectionValues, onValuesChange]);
+
+  // Calculate summary values from totals
+  const getSummaryValues = () => {
+    return {
+      PET: totals.PET.toString(),
+      MR: totals.MR.toString(),
+      CT: totals.CT.toString()
+    };
+  };
 
   // Render grid layout
   const renderGridLayout = (section) => {
@@ -431,8 +442,15 @@ const ExternalConsultationToggle = ({
 
   // Render a section
   const renderSection = (section) => {
+    if (!visibleBoxes[section.id]) return null;
+    
     return (
-      <Collapse in={toggleStates[section.id]} key={section.id}>
+      <Collapse 
+        in={toggleStates[section.id]} 
+        key={section.id}
+        timeout="auto"
+        unmountOnExit={false}
+      >
         <SectionWrapper>
           <SectionHeader color={section.color}>
             <Typography
@@ -442,7 +460,7 @@ const ExternalConsultationToggle = ({
                 fontSize: "14px",
               }}
             >
-              {section.label}
+              {section.label} - 合計: {totals[section.id]}
             </Typography>
           </SectionHeader>
 
@@ -452,12 +470,13 @@ const ExternalConsultationToggle = ({
     );
   };
 
+  const summaryValues = getSummaryValues();
+
   return (
     <Paper
       elevation={0}
       sx={{
         p: 3,
- 
         backgroundColor: '#ffffff',
         mb: 3,
         overflow: "hidden",
@@ -465,29 +484,33 @@ const ExternalConsultationToggle = ({
     >
       {/* Header Toggle Bar */}
       <StyledToggleBox>
-        {sections.map((section) => (
-          <Stack
-            key={section.id}
-            direction="row"
-            spacing={1.25}
-            alignItems="center"
-          >
-            <Typography
-              variant="body2"
-              fontWeight={600}
-              color="text.secondary"
-              sx={{ whiteSpace: "nowrap" }}
+        {sections.map((section) => {
+          if (!visibleBoxes[section.id]) return null;
+          
+          return (
+            <Stack
+              key={section.id}
+              direction="row"
+              spacing={1.25}
+              alignItems="center"
             >
-              {section.label}
-            </Typography>
-            <Switch
-              checked={toggleStates[section.id]}
-              onChange={() => handleToggleChange(section.id)}
-              size="small"
-              disabled={readOnly || reportStatus === 'submitted'}
-            />
-          </Stack>
-        ))}
+              <Typography
+                variant="body2"
+                fontWeight={600}
+                color="text.secondary"
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                {section.label}
+              </Typography>
+              <Switch
+                checked={toggleStates[section.id]}
+                onChange={() => handleToggleChange(section.id)}
+                size="small"
+                disabled={readOnly || reportStatus === 'submitted'}
+              />
+            </Stack>
+          );
+        })}
 
         <Box sx={{ 
           ml: "auto", 
@@ -498,10 +521,10 @@ const ExternalConsultationToggle = ({
           justifyContent: "flex-end"
         }}>
           <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
-            合計: {grandTotal}
+            総合計: {totals.grandTotal}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
-            PET: {sectionTotals.PET} | MR: {sectionTotals.MR} | CT: {sectionTotals.CT}
+            PET: {totals.PET} | MR: {totals.MR} | CT: {totals.CT}
           </Typography>
         </Box>
       </StyledToggleBox>
@@ -510,6 +533,8 @@ const ExternalConsultationToggle = ({
       <Stack spacing={2}>
         {sections.map(renderSection)}
       </Stack>
+
+ 
 
       {/* Read-only warning */}
       {(readOnly || reportStatus === 'submitted') && (

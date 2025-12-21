@@ -718,7 +718,7 @@ const ConsolidatedContentComponentCount = ({
             backgroundColor: '#a8a8a8'
           }
         },
-      }}>
+      }}> {JSON.stringify(data)}
         <Table sx={{ minWidth: isMobile ? '800px' : '1000px' }}>
           <TableHead>
             <TableRow>

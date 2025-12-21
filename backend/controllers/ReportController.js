@@ -2193,7 +2193,8 @@ export const getHospitalDepartmentsDoctors = async (req, res, next) => {
     // If no report found for the calculated date, return error
     if (!report) {
       const dateString = searchDate.toISOString().split('T')[0];
-      return response.error(`No report found for date: ${dateString} (7 days before ${report_date})`, res, next);
+      //return response.error(`No report found for date: ${dateString} (7 days before ${report_date})`, res, next);
+     response.success([], res);
     }
 
     // Get report details
