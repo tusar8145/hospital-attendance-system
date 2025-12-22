@@ -59,32 +59,7 @@ const MonthlyUsageSummary = () => {
 
   return (
     <Stack spacing={3} sx={{ p: 4, bgcolor: "blue.50" }}>
-      <Box
-        component="header"
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          p: 1,
-          bgcolor: "#0A6AE3",
-          opacity: 0.8,
-        }}
-      >
-        <Box
-          sx={{ display: "flex", alignItems: "center", gap: 1.25, width: 229 }}
-        >
-          <Stack spacing={0.5} sx={{ flex: 1 }}>
-            <Typography
-              variant="body1"
-              sx={{
-                fontWeight: 600,
-                color: "white",
-              }}
-            >
-              ABCD
-            </Typography>
-          </Stack>
-        </Box>
-      </Box>
+ 
 
       <Stack direction="row" spacing={3.25}>
         {firstRowData.map((item, index) => (

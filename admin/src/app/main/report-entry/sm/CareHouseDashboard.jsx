@@ -68,26 +68,6 @@ const CareHouseDashboard = () => {
       }}
     >
       <Stack spacing={3}>
-        {/* Header */}
-        <Box
-          component="header"
-          sx={{
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
-            p: 2,
-            borderRadius: 1,
-          }}
-        >
-          <Typography
-            variant="body1"
-            sx={{
-              fontWeight: 600,
-              color: "text.primary",
-            }}
-          >
-            ケアハウス
-          </Typography>
-        </Box>
-
         {/* Attendance Section */}
         <Stack spacing={1} sx={{ width: "269px" }}>
           <Typography variant="body2" fontWeight={600} color="text.secondary">

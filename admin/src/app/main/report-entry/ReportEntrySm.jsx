@@ -50,7 +50,7 @@ import { useAppSelector } from 'app/store/hooks';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 
 // Lazy load the main report component
-const FrameScreen = React.lazy(() => import('./mid/FrameScreen'));
+const FrameScreen = React.lazy(() => import('./sm/FrameScreen'));
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {

@@ -26,10 +26,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
-import ConsolidatedContentComponent from './ConsolidatedContentComponent';
-import ConsolidatedContentComponentCount from './ConsolidatedContentComponentCount';
-import ExternalConsultationToggle from './ExternalConsultationToggle';
-import StatusBadge from './utils/StatusBadge';
+import StatusBadge from './utils/StatusBadge'; 
 import {
   formatDateForAPI,
   formatJapaneseDate,
@@ -37,9 +34,12 @@ import {
   prepareFormData as prepareFormDataUtil,
   validateForm as validateFormUtil
 } from './utils/frameScreenUtils';
+  
 
-import apiConfig from '../../../configs/apiConfig';
-import axios from 'axios';
+import DailyAdmissionReportSm from './DailyAdmissionReportSm'; 
+import CareHouseDashboard from './CareHouseDashboard'; 
+import MonthlyUsageSummarySm from './MonthlyUsageSummarySm'; 
+
 
 const FrameScreen = React.memo(({
   formData = null,
@@ -71,45 +71,12 @@ const FrameScreen = React.memo(({
   const [allow, setallow] = useState(false);
   const [date, setDate] = useState(reportDate || new Date());
   
-  // Initial values from API response
-  const [initialMorning, setInitialMorning] = useState("0");
-  const [initialAfternoon, setInitialAfternoon] = useState("0");
-  const [initialNight, setInitialNight] = useState("0");
+  // Patient counts - now editable
+  const [patientsCount, setPatientsCount] = useState("0");
+  const [outpatientsCount, setOutpatientsCount] = useState("0");
   
-  // Calculated fields for runtime updates
-  const [calculatedMorning, setCalculatedMorning] = useState(0);
-  const [calculatedAfternoon, setCalculatedAfternoon] = useState(0);
-  const [calculatedNight, setCalculatedNight] = useState(0);
-  
-  // Timer for 3 second hold
-  const [timerActive, setTimerActive] = useState(true);
-  
-  // External consultation data - initialize with empty values
-  const [externalConsultationData, setExternalConsultationData] = useState({
-    summary: {
-      PET: "",
-      MR: "",
-      CT: ""
-    },
-    details: null,
-    totals: {
-      PET: 0,
-      MR: 0,
-      CT: 0,
-      grandTotal: 0
-    }
-  });
-
-  const [currentStatus, setCurrentStatus] = useState({
-    firstRow: Array(21).fill(""),
-    secondRow: Array(21).fill(""),
-    thirdRow: Array(21).fill("")
-  });
+  // Special notes
   const [specialNotes, setSpecialNotes] = useState("");
-  
-  // Separate states for both components
-  const [consolidatedData, setConsolidatedData] = useState([]);
-  const [consolidatedDataCount, setConsolidatedDataCount] = useState([]);
   
   const [validationErrors, setValidationErrors] = useState({});
   const [activeTab, setActiveTab] = useState(0);
@@ -129,55 +96,6 @@ const FrameScreen = React.memo(({
     message: '',
     severity: 'success'
   });
-
-  // Start 3 second timer when component mounts or when formData is loaded
-  useEffect(() => {
-    if (formDataLoaded) {
-      setTimerActive(true);
-      const timer = setTimeout(() => {
-        setTimerActive(false);
-        console.log('3 second timer completed, switching to calculated values');
-      }, 3000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [formDataLoaded]);
-
-  // Calculate sums whenever consolidatedDataCount changes (but only if timer is not active)
-  useEffect(() => {
-    if (!timerActive && consolidatedDataCount && consolidatedDataCount.length > 0) {
-      let morningSum = 0;
-      let afternoonSum = 0;
-      let nightSum = 0;
-      
-      consolidatedDataCount.forEach(item => {
-        const totalPatients = parseInt(item.total_patients) || 0;
-        
-        switch (item.consultation_type) {
-          case 'morning':
-            morningSum += totalPatients;
-            break;
-          case 'afternoon':
-            afternoonSum += totalPatients;
-            break;
-          case 'night':
-            nightSum += totalPatients;
-            break;
-          default:
-            break;
-        }
-      });
-      
-      setCalculatedMorning(morningSum);
-      setCalculatedAfternoon(afternoonSum);
-      setCalculatedNight(nightSum);
-    } else if (!timerActive) {
-      // Reset to 0 if no data and timer is not active
-      setCalculatedMorning(0);
-      setCalculatedAfternoon(0);
-      setCalculatedNight(0);
-    }
-  }, [consolidatedDataCount, timerActive]);
 
   // Initialize form when formData changes
   useEffect(() => {
@@ -223,131 +141,12 @@ const FrameScreen = React.memo(({
     // Mark that we've loaded form data
     setFormDataLoaded(true);
     
-    // Load initial values from API response
-    setInitialMorning(data.admission_count?.toString() || "0");
-    setInitialAfternoon(data.discharge_count?.toString() || "0");
-    setInitialNight(data.external_duty?.toString() || "0");
-    
-    // Also set calculated values to initial values initially
-    setCalculatedMorning(parseInt(data.admission_count) || 0);
-    setCalculatedAfternoon(parseInt(data.discharge_count) || 0);
-    setCalculatedNight(parseInt(data.external_duty) || 0);
-    
-    // Calculate totals from external_consultation_details if available
-    let petTotal = 0;
-    let mrTotal = 0;
-    let ctTotal = 0;
-    
-    // If we have detailed data, calculate totals from it
-    if (data.external_consultation_details) {
-      console.log('Calculating totals from external_consultation_details:', data.external_consultation_details);
-      
-      // Calculate PET total
-      if (data.external_consultation_details.PET) {
-        const petDetails = data.external_consultation_details.PET;
-        petTotal = Object.values(petDetails).reduce((sum, field) => {
-          if (field && field.enabled) {
-            return sum + (parseInt(field.value) || 0);
-          }
-          return sum;
-        }, 0);
-      }
-      
-      // Calculate MR total
-      if (data.external_consultation_details.MR) {
-        const mrDetails = data.external_consultation_details.MR;
-        mrTotal = Object.values(mrDetails).reduce((sum, field) => {
-          if (field && field.enabled) {
-            return sum + (parseInt(field.value) || 0);
-          }
-          return sum;
-        }, 0);
-      }
-      
-      // Calculate CT total
-      if (data.external_consultation_details.CT) {
-        const ctDetails = data.external_consultation_details.CT;
-        ctTotal = Object.values(ctDetails).reduce((sum, field) => {
-          if (field && field.enabled) {
-            return sum + (parseInt(field.value) || 0);
-          }
-          return sum;
-        }, 0);
-      }
-    } else {
-      // Fallback to the old fields if no detailed data
-      petTotal = parseInt(data.emergency_transport) || 0;
-      mrTotal = parseInt(data.post_transport_admission) || 0;
-      ctTotal = parseInt(data.visit_count) || 0;
-    }
-    
-    // Set initial external consultation data
-    const initialExternalData = {
-      summary: {
-        PET: petTotal.toString(),
-        MR: mrTotal.toString(),
-        CT: ctTotal.toString()
-      },
-      details: data.external_consultation_details || null,
-      totals: {
-        PET: petTotal,
-        MR: mrTotal,
-        CT: ctTotal,
-        grandTotal: petTotal + mrTotal + ctTotal
-      }
-    };
-    
-    console.log('Setting externalConsultationData:', initialExternalData);
-    setExternalConsultationData(initialExternalData);
+    // Load patient counts from API response
+    setPatientsCount(data.admission_count?.toString() || "0");
+    setOutpatientsCount(data.discharge_count?.toString() || "0");
     
     // Special notes
     setSpecialNotes(data.special_notes || "");
-    
-    // Load data for both components
-    // For ConsolidatedContentComponent (doctor-based)
-    if (data.report_details && Array.isArray(data.report_details) && data.report_details.length > 0) {
-      console.log('Setting consolidated data for doctor-based component:', data.report_details.length, 'items');
-      setConsolidatedData(data.report_details);
-    } else {
-      // CRITICAL: Reset to empty array when no data exists
-      console.log('Resetting consolidatedData to empty array');
-
-
-      try {
-          if (hospitalId) {
-            const response = await axios.post(apiConfig.reportHospitalDepartmentsDoctors, {
-              hospital_id: hospitalId,
-              report_date: date
-            });
-
-            if (response.data.success && response.data.data) {
-              const departmentsData = response.data.data;
-
-              // Create a new array with patient_count set to 0
-              const modifiedData = departmentsData.map(item => ({
-                ...item,
-                patient_count: 0
-              }));
-              setConsolidatedData(modifiedData);
-            }else{
-                      setConsolidatedData([]);
-            }
-          }        
-      } catch (error) {
-        setConsolidatedData([]);
-      }
-
-    }
-    
-    // For ConsolidatedContentComponentCount (patient count-based)
-    if (data.report_details_mid && Array.isArray(data.report_details_mid) && data.report_details_mid.length > 0) {
-      console.log('Setting consolidated data for count-based component:', data.report_details_mid, 'items');
-      setConsolidatedDataCount(data.report_details_mid);
-    } else {
-      // CRITICAL: Reset to empty array when no data exists
-      console.log('Resetting consolidatedDataCount to empty array');
-      setConsolidatedDataCount([]);
-    }
     
     // Clear validation errors when loading data
     setValidationErrors({});
@@ -359,65 +158,17 @@ const FrameScreen = React.memo(({
   const resetForm = () => {
     console.log('Resetting form completely');
     
-    // Reset initial values
-    setInitialMorning("0");
-    setInitialAfternoon("0");
-    setInitialNight("0");
+    // Reset patient counts
+    setPatientsCount("0");
+    setOutpatientsCount("0");
     
-    // Reset calculated fields
-    setCalculatedMorning(0);
-    setCalculatedAfternoon(0);
-    setCalculatedNight(0);
-    
-    // Reset timer
-    setTimerActive(true);
-    
-    // Reset external consultation data - with empty strings
-    setExternalConsultationData({
-      summary: { 
-        PET: "", 
-        MR: "", 
-        CT: "" 
-      },
-      details: null,
-      totals: {
-        PET: 0,
-        MR: 0,
-        CT: 0,
-        grandTotal: 0
-      }
-    });
-    
-    setCurrentStatus({ 
-      firstRow: Array(21).fill(""), 
-      secondRow: Array(21).fill(""),
-      thirdRow: Array(21).fill("")
-    });
-    
+    // Reset special notes
     setSpecialNotes("");
     
-    // Reset consolidated data for both components
-    setConsolidatedData([]);
-    setConsolidatedDataCount([]);
-    
     setFormDataLoaded(false);
-    
     setValidationErrors({});
     
     console.log('Form reset complete');
-  };
-
-  // Get the current display value based on timer status
-  const getDisplayMorning = () => {
-    return timerActive ? initialMorning : calculatedMorning;
-  };
-
-  const getDisplayAfternoon = () => {
-    return timerActive ? initialAfternoon : calculatedAfternoon;
-  };
-
-  const getDisplayNight = () => {
-    return timerActive ? initialNight : calculatedNight;
   };
 
   // Handle date navigation
@@ -465,16 +216,41 @@ const FrameScreen = React.memo(({
     onDateChange(newDate);
   };
 
+  // Handle patient count changes
+  const handlePatientsCountChange = (e) => {
+    const value = e.target.value;
+    // Allow only numbers
+    if (value === '' || /^\d+$/.test(value)) {
+      setPatientsCount(value);
+      // Clear error if fixed
+      if (validationErrors.patientsCount) {
+        const newErrors = { ...validationErrors };
+        delete newErrors.patientsCount;
+        setValidationErrors(newErrors);
+      }
+    }
+  };
+
+  const handleOutpatientsCountChange = (e) => {
+    const value = e.target.value;
+    // Allow only numbers
+    if (value === '' || /^\d+$/.test(value)) {
+      setOutpatientsCount(value);
+      // Clear error if fixed
+      if (validationErrors.outpatientsCount) {
+        const newErrors = { ...validationErrors };
+        delete newErrors.outpatientsCount;
+        setValidationErrors(newErrors);
+      }
+    }
+  };
+
   // Validate form
   const validateForm = () => {
     const errors = validateFormUtil(
       hospitalId,
-      getDisplayMorning,
-      getDisplayAfternoon,
-      getDisplayNight,
-      externalConsultationData,
-      consolidatedData,
-      consolidatedDataCount
+      patientsCount,
+      outpatientsCount
     );
     
     setValidationErrors(errors);
@@ -488,16 +264,19 @@ const FrameScreen = React.memo(({
   };
 
   const prepareFormData = () => {
-    return prepareFormDataUtil(
-      getDisplayMorning,
-      getDisplayAfternoon,
-      getDisplayNight,
-      externalConsultationData,
-      specialNotes,
-      consolidatedData,
-      consolidatedDataCount,
-      hospital_type
-    );
+    return {
+      admission_count: patientsCount || "0",
+      discharge_count: outpatientsCount || "0",
+      external_duty: "0", // Always 0 since night consultation is removed
+      emergency_transport: "0", // PET removed
+      post_transport_admission: "0", // MR removed
+      visit_count: "0", // CT removed
+      special_notes: specialNotes || "",
+      report_details: [], // Empty array since component is removed
+      report_details_mid: [], // Empty array
+      external_consultation_details: null, // External consultation removed
+      hospital_type: hospital_type // Keep hospital_type for backend
+    };
   };
 
   // Handle save draft
@@ -532,56 +311,15 @@ const FrameScreen = React.memo(({
     }
   };
 
-  // Handle external consultation data change from child component
-  const handleExternalConsultationChange = useCallback((newData) => {
-    console.log('External consultation data updated in parent:', newData);
-    
-    setExternalConsultationData(newData);
-    
-    // Clear errors if fixed
-    const newErrors = { ...validationErrors };
-    if (newData.summary.PET && !isNaN(parseInt(newData.summary.PET))) {
-      delete newErrors.PET;
-    }
-    if (newData.summary.MR && !isNaN(parseInt(newData.summary.MR))) {
-      delete newErrors.MR;
-    }
-    if (newData.summary.CT && !isNaN(parseInt(newData.summary.CT))) {
-      delete newErrors.CT;
-    }
-    setValidationErrors(newErrors);
-  }, [validationErrors]);
-
   const handleSpecialNotesChange = (e) => {
     setSpecialNotes(e.target.value);
-  };
-
-  const handleConsolidatedDataChange = (newData) => {
-    setConsolidatedData(newData);
-    // Clear consolidated data error if data is added
-    if (validationErrors.consolidatedData && (newData.length > 0 || consolidatedDataCount.length > 0)) {
-      const newErrors = { ...validationErrors };
-      delete newErrors.consolidatedData;
-      setValidationErrors(newErrors);
-    }
-  };
-
-  const handleConsolidatedDataCountChange = (newData) => {
-    console.log(newData,'newDatanewDataccccccc')
-    setConsolidatedDataCount(newData);
-    // Clear consolidated data error if data is added
-    if (validationErrors.consolidatedData && (consolidatedData.length > 0 || newData.length > 0)) {
-      const newErrors = { ...validationErrors };
-      delete newErrors.consolidatedData;
-      setValidationErrors(newErrors);
-    }
   };
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
-  // Show local snackbar (for date navigation warnings)
+  // Show local snackbar (for date warnings only)
   const showLocalSnackbar = (message, severity = 'success') => {
     setLocalSnackbar({
       open: true,
@@ -607,18 +345,9 @@ const FrameScreen = React.memo(({
       return () => clearTimeout(timeoutId);
     }
   }, [
-    initialMorning,
-    initialAfternoon,
-    initialNight,
-    calculatedMorning,
-    calculatedAfternoon,
-    calculatedNight,
-    timerActive,
-    externalConsultationData,
-    currentStatus,
-    specialNotes,
-    consolidatedData,
-    consolidatedDataCount
+    patientsCount,
+    outpatientsCount,
+    specialNotes
   ]);
 
   // Create a function that the parent can call to trigger save draft
@@ -841,7 +570,7 @@ const FrameScreen = React.memo(({
           </Alert>
         )}
 
-        {/* Patients Statistics Section */}
+        {/* Patients Statistics Section - Now editable */}
         <Paper
           elevation={0}
           sx={{
@@ -875,16 +604,14 @@ const FrameScreen = React.memo(({
                 }} />
                 患者数
               </Typography>
-              <Tooltip title={timerActive ? 
-                "患者数に関する統計情報（初期値、3秒間保持）" : 
-                "患者数に関する統計情報（自動計算）"}>
+              <Tooltip title="患者数に関する統計情報">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>
 
             <Grid container spacing={isMobile ? 2 : 3}>
-              {/* Patients Count */}
-              <Grid item xs={12} sm={4}>
+              {/* Patients Count - Now editable */}
+              <Grid item xs={12} sm={6}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
                     fontWeight: 600, 
@@ -895,51 +622,42 @@ const FrameScreen = React.memo(({
                     gap: 0.5
                   }}>
                     午前診
+                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
+                      *
+                    </Typography>
                   </Typography>
                   <TextField
-                    value={timerActive ? initialMorning : calculatedMorning}
+                    value={patientsCount}
+                    onChange={handlePatientsCountChange}
                     variant="outlined"
                     fullWidth
                     size="small"
                     error={!!validationErrors.patientsCount}
-                    helperText={timerActive ? 
-                      "初期値（3秒間保持）" : 
-                      "朝診の合計患者数（自動計算）"}
+                    helperText={validationErrors.patientsCount || "午前診の患者数を入力してください"}
                     disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
-                      readOnly: true,
                       sx: {
                         borderRadius: "8px",
-                        bgcolor: "#f5f5f5",
+                        bgcolor: "#ffffff",
                         height: textFieldHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
                           borderColor: validationErrors.patientsCount ? "#df1c41" : "#bdbdbd",
                         },
                         "& input": {
                           fontSize: fontSize.medium,
-                          textAlign: 'left',
-                          paddingLeft: 2,
+                          textAlign: 'right',
+                          paddingRight: 2,
                           fontWeight: 500,
-                          color: "#666",
+                          color: "#2c3e50",
                         },
                       },
                     }}
                   />
-                  {timerActive && (
-                    <Typography sx={{ 
-                      fontSize: fontSize.small, 
-                      color: '#ff9800',
-                      fontStyle: 'italic',
-                      textAlign: 'center'
-                    }}>
-                      ⏱️ 3秒後に自動計算に切り替わります
-                    </Typography>
-                  )}
                 </Stack>
               </Grid>
 
-              {/* Outpatients Count */}
-              <Grid item xs={12} sm={4}>
+              {/* Outpatients Count - Now editable */}
+              <Grid item xs={12} sm={6}>
                 <Stack spacing={1}>
                   <Typography sx={{ 
                     fontWeight: 600, 
@@ -950,77 +668,33 @@ const FrameScreen = React.memo(({
                     gap: 0.5
                   }}>
                     午後診
+                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
+                      *
+                    </Typography>
                   </Typography>
                   <TextField
-                    value={timerActive ? initialAfternoon : calculatedAfternoon}
+                    value={outpatientsCount}
+                    onChange={handleOutpatientsCountChange}
                     variant="outlined"
                     fullWidth
                     size="small"
                     error={!!validationErrors.outpatientsCount}
-                    helperText={timerActive ? 
-                      "初期値（3秒間保持）" : 
-                      "午後診の合計患者数（自動計算）"}
+                    helperText={validationErrors.outpatientsCount || "午後診の患者数を入力してください"}
                     disabled={readOnly || reportStatus === 'submitted'}
                     InputProps={{
-                      readOnly: true,
                       sx: {
                         borderRadius: "8px",
-                        bgcolor: "#f5f5f5",
+                        bgcolor: "#ffffff",
                         height: textFieldHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
                           borderColor: validationErrors.outpatientsCount ? "#df1c41" : "#bdbdbd",
                         },
                         "& input": {
                           fontSize: fontSize.medium,
-                          textAlign: 'left',
-                          paddingLeft: 2,
+                          textAlign: 'right',
+                          paddingRight: 2,
                           fontWeight: 500,
-                          color: "#666",
-                        },
-                      },
-                    }}
-                  />
-                </Stack>
-              </Grid>
-
-              {/* Night Consultation */}
-              <Grid item xs={12} sm={4}>
-                <Stack spacing={1}>
-                  <Typography sx={{ 
-                    fontWeight: 600, 
-                    fontSize: fontSize.medium,
-                    color: "#36394a",
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}>
-                    夜診
-                  </Typography>
-                  <TextField
-                    value={timerActive ? initialNight : calculatedNight}
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    error={!!validationErrors.nightConsultation}
-                    helperText={timerActive ? 
-                      "初期値（3秒間保持）" : 
-                      "夜診の合計患者数（自動計算）"}
-                    disabled={readOnly || reportStatus === 'submitted'}
-                    InputProps={{
-                      readOnly: true,
-                      sx: {
-                        borderRadius: "8px",
-                        bgcolor: "#f5f5f5",
-                        height: textFieldHeight,
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.nightConsultation ? "#df1c41" : "#bdbdbd",
-                        },
-                        "& input": {
-                          fontSize: fontSize.medium,
-                          textAlign: 'left',
-                          paddingLeft: 2,
-                          fontWeight: 500,
-                          color: "#666",
+                          color: "#2c3e50",
                         },
                       },
                     }}
@@ -1031,7 +705,113 @@ const FrameScreen = React.memo(({
           </Stack>
         </Paper>
 
-        {/* External Consultation Section */}
+
+                {/* Patients Statistics Section - Now editable */}
+      
+      
+      
+      <Paper
+          elevation={0}
+          sx={{
+            p: sectionPadding,
+            borderRadius: '12px',
+            border: '1px solid #e0e0e0',
+            backgroundColor: '#ffffff',
+          }}
+        >
+          <Stack spacing={3}>
+            {/* Section Header */}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              mb: 2
+            }}>
+              <Typography sx={{ 
+                fontWeight: 700, 
+                fontSize: fontSize.large,
+                color: "#2c3e50",
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                <Box component="span" sx={{ 
+                  width: 4, 
+                  height: 20, 
+                  backgroundColor: '#3498db',
+                  borderRadius: '2px'
+                }} />
+               入所
+              </Typography>
+              <Tooltip title="">
+                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
+              </Tooltip>
+            </Box>
+
+            <Grid container spacing={isMobile ? 2 : 3}>
+              {/* Patients Count - Now editable */}
+              <Grid item xs={12} sm={12}>
+                <Stack spacing={1}>
+                    <DailyAdmissionReportSm/>
+                </Stack>
+              </Grid>
+            </Grid>
+          </Stack>
+        </Paper>
+      
+      
+            <Paper
+          elevation={0}
+          sx={{
+            p: sectionPadding,
+            borderRadius: '12px',
+            border: '1px solid #e0e0e0',
+            backgroundColor: '#ffffff',
+          }}
+        >
+          <Stack spacing={3}>
+            {/* Section Header */}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              mb: 2
+            }}>
+              <Typography sx={{ 
+                fontWeight: 700, 
+                fontSize: fontSize.large,
+                color: "#2c3e50",
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                <Box component="span" sx={{ 
+                  width: 4, 
+                  height: 20, 
+                  backgroundColor: '#3498db',
+                  borderRadius: '2px'
+                }} />
+              ケアハウス
+              </Typography>
+              <Tooltip title="">
+                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
+              </Tooltip>
+            </Box>
+
+            <Grid container spacing={isMobile ? 2 : 3}>
+              {/* Patients Count - Now editable */}
+              <Grid item xs={12} sm={12}>
+                <Stack spacing={1}>
+                    <CareHouseDashboard/>
+                </Stack>
+              </Grid>
+            </Grid>
+          </Stack>
+        </Paper>
+
+
+
+      
         <Paper
           elevation={0}
           sx={{
@@ -1060,200 +840,42 @@ const FrameScreen = React.memo(({
                 <Box component="span" sx={{ 
                   width: 4, 
                   height: 20, 
-                  backgroundColor: '#e74c3c',
+                  backgroundColor: '#3498db',
                   borderRadius: '2px'
                 }} />
-                患者数 (PET / MR / CT)
+                ABCD
               </Typography>
-              <Tooltip title="PET/MR/CT検査に関する情報">
+              <Tooltip title="患者数に関する統計情報">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>
 
-            {/* Simple summary fields (for backward compatibility) */}
             <Grid container spacing={isMobile ? 2 : 3}>
-              {/* PET */}
-              <Grid item xs={12} sm={6} md={4}>
+              {/* Patients Count - Now editable */}
+              <Grid item xs={12} sm={12}>
                 <Stack spacing={1}>
-                  <Typography sx={{ 
-                    fontSize: fontSize.medium,
-                    fontWeight: 600, 
-                    color: "#36394a",
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}>
-                    PET
-                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
-                    </Typography>
-                  </Typography>
-                  <TextField
-                    value={externalConsultationData.summary.PET || "0"}
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    error={!!validationErrors.PET}
-                    helperText={validationErrors.PET || "合計値（詳細設定から変更可能）"}
-                    disabled={readOnly || reportStatus === 'submitted'}
-                    InputProps={{
-                      readOnly: true,
-                      sx: {
-                        borderRadius: "8px",
-                        bgcolor: "#f5f5f5",
-                        height: textFieldHeight,
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.PET ? "#df1c41" : "#dfe1e7",
-                        },
-                        "& input": {
-                          fontSize: fontSize.medium,
-                          textAlign: 'right',
-                          paddingRight: 2,
-                          fontWeight: 500,
-                          color: "#2c3e50",
-                        },
-                      },
-                    }}
-                  />
-                </Stack>
-              </Grid>
-
-              {/* MR */}
-              <Grid item xs={12} sm={6} md={4}>
-                <Stack spacing={1}>
-                  <Typography sx={{ 
-                    fontSize: fontSize.medium,
-                    fontWeight: 600, 
-                    color: "#36394a",
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}>
-                    MR
-                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
-                    </Typography>
-                  </Typography>
-                  <TextField
-                    value={externalConsultationData.summary.MR || "0"}
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    error={!!validationErrors.MR}
-                    helperText={validationErrors.MR || "合計値（詳細設定から変更可能）"}
-                    disabled={readOnly || reportStatus === 'submitted'}
-                    InputProps={{
-                      readOnly: true,
-                      sx: {
-                        borderRadius: "8px",
-                        bgcolor: "#f5f5f5",
-                        height: textFieldHeight,
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.MR ? "#df1c41" : "#dfe1e7",
-                        },
-                        "& input": {
-                          fontSize: fontSize.medium,
-                          textAlign: 'right',
-                          paddingRight: 2,
-                          fontWeight: 500,
-                          color: "#2c3e50",
-                        },
-                      },
-                    }}
-                  />
-                </Stack>
-              </Grid>
-
-              {/* CT */}
-              <Grid item xs={12} sm={12} md={4}>
-                <Stack spacing={1}>
-                  <Typography sx={{ 
-                    fontSize: fontSize.medium,
-                    fontWeight: 600, 
-                    color: "#36394a",
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}>
-                    CT
-                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
-                    </Typography>
-                  </Typography>
-                  <TextField
-                    value={externalConsultationData.summary.CT || "0"}
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    error={!!validationErrors.CT}
-                    helperText={validationErrors.CT || "合計値（詳細設定から変更可能）"}
-                    disabled={readOnly || reportStatus === 'submitted'}
-                    InputProps={{
-                      readOnly: true,
-                      sx: {
-                        borderRadius: "8px",
-                        bgcolor: "#f5f5f5",
-                        height: textFieldHeight,
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.CT ? "#df1c41" : "#dfe1e7",
-                        },
-                        "& input": {
-                          fontSize: fontSize.medium,
-                          textAlign: 'right',
-                          paddingRight: 2,
-                          fontWeight: 500,
-                          color: "#2c3e50",
-                        },
-                      },
-                    }}
-                  />
+                      <MonthlyUsageSummarySm/>
                 </Stack>
               </Grid>
             </Grid>
-
- 
-            {/* Detailed Toggle Component */}
-
-            <Box sx={{ mt: 3 }}>   
-              <ExternalConsultationToggle
-                initialValues={{
-                  summary: externalConsultationData.summary,
-                  details: externalConsultationData.details,
-                  totals: externalConsultationData.totals
-                }}
-                onValuesChange={handleExternalConsultationChange}
-                readOnly={readOnly || reportStatus === 'submitted'}
-                reportStatus={reportStatus}
-              />
-            </Box> 
- 
-
-
-
           </Stack>
         </Paper>
-        {/* Consolidated Content Section */}
-        <ConsolidatedContentComponentCount
-          data={consolidatedDataCount}
-          departments={departments}
-          hospitalId={hospitalId}
-          onDataChange={handleConsolidatedDataCountChange}
-          validationErrors={validationErrors}
-          readOnly={readOnly || reportStatus === 'submitted'}
-          loading={loading}
-        />
 
-        {/* Consolidated Content Section */}
-        <ConsolidatedContentComponent
-          data={consolidatedData}
-          departments={departments}
-          doctors={doctors}
-          hospitalId={hospitalId}
-          onDataChange={handleConsolidatedDataChange}
-          validationErrors={validationErrors}
-          readOnly={readOnly || reportStatus === 'submitted'}
-          loading={loading}
-        />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         {/* Administrative Matters Section */}
         <Paper

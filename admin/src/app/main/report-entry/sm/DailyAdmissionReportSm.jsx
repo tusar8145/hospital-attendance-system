@@ -58,33 +58,7 @@ const DailyAdmissionReport = () => {
         backgroundColor: "#ffe5e5",
       }}
     >
-      {/* Header */}
-      <Box
-        component="header"
-        sx={{
-          backgroundColor: "#ffb3b3",
-          opacity: 0.8,
-          padding: 2,
-        }}
-      >
-        <Box
-          sx={{
-            width: 229,
-            padding: 1,
-          }}
-        >
-          <Typography
-            sx={{
-              fontWeight: 600,
-              color: "#ffffff",
-              fontSize: "14px",
-              lineHeight: 1.5,
-            }}
-          >
-            入所
-          </Typography>
-        </Box>
-      </Box>
+ 
 
       <Stack spacing={3} sx={{ padding: 4 }}>
         {/* InputFormSection */}

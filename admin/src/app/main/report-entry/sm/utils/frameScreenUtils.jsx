@@ -28,57 +28,35 @@ export const shouldDisableDate = (date) => {
   return selectedDate > today;
 };
 
-// Prepare form data for submission
+// Prepare form data for submission - SIMPLIFIED VERSION
 export const prepareFormData = (
-  getDisplayMorning,
-  getDisplayAfternoon,
-  getDisplayNight,
-  externalConsultationData,
+  patientsCount,
+  outpatientsCount,
   specialNotes,
-  consolidatedData,
-  consolidatedDataCount,
-  hospital_type
+  hospital_type = 'hospital'
 ) => {
-  console.log('=== Preparing Form Data ===');
+  console.log('=== Preparing Simplified Form Data ===');
   
-  // Filter out empty consolidated data for both components
-  const filteredConsolidatedData = consolidatedData.filter(item => 
-    (item.doctor_id_1 || item.doctor_id_2 || item.doctor_id_3 || item.floor)
-  );
-
-  const filteredConsolidatedDataCount = consolidatedDataCount.filter(item => 
-    item.department_id && (item.total_patients !== undefined || item.new_patients !== undefined)
-  );
-
   return {
-    admission_count: parseInt(getDisplayMorning()) || 0,
-    discharge_count: parseInt(getDisplayAfternoon()) || 0,
-    external_duty: parseInt(getDisplayNight()) || 0,
-    emergency_transport: parseInt(externalConsultationData.summary.PET) || 0,
-    post_transport_admission: parseInt(externalConsultationData.summary.MR) || 0,
-    visit_count: parseInt(externalConsultationData.summary.CT) || 0,
+    admission_count: patientsCount || "0",
+    discharge_count: outpatientsCount || "0",
+    external_duty: "0", // Always 0 since night consultation is removed
+    emergency_transport: "0", // PET removed
+    post_transport_admission: "0", // MR removed
+    visit_count: "0", // CT removed
     special_notes: specialNotes.trim(),
-    report_details: filteredConsolidatedData,
-    report_details_mid: filteredConsolidatedDataCount,
-    external_consultation_details: externalConsultationData.details,
+    report_details: [], // Empty array since component is removed
+    report_details_mid: [], // Empty array
+    external_consultation_details: null, // External consultation removed
     hospital_type: hospital_type,
   };
 };
 
-// Validate form data
- // Update validateForm function to only validate visible boxes
-// In frameScreenUtils.jsx, update validateForm function:
+// Validate form data - SIMPLIFIED VERSION
 export const validateForm = (
   hospitalId,
-  getDisplayMorning,
-  getDisplayAfternoon,
-  getDisplayNight,
-  externalConsultationData,
-  consolidatedData,
-  consolidatedDataCount,
-  showPETBox = false,
-  showMRBox = false,
-  showCTBox = false
+  patientsCount,
+  outpatientsCount
 ) => {
   const errors = {};
   
@@ -87,42 +65,13 @@ export const validateForm = (
     errors.hospital = "病院の選択が必要です";
   }
   
-  // Validate the current display values
-  const morningValue = getDisplayMorning();
-  const afternoonValue = getDisplayAfternoon();
-  const nightValue = getDisplayNight();
-  
-  // These fields are always readonly, so validation is minimal
-  // Just check if they are valid numbers
-  if (morningValue === undefined || morningValue === null || morningValue === "" || isNaN(parseInt(morningValue))) {
-    errors.patientsCount = "有効な患者数が必要です";
+  // Validate patient counts - these are now editable
+  if (!patientsCount || patientsCount === "" || isNaN(parseInt(patientsCount))) {
+    errors.patientsCount = "有効な午前診数が必要です";
   }
   
-  if (afternoonValue === undefined || afternoonValue === null || afternoonValue === "" || isNaN(parseInt(afternoonValue))) {
+  if (!outpatientsCount || outpatientsCount === "" || isNaN(parseInt(outpatientsCount))) {
     errors.outpatientsCount = "有効な午後診数が必要です";
-  }
-  
-  if (nightValue === undefined || nightValue === null || nightValue === "" || isNaN(parseInt(nightValue))) {
-    errors.nightConsultation = "有効な夜診数が必要です";
-  }
-  
-  // External consultation validation - only validate visible boxes
-  if (showPETBox && (!externalConsultationData.summary.PET || externalConsultationData.summary.PET === "" || isNaN(parseInt(externalConsultationData.summary.PET)))) {
-    errors.PET = "有効なPET数が必要です";
-  }
-  
-  if (showMRBox && (!externalConsultationData.summary.MR || externalConsultationData.summary.MR === "" || isNaN(parseInt(externalConsultationData.summary.MR)))) {
-    errors.MR = "有効なMR数が必要です";
-  }
-  
-  if (showCTBox && (!externalConsultationData.summary.CT || externalConsultationData.summary.CT === "" || isNaN(parseInt(externalConsultationData.summary.CT)))) {
-    errors.CT = "有効なCT数が必要です";
-  }
-
-  // Validate consolidated data for both components
-  // Both components should have at least one entry
-  if (consolidatedData.length === 0 && consolidatedDataCount.length === 0) {
-    errors.consolidatedData = "少なくとも1つの診療科エントリが必要です";
   }
   
   return errors;
