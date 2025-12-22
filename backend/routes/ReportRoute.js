@@ -49,14 +49,14 @@ router.post("/report-mid/departments-with-doctors", auth, ReportControllerMid.ge
 router.post('/report-mid/get-last-report-mid-data', auth, ReportControllerMid.getLastReportMidData);
 
 //Sm
-router.post("/report-sm/get-by-date", auth, ReportControllerSm.getReportByDate);
-router.post("/report-sm/get-by-id", auth, ReportControllerSm.getReportById);
-router.post("/report-sm/submit", auth, ReportControllerSm.submitReport);
-router.post("/report-sm/section-titles", auth, ReportControllerSm.getSectionTitles);
-router.put("/report-sm/section-title", auth, ReportControllerSm.updateSectionTitle);
-router.post("/report-sm/last-data", auth, ReportControllerSm.getLastReportSmData);
-router.post("/report-sm/monthly-statistics", auth, ReportControllerSm.getMonthlyStatistics);
-router.post("/report-sm/yearly-statistics", auth, ReportControllerSm.getYearlyStatistics);
-router.get("/report-sm/section-types", auth, ReportControllerSm.getSectionTypes);
+router.post("/report-welfare/get-by-date", auth, ReportControllerSm.getReportByDate);
+router.post("/report-welfare/get-by-id", auth, ReportControllerSm.getReportById);
+router.post("/report-welfare/submit", auth, ReportControllerSm.submitReport);
+router.post("/report-welfare/departments", auth, ReportControllerSm.getDepartments);
+router.post("/report-welfare/section-names", auth, ReportControllerSm.getSectionNames);
+router.post("/report-welfare/update-section-names", auth, ReportControllerSm.updateSectionNames);
+router.post("/report-welfare/get-last-report-data", auth, ReportControllerSm.getLastReportWelfareDataApi);
+router.post("/report-welfare/statistics", auth, ReportControllerSm.getReportStatistics);
+router.post("/report-welfare/export", auth, ReportControllerSm.exportReports);
 
 export { router as ReportRoute };

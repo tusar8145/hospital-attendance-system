@@ -4,82 +4,167 @@ import * as response from "../helpers/Response.js";
 
 const prisma = new PrismaClient();
 
-// Helper to generate report number for small hospitals
+// Helper to generate report number
 function generateReportNo(medicalCenterId, date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  return `RPT-SM-${medicalCenterId}-${year}${month}${day}`;
+  return `RPT-WELFARE-${medicalCenterId}-${year}${month}${day}`;
 }
 
-// Helper function to calculate statistics
-const calculateStatistics = (currentData, previousData, reportDate) => {
-  const results = {};
-  
-  // Calculate admission statistics
-  if (currentData.admission) {
-    const admission = currentData.admission;
-    const prevAdmission = previousData.admission || {};
+// Get last report's welfare data for calculations
+async function getLastReportWelfareData(medicalCenterId, currentDate) {
+  try {
+    // Calculate date 7 days earlier for last report
+    const targetDate = new Date(currentDate);
+    targetDate.setDate(targetDate.getDate() - 7);
     
-    // 前日入所者数
-    results.admission_previous_day = prevAdmission.daily_admission || 0;
-    
-    // 当日末入所者数 = 定員 - 当日入所者数
-    results.admission_end_of_day = (admission.capacity || 0) - (admission.daily_admission || 0);
-    
-    // Monthly averages (simplified - would need actual monthly data)
-    results.admission_monthly_total = (admission.daily_admission || 0) * 30; // Example
-    results.admission_monthly_average = Math.round((admission.daily_admission || 0) * 0.9);
-    results.admission_monthly_utilization = admission.capacity ? 
-      Math.round(((admission.daily_admission || 0) / admission.capacity) * 100) : 0;
-    
-    // Yearly averages
-    results.admission_yearly_total = (admission.daily_admission || 0) * 365;
-    results.admission_yearly_average = Math.round((admission.daily_admission || 0) * 0.85);
-    results.admission_yearly_utilization = admission.capacity ? 
-      Math.round(((admission.daily_admission || 0) / admission.capacity) * 100) * 0.9 : 0;
-  }
-  
-  // Calculate care house statistics
-  if (currentData.care_house) {
-    const careHouse = currentData.care_house;
-    
-    // Monthly statistics
-    results.care_house_monthly_users = (careHouse.daily_users || 0) * 30;
-    results.care_house_monthly_total = (careHouse.daily_users || 0) * 25;
-    results.care_house_monthly_average = Math.round((careHouse.daily_users || 0) * 0.8);
-    results.care_house_monthly_utilization = careHouse.capacity ? 
-      Math.round(((careHouse.daily_users || 0) / careHouse.capacity) * 100) : 0;
-    
-    // Yearly statistics
-    results.care_house_yearly_users = (careHouse.daily_users || 0) * 300;
-    results.care_house_yearly_average = Math.round((careHouse.daily_users || 0) * 0.75);
-    results.care_house_yearly_utilization = careHouse.capacity ? 
-      Math.round(((careHouse.daily_users || 0) / careHouse.capacity) * 100) * 0.85 : 0;
-  }
-  
-  // Calculate service section statistics
-  const serviceTypes = ['day_service_1', 'day_service_2', 'rehabilitation', 'care_management', 'dementia_support'];
-  serviceTypes.forEach(type => {
-    if (currentData[type]) {
-      const service = currentData[type];
-      
-      results[`${type}_monthly_users`] = (service.daily_users || 0) * 22;
-      results[`${type}_monthly_average`] = Math.round((service.daily_users || 0) * 0.7);
-      results[`${type}_monthly_utilization`] = service.capacity ? 
-        Math.round(((service.daily_users || 0) / service.capacity) * 100) : 0;
-      
-      results[`${type}_yearly_total`] = (service.daily_users || 0) * 250;
-      results[`${type}_yearly_average`] = Math.round((service.daily_users || 0) * 0.65);
-      results[`${type}_yearly_utilization`] = service.capacity ? 
-        Math.round(((service.daily_users || 0) / service.capacity) * 100) * 0.8 : 0;
-    }
-  });
-  
-  return results;
-};
+    const searchDate = new Date(targetDate);
+    searchDate.setUTCHours(0, 0, 0, 0);
 
-// Get report by date for small hospital
+    // Find the last submitted/approved report
+    const report = await prisma.report.findFirst({
+      where: {
+        medical_center_id: parseInt(medicalCenterId),
+        hospital_type: 'welfare',
+        OR: [
+          { status: 'submitted' },
+          { status: 'approved' }
+        ],
+        report_date: {
+          lt: currentDate // Only reports before current date
+        }
+      },
+      include: {
+        welfare_report_data: true
+      },
+      orderBy: {
+        report_date: 'desc'
+      }
+    });
+
+    return report?.welfare_report_data || null;
+  } catch (error) {
+    console.error('Error getting last report welfare data:', error);
+    return null;
+  }
+}
+
+// Calculate derived fields based on writable fields and last report data
+function calculateDerivedFields(writableData, lastReportData = null, capacity = 100) {
+  const result = {};
+  
+  // Helper function to get value or default
+  const getValue = (value) => parseInt(value) || 0;
+  
+  // Capacity
+  const cap = getValue(capacity);
+  
+  // Section 1: 入所 Calculations
+  const s1Admission = getValue(writableData.section1_admission_count);
+  const s1Discharge = getValue(writableData.section1_discharge_count);
+  const s1OutsideHospital = getValue(writableData.section1_outside_hospital);
+  const s1AdmissionTreated = getValue(writableData.section1_admission_treated);
+  const s1Hospitalization = getValue(writableData.section1_hospitalization_count);
+  const s1DischargeTreated = getValue(writableData.section1_discharge_treated);
+  
+  // Get previous day's end users from last report
+  const lastS1EndUsers = getValue(lastReportData?.section1_end_users) || 
+                        (getValue(lastReportData?.section1_admission_count) - getValue(lastReportData?.section1_discharge_count));
+  
+  // Calculate end users for today
+  result.section1_end_users = lastS1EndUsers + s1Admission - s1Discharge;
+  
+  // Get monthly admission from last report or start fresh
+  const lastS1MonthlyAdmission = getValue(lastReportData?.section1_monthly_admission) || 0;
+  result.section1_monthly_admission = lastS1MonthlyAdmission + s1Admission;
+  
+  // Calculate monthly average (simplified: average of daily admissions)
+  const daysInMonth = 30; // Assuming 30 days for calculation
+  const lastS1MonthlyAvg = getValue(lastReportData?.section1_monthly_avg) || 0;
+  result.section1_monthly_avg = Math.round(((lastS1MonthlyAvg * (daysInMonth - 1)) + s1Admission) / daysInMonth);
+  
+  // Calculate utilization rate
+  result.section1_monthly_utilization = cap > 0 ? Math.round((result.section1_end_users / cap) * 100) : 0;
+  
+  // Section 2: 短期入所 Calculations (similar to section 1)
+  const s2Admission = getValue(writableData.section2_admission_count);
+  const s2Discharge = getValue(writableData.section2_discharge_count);
+  const s2OutsideHospital = getValue(writableData.section2_outside_hospital);
+  const s2AdmissionTreated = getValue(writableData.section2_admission_treated);
+  const s2Hospitalization = getValue(writableData.section2_hospitalization_count);
+  const s2DischargeTreated = getValue(writableData.section2_discharge_treated);
+  
+  const lastS2EndUsers = getValue(lastReportData?.section2_end_users) || 
+                        (getValue(lastReportData?.section2_admission_count) - getValue(lastReportData?.section2_discharge_count));
+  
+  result.section2_end_users = lastS2EndUsers + s2Admission - s2Discharge;
+  
+  const lastS2MonthlyAdmission = getValue(lastReportData?.section2_monthly_admission) || 0;
+  result.section2_monthly_admission = lastS2MonthlyAdmission + s2Admission;
+  
+  const lastS2MonthlyAvg = getValue(lastReportData?.section2_monthly_avg) || 0;
+  result.section2_monthly_avg = Math.round(((lastS2MonthlyAvg * (daysInMonth - 1)) + s2Admission) / daysInMonth);
+  
+  result.section2_monthly_utilization = cap > 0 ? Math.round((result.section2_end_users / cap) * 100) : 0;
+  
+  // Section 3: ケアハウス Calculations
+  const s3Admission = getValue(writableData.section3_admission_count);
+  const s3Discharge = getValue(writableData.section3_discharge_count);
+  const s3OutsideHospital = getValue(writableData.section3_outside_hospital);
+  const s3Hospitalization = getValue(writableData.section3_hospitalization_count);
+  
+  const lastS3EndUsers = getValue(lastReportData?.section3_end_users) || 
+                        (getValue(lastReportData?.section3_admission_count) - getValue(lastReportData?.section3_discharge_count));
+  
+  result.section3_end_users = lastS3EndUsers + s3Admission - s3Discharge;
+  
+  const lastS3MonthlyAdmission = getValue(lastReportData?.section3_monthly_admission) || 0;
+  result.section3_monthly_admission = lastS3MonthlyAdmission + s3Admission;
+  
+  const lastS3MonthlyAvg = getValue(lastReportData?.section3_monthly_avg) || 0;
+  result.section3_monthly_avg = Math.round(((lastS3MonthlyAvg * (daysInMonth - 1)) + s3Admission) / daysInMonth);
+  
+  result.section3_monthly_utilization = cap > 0 ? Math.round((result.section3_end_users / cap) * 100) : 0;
+  
+  // Sections 4-7 Calculations
+  for (let i = 4; i <= 7; i++) {
+    const dailyUsers = getValue(writableData[`section${i}_daily_users`]);
+    const lastMonthlyUsers = getValue(lastReportData?.[`section${i}_monthly_users`]) || 0;
+    
+    // Monthly users cumulative
+    result[`section${i}_monthly_users`] = lastMonthlyUsers + dailyUsers;
+    
+    // Monthly average
+    const lastMonthlyAvg = getValue(lastReportData?.[`section${i}_monthly_avg`]) || 0;
+    result[`section${i}_monthly_avg`] = Math.round(((lastMonthlyAvg * (daysInMonth - 1)) + dailyUsers) / daysInMonth);
+    
+    // Utilization rate
+    result[`section${i}_monthly_utilization`] = cap > 0 ? Math.round((dailyUsers / cap) * 100) : 0;
+  }
+  
+  // Annual calculations (simplified - would need annual tracking)
+  for (let i = 1; i <= 7; i++) {
+    const prefix = i <= 3 ? `section${i}` : `section${i}`;
+    const currentValue = i <= 3 ? getValue(writableData[`section${i}_admission_count`]) : getValue(writableData[`section${i}_daily_users`]);
+    
+    // Annual cumulative (simplified - would need proper annual tracking)
+    const lastAnnual = getValue(lastReportData?.[`${prefix}_annual_users`]) || 0;
+    result[`${prefix}_annual_users`] = lastAnnual + currentValue;
+    
+    // Annual average (simplified)
+    const daysInYear = 365;
+    const lastAnnualAvg = getValue(lastReportData?.[`${prefix}_annual_avg`]) || 0;
+    result[`${prefix}_annual_avg`] = Math.round(((lastAnnualAvg * (daysInYear - 1)) + currentValue) / daysInYear);
+    
+    // Annual utilization
+    result[`${prefix}_annual_utilization`] = cap > 0 ? Math.round((result[`${prefix}_annual_users`] / (cap * daysInYear)) * 100) : 0;
+  }
+  
+  return result;
+}
+
+// Get welfare report by date
 export const getReportByDate = async (req, res, next) => {
   try {
     const { date, hospital_id } = req.body;
@@ -89,143 +174,135 @@ export const getReportByDate = async (req, res, next) => {
     }
 
     const reportDate = new Date(date);
-    const hospitalId = parseInt(hospital_id);
 
     // Get existing report
     const existingReport = await prisma.report.findUnique({
       where: {
         medical_center_id_report_date: {
-          medical_center_id: hospitalId,
+          medical_center_id: parseInt(hospital_id),
           report_date: reportDate
         }
       },
       include: {
-        report_details_sm: true,
+        welfare_report_data: true,
         medical_center: true
       }
     });
 
-    // Get section titles for this hospital
-    const sectionTitles = await prisma.report_sm_section.findMany({
-      where: {
-        medical_center_id: hospitalId,
-        status: 1
-      },
-      orderBy: {
-        display_order: 'asc'
-      }
+    // Get medical center to check type
+    const medicalCenter = await prisma.medical_center.findUnique({
+      where: { id: parseInt(hospital_id) }
     });
 
-    // Get previous day's report for calculations
-    const previousDate = new Date(reportDate);
-    previousDate.setDate(previousDate.getDate() - 1);
-    
-    const previousReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: hospitalId,
-        report_date: previousDate,
-        status: {
-          in: ['submitted', 'approved']
-        }
-      },
-      include: {
-        report_details_sm: true
-      }
-    });
+    if (!medicalCenter) {
+      return response.error("Medical center not found", res, next);
+    }
 
-    // Get monthly data for calculations
-    const startOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
-    const endOfMonth = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
-    
-    const monthlyReports = await prisma.report.findMany({
-      where: {
-        medical_center_id: hospitalId,
-        report_date: {
-          gte: startOfMonth,
-          lte: endOfMonth
-        },
-        status: {
-          in: ['submitted', 'approved']
-        }
-      },
-      include: {
-        report_details_sm: true
-      }
-    });
+    // Get capacity (could be stored in medical_center or separate table)
+    // For now, using a default value
+    const capacity = 100;
+
+    // Get last report's data for calculations
+    const lastReportData = await getLastReportWelfareData(hospital_id, reportDate);
 
     if (!existingReport) {
-      // Create empty report structure with default sections
-      const defaultSections = [
-        { report_type: 'admission', sequence_no: 1, category: '入所', capacity: 100 },
-        { report_type: 'short_term', sequence_no: 2, category: '短期入所', capacity: 50 },
-        { report_type: 'care_house', sequence_no: 3, category: 'ケアハウス', capacity: 80 }
-      ];
-      
-      // Add service sections from section titles
-      sectionTitles.forEach((section, index) => {
-        defaultSections.push({
-          report_type: section.section_type,
-          sequence_no: 4 + index,
-          category: section.title,
-          capacity: 60 // Default capacity
-        });
-      });
-
-      const emptyReport = {
-        report_date: reportDate,
-        status: null,
-        report_details_sm: defaultSections,
-        medical_center: await prisma.medical_center.findUnique({
-          where: { id: hospitalId }
-        }),
-        // Provide data for calculations
-        calculations: {
-          previous_data: previousReport ? previousReport.report_details_sm : [],
-          monthly_data: monthlyReports
-        }
+      // Initialize empty welfare data structure
+      const initialWelfareData = {
+        capacity: capacity,
+        
+        // Section 1: 入所
+        section1_admission_count: 0,
+        section1_discharge_count: 0,
+        section1_outside_hospital: 0,
+        section1_admission_treated: 0,
+        section1_hospitalization_count: 0,
+        section1_discharge_treated: 0,
+        
+        // Section 2: 短期入所
+        section2_admission_count: 0,
+        section2_discharge_count: 0,
+        section2_outside_hospital: 0,
+        section2_admission_treated: 0,
+        section2_hospitalization_count: 0,
+        section2_discharge_treated: 0,
+        
+        // Section 3: ケアハウス
+        section3_admission_count: 0,
+        section3_discharge_count: 0,
+        section3_outside_hospital: 0,
+        section3_hospitalization_count: 0,
+        
+        // Sections 4-7
+        section4_daily_users: 0,
+        section5_daily_users: 0,
+        section6_daily_users: 0,
+        section7_daily_users: 0
       };
 
+      // Calculate derived fields
+      const calculatedFields = calculateDerivedFields(initialWelfareData, lastReportData, capacity);
+      
+      // Get section names (from last report or defaults)
+      const sectionNames = lastReportData ? {
+        section4: lastReportData.section4_name || 'ABCD1',
+        section5: lastReportData.section5_name || 'ABCD2',
+        section6: lastReportData.section6_name || 'ABCD3',
+        section7: lastReportData.section7_name || 'ABCD4'
+      } : {
+        section4: 'ABCD1',
+        section5: 'ABCD2',
+        section6: 'ABCD3',
+        section7: 'ABCD4'
+      };
+      
       return response.success({
-        report: emptyReport,
-        section_titles: sectionTitles,
+        report: null,
+        welfare_data: {
+          ...initialWelfareData,
+          ...calculatedFields,
+          section_names: sectionNames
+        },
         exists: false,
-        calculations: calculateStatistics(
-          defaultSections.reduce((acc, item) => {
-            acc[item.report_type] = item;
-            return acc;
-          }, {}),
-          previousReport ? previousReport.report_details_sm : [],
-          reportDate
-        )
+        hospital_type: 'welfare',
+        capacity: capacity
       }, res);
     }
 
-    // Format current data for calculations
-    const currentData = existingReport.report_details_sm.reduce((acc, item) => {
-      acc[item.report_type] = item;
-      return acc;
-    }, {});
+    // For existing reports
+    if (existingReport.welfare_report_data) {
+      // Calculate derived fields for existing welfare data
+      const calculatedFields = calculateDerivedFields(
+        existingReport.welfare_report_data, 
+        lastReportData, 
+        capacity
+      );
+      
+      // Get section names from welfare data
+      const sectionNames = {
+        section4: existingReport.welfare_report_data.section4_name || 'ABCD1',
+        section5: existingReport.welfare_report_data.section5_name || 'ABCD2',
+        section6: existingReport.welfare_report_data.section6_name || 'ABCD3',
+        section7: existingReport.welfare_report_data.section7_name || 'ABCD4'
+      };
 
-    // Calculate statistics
-    const calculations = calculateStatistics(
-      currentData,
-      previousReport ? previousReport.report_details_sm : [],
-      reportDate
-    );
+      return response.success({
+        report: existingReport,
+        welfare_data: {
+          ...existingReport.welfare_report_data,
+          ...calculatedFields,
+          section_names: sectionNames
+        },
+        exists: true,
+        hospital_type: 'welfare',
+        capacity: capacity
+      }, res);
+    }
 
-    const reportWithCalculations = {
-      ...existingReport,
-      section_titles: sectionTitles,
-      calculations,
-      previous_data: previousReport ? previousReport.report_details_sm : [],
-      monthly_data: monthlyReports
-    };
-
+    // If report exists but no welfare data (shouldn't happen for welfare type)
     response.success({
-      report: reportWithCalculations,
-      section_titles: sectionTitles,
+      report: existingReport,
       exists: true,
-      calculations
+      hospital_type: medicalCenter.type
     }, res);
 
   } catch (error) {
@@ -234,7 +311,7 @@ export const getReportByDate = async (req, res, next) => {
   }
 };
 
-// Get report by ID
+// Get welfare report by ID
 export const getReportById = async (req, res, next) => {
   try {
     const { report_id } = req.body;
@@ -243,15 +320,13 @@ export const getReportById = async (req, res, next) => {
       return response.error("Report ID is required", res, next);
     }
 
-    const reportId = parseInt(report_id);
-
     // Get report by ID
     const report = await prisma.report.findUnique({
       where: {
-        id: reportId
+        id: parseInt(report_id)
       },
       include: {
-        report_details_sm: true,
+        welfare_report_data: true,
         medical_center: true,
         created_by_admin: {
           select: { name: true }
@@ -266,80 +341,50 @@ export const getReportById = async (req, res, next) => {
       return response.error("Report not found", res, next);
     }
 
-    // Get section titles
-    const sectionTitles = await prisma.report_sm_section.findMany({
-      where: {
-        medical_center_id: report.medical_center_id,
-        status: 1
-      },
-      orderBy: {
-        display_order: 'asc'
-      }
-    });
+    // Check if this is a welfare report
+    if (report.hospital_type !== 'welfare') {
+      return response.error("This is not a welfare report", res, next);
+    }
 
-    // Get previous day's report for calculations
-    const previousDate = new Date(report.report_date);
-    previousDate.setDate(previousDate.getDate() - 1);
-    
-    const previousReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: report.medical_center_id,
-        report_date: previousDate,
-        status: {
-          in: ['submitted', 'approved']
-        }
-      },
-      include: {
-        report_details_sm: true
-      }
-    });
+    // Get capacity
+    const capacity = 100;
 
-    // Get monthly data
-    const startOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth(), 1);
-    const endOfMonth = new Date(report.report_date.getFullYear(), report.report_date.getMonth() + 1, 0);
-    
-    const monthlyReports = await prisma.report.findMany({
-      where: {
-        medical_center_id: report.medical_center_id,
-        report_date: {
-          gte: startOfMonth,
-          lte: endOfMonth
+    // Get last report's data for calculations
+    const lastReportData = await getLastReportWelfareData(report.medical_center_id, report.report_date);
+
+    if (report.welfare_report_data) {
+      // Calculate derived fields
+      const calculatedFields = calculateDerivedFields(
+        report.welfare_report_data, 
+        lastReportData, 
+        capacity
+      );
+      
+      // Get section names
+      const sectionNames = {
+        section4: report.welfare_report_data.section4_name || 'ABCD1',
+        section5: report.welfare_report_data.section5_name || 'ABCD2',
+        section6: report.welfare_report_data.section6_name || 'ABCD3',
+        section7: report.welfare_report_data.section7_name || 'ABCD4'
+      };
+
+      return response.success({
+        report,
+        welfare_data: {
+          ...report.welfare_report_data,
+          ...calculatedFields,
+          section_names: sectionNames
         },
-        status: {
-          in: ['submitted', 'approved']
-        }
-      },
-      include: {
-        report_details_sm: true
-      }
-    });
-
-    // Format current data for calculations
-    const currentData = report.report_details_sm.reduce((acc, item) => {
-      acc[item.report_type] = item;
-      return acc;
-    }, {});
-
-    // Calculate statistics
-    const calculations = calculateStatistics(
-      currentData,
-      previousReport ? previousReport.report_details_sm : [],
-      report.report_date
-    );
-
-    const reportWithCalculations = {
-      ...report,
-      section_titles: sectionTitles,
-      calculations,
-      previous_data: previousReport ? previousReport.report_details_sm : [],
-      monthly_data: monthlyReports
-    };
+        exists: true,
+        hospital_type: 'welfare',
+        capacity: capacity
+      }, res);
+    }
 
     response.success({
-      report: reportWithCalculations,
-      section_titles: sectionTitles,
+      report,
       exists: true,
-      calculations
+      hospital_type: report.medical_center.type
     }, res);
 
   } catch (error) {
@@ -348,116 +393,79 @@ export const getReportById = async (req, res, next) => {
   }
 };
 
-// Submit small hospital report
+// Submit welfare report
 export const submitReport = async (req, res, next) => {
   const transaction = await prisma.$transaction(async (tx) => {
     try {
       const {
         hospital_id,
         report_date,
-        special_notes,
-        report_details_sm,
-        meetings_events,
+        special_notes = '',
         is_draft = false,
         hospital_type = 'welfare',
+        // Welfare-specific data
+        welfare_data,
+        section_names
       } = req.body;
+
+      if (!hospital_id || !report_date) {
+        throw new Error("Hospital ID and report date are required");
+      }
 
       const userId = user_id;
       const date = new Date(report_date);
-      const hospitalId = parseInt(hospital_id);
 
-      if (!hospitalId) {
-        throw new Error("Hospital ID is required");
+      // Verify medical center exists and is welfare type
+      const medicalCenter = await tx.medical_center.findUnique({
+        where: { id: parseInt(hospital_id) }
+      });
+
+      if (!medicalCenter) {
+        throw new Error("Medical center not found");
       }
 
-      if (!report_details_sm || !Array.isArray(report_details_sm)) {
-        throw new Error("Report details are required");
-      }
-
-      // Validate required fields
-      const errors = [];
-      
-      // Check admission section
-      const admissionData = report_details_sm.find(d => d.report_type === 'admission');
-      if (!admissionData) {
-        errors.push("入所データは必須です");
-      } else {
-        if (!admissionData.daily_admission && admissionData.daily_admission !== 0) {
-          errors.push("入所：当日入所者数は必須です");
-        }
-        if (!admissionData.daily_discharge && admissionData.daily_discharge !== 0) {
-          errors.push("入所：当日退所者数は必須です");
-        }
-      }
-
-      // Check short-term section
-      const shortTermData = report_details_sm.find(d => d.report_type === 'short_term');
-      if (!shortTermData) {
-        errors.push("短期入所データは必須です");
-      } else {
-        if (!shortTermData.daily_admission && shortTermData.daily_admission !== 0) {
-          errors.push("短期入所：当日入所者数は必須です");
-        }
-        if (!shortTermData.daily_discharge && shortTermData.daily_discharge !== 0) {
-          errors.push("短期入所：当日退所者数は必須です");
-        }
-      }
-
-      // Check care house section
-      const careHouseData = report_details_sm.find(d => d.report_type === 'care_house');
-      if (!careHouseData) {
-        errors.push("ケアハウスデータは必須です");
-      } else if (!careHouseData.daily_users && careHouseData.daily_users !== 0) {
-        errors.push("ケアハウス：当日利用者数は必須です");
-      }
-
-      // Check service sections
-      const serviceTypes = ['day_service_1', 'day_service_2', 'rehabilitation', 'care_management', 'dementia_support'];
-      const serviceSections = report_details_sm.filter(d => serviceTypes.includes(d.report_type));
-      
-      if (serviceSections.length === 0) {
-        errors.push("少なくとも1つのサービスデータは必須です");
-      } else {
-        serviceSections.forEach(section => {
-          if (!section.daily_users && section.daily_users !== 0) {
-            errors.push(`${section.report_type}：当日利用者数は必須です`);
-          }
-        });
-      }
-
-      if (errors.length > 0) {
-        throw new Error(errors.join(', '));
+      if (medicalCenter.type !== 'welfare' && hospital_type === 'welfare') {
+        throw new Error("Medical center is not a welfare facility");
       }
 
       // Check if report already exists
       const existingReport = await tx.report.findUnique({
         where: {
           medical_center_id_report_date: {
-            medical_center_id: hospitalId,
+            medical_center_id: parseInt(hospital_id),
             report_date: date
           }
+        },
+        include: {
+          welfare_report_data: true
         }
       });
 
-      const reportNo = existingReport?.report_no || generateReportNo(hospitalId, date);
+      const reportNo = existingReport?.report_no || generateReportNo(hospital_id, date);
       
       // Prepare report data
       const reportData = {
         report_no: reportNo,
         report_date: date,
-        medical_center_id: hospitalId,
+        medical_center_id: parseInt(hospital_id),
         status: is_draft ? 'draft' : 'submitted',
-        special_notes: special_notes || '',
-        hospital_type,
-        // Store meetings and events in JSON field
-        external_consultation_details: meetings_events ? { meetings_events } : null,
+        special_notes: special_notes,
+        hospital_type: hospital_type,
+        // Set all standard fields to 0 for welfare
+        admission_count: 0,
+        discharge_count: 0,
+        external_morning: 0,
+        external_afternoon: 0,
+        external_duty: 0,
+        emergency_transport: 0,
+        post_transport_admission: 0,
+        visit_count: 0,
         updated_by: userId,
         updated_at: new Date(),
       };
 
       if (!existingReport) {
         reportData.created_by = userId;
-        reportData.created_at = new Date();
       }
 
       if (!is_draft && !existingReport?.submitted_at) {
@@ -474,43 +482,65 @@ export const submitReport = async (req, res, next) => {
             data: reportData
           });
 
-      // Handle report_details_sm
-      // Delete existing report_details_sm
-      await tx.report_detail_sm.deleteMany({
-        where: { report_id: report.id }
-      });
+      // Handle welfare data
+      if (welfare_data) {
+        const welfareData = {
+          report_id: report.id,
+          medical_center_id: parseInt(hospital_id),
+          
+          // Section 1: 入所
+          section1_admission_count: parseInt(welfare_data.section1_admission_count) || 0,
+          section1_discharge_count: parseInt(welfare_data.section1_discharge_count) || 0,
+          section1_outside_hospital: parseInt(welfare_data.section1_outside_hospital) || 0,
+          section1_admission_treated: parseInt(welfare_data.section1_admission_treated) || 0,
+          section1_hospitalization_count: parseInt(welfare_data.section1_hospitalization_count) || 0,
+          section1_discharge_treated: parseInt(welfare_data.section1_discharge_treated) || 0,
+          
+          // Section 2: 短期入所
+          section2_admission_count: parseInt(welfare_data.section2_admission_count) || 0,
+          section2_discharge_count: parseInt(welfare_data.section2_discharge_count) || 0,
+          section2_outside_hospital: parseInt(welfare_data.section2_outside_hospital) || 0,
+          section2_admission_treated: parseInt(welfare_data.section2_admission_treated) || 0,
+          section2_hospitalization_count: parseInt(welfare_data.section2_hospitalization_count) || 0,
+          section2_discharge_treated: parseInt(welfare_data.section2_discharge_treated) || 0,
+          
+          // Section 3: ケアハウス
+          section3_admission_count: parseInt(welfare_data.section3_admission_count) || 0,
+          section3_discharge_count: parseInt(welfare_data.section3_discharge_count) || 0,
+          section3_outside_hospital: parseInt(welfare_data.section3_outside_hospital) || 0,
+          section3_hospitalization_count: parseInt(welfare_data.section3_hospitalization_count) || 0,
+          
+          // Sections 4-7 with customizable names
+          section4_name: section_names?.section4 || 'ABCD1',
+          section4_daily_users: parseInt(welfare_data.section4_daily_users) || 0,
+          
+          section5_name: section_names?.section5 || 'ABCD2',
+          section5_daily_users: parseInt(welfare_data.section5_daily_users) || 0,
+          
+          section6_name: section_names?.section6 || 'ABCD3',
+          section6_daily_users: parseInt(welfare_data.section6_daily_users) || 0,
+          
+          section7_name: section_names?.section7 || 'ABCD4',
+          section7_daily_users: parseInt(welfare_data.section7_daily_users) || 0
+        };
 
-      // Create new report_details_sm
-      const detailsData = report_details_sm.map(detail => ({
-        report_id: report.id,
-        report_type: detail.report_type,
-        sequence_no: detail.sequence_no || 1,
-        category: detail.category || null,
-        daily_admission: detail.daily_admission || 0,
-        daily_discharge: detail.daily_discharge || 0,
-        outside_hospital: detail.outside_hospital || 0,
-        admission_treated: detail.admission_treated || 0,
-        hospitalized: detail.hospitalized || 0,
-        discharge_treated: detail.discharge_treated || 0,
-        daily_users: detail.daily_users || 0,
-        meetings_events: detail.meetings_events || null,
-        capacity: detail.capacity || 0
-      }));
+        if (existingReport?.welfare_report_data) {
+          await tx.welfare_report_data.update({
+            where: { report_id: report.id },
+            data: welfareData
+          });
+        } else {
+          await tx.welfare_report_data.create({
+            data: welfareData
+          });
+        }
+      }
 
-      await tx.report_detail_sm.createMany({
-        data: detailsData
-      });
-
-      // Get complete report with details
+      // Get complete report with welfare data
       const completeReport = await tx.report.findUnique({
         where: { id: report.id },
         include: {
-          report_details_sm: {
-            orderBy: [
-              { report_type: 'asc' },
-              { sequence_no: 'asc' }
-            ]
-          },
+          welfare_report_data: true,
           medical_center: true
         }
       });
@@ -520,8 +550,8 @@ export const submitReport = async (req, res, next) => {
         report: completeReport,
         is_new: !existingReport,
         message: is_draft 
-          ? 'Report saved as draft successfully' 
-          : 'Report submitted successfully'
+          ? 'Welfare report saved as draft successfully' 
+          : 'Welfare report submitted successfully'
       };
 
     } catch (error) {
@@ -538,8 +568,8 @@ export const submitReport = async (req, res, next) => {
   }
 };
 
-// Get or create section titles
-export const getSectionTitles = async (req, res, next) => {
+// Get section names for a welfare hospital
+export const getSectionNames = async (req, res, next) => {
   try {
     const { hospital_id } = req.body;
 
@@ -547,379 +577,305 @@ export const getSectionTitles = async (req, res, next) => {
       return response.error("Hospital ID is required", res, next);
     }
 
-    const hospitalId = parseInt(hospital_id);
-    const userId = user_id;
-
-    let sectionTitles = await prisma.report_sm_section.findMany({
+    // Get the most recent welfare report for this hospital to retrieve section names
+    const latestReport = await prisma.report.findFirst({
       where: {
-        medical_center_id: hospitalId,
-        status: 1
-      },
-      orderBy: {
-        display_order: 'asc'
-      }
-    });
-
-    // If no sections exist, create default ones
-    if (sectionTitles.length === 0) {
-      const defaultSections = [
-        { section_type: 'day_service_1', title: '通所介護', display_order: 1 },
-        { section_type: 'day_service_2', title: '通所リハビリテーション', display_order: 2 },
-        { section_type: 'rehabilitation', title: 'リハビリテーション', display_order: 3 },
-        { section_type: 'care_management', title: 'ケアマネジメント', display_order: 4 },
-        { section_type: 'dementia_support', title: '認知症支援', display_order: 5 }
-      ];
-
-      sectionTitles = await Promise.all(
-        defaultSections.map(section => 
-          prisma.report_sm_section.create({
-            data: {
-              medical_center_id: hospitalId,
-              section_type: section.section_type,
-              title: section.title,
-              display_order: section.display_order,
-              created_by: userId
-            }
-          })
-        )
-      );
-    }
-
-    response.success(sectionTitles, res);
-  } catch (error) {
-    console.error('Error in getSectionTitles:', error);
-    response.error(error.message, res, next);
-  }
-};
-
-// Update section title
-export const updateSectionTitle = async (req, res, next) => {
-  try {
-    const { section_id, title } = req.body;
-
-    if (!section_id || !title) {
-      return response.error("Section ID and title are required", res, next);
-    }
-
-    const sectionId = parseInt(section_id);
-    const userId = user_id;
-
-    const updatedSection = await prisma.report_sm_section.update({
-      where: {
-        id: sectionId
-      },
-      data: {
-        title: title.trim(),
-        updated_by: userId,
-        updated_at: new Date()
-      }
-    });
-
-    response.success(updatedSection, res);
-  } catch (error) {
-    console.error('Error in updateSectionTitle:', error);
-    response.error(error.message, res, next);
-  }
-};
-
-// Get last report's data for calculations
-export const getLastReportSmData = async (req, res, next) => {
-  try {
-    const { hospital_id } = req.body;
-    
-    if (!hospital_id) {
-      return response.error("Hospital ID is required", res, next);
-    }
-
-    const hospitalId = parseInt(hospital_id);
-
-    const report = await prisma.report.findFirst({
-      where: {
-        medical_center_id: hospitalId,
-        status: {
-          in: ['submitted', 'approved']
-        }
+        medical_center_id: parseInt(hospital_id),
+        hospital_type: 'welfare'
       },
       include: {
-        report_details_sm: true
+        welfare_report_data: true
       },
       orderBy: {
         report_date: 'desc'
       }
     });
 
-    if (!report) {
-      return response.success([], res);
+    const defaultNames = {
+      section4: 'ABCD1',
+      section5: 'ABCD2',
+      section6: 'ABCD3',
+      section7: 'ABCD4'
+    };
+
+    if (latestReport?.welfare_report_data) {
+      const welfareData = latestReport.welfare_report_data;
+      response.success({
+        section4: welfareData.section4_name || 'ABCD1',
+        section5: welfareData.section5_name || 'ABCD2',
+        section6: welfareData.section6_name || 'ABCD3',
+        section7: welfareData.section7_name || 'ABCD4'
+      }, res);
+    } else {
+      response.success(defaultNames, res);
     }
-
-    response.success(report.report_details_sm, res);
-
   } catch (error) {
-    console.error('Error in getLastReportSmData:', error);
+    console.error('Error in getSectionNames:', error);
     response.error(error.message, res, next);
   }
 };
 
-// Get monthly statistics for a hospital
-export const getMonthlyStatistics = async (req, res, next) => {
+// Update section names
+export const updateSectionNames = async (req, res, next) => {
   try {
-    const { hospital_id, year, month } = req.body;
-    
-    if (!hospital_id || !year || !month) {
-      return response.error("Hospital ID, year, and month are required", res, next);
+    const { hospital_id, section_names } = req.body;
+    const userId = user_id;
+
+    if (!hospital_id || !section_names) {
+      return response.error("Hospital ID and section names are required", res, next);
     }
 
-    const hospitalId = parseInt(hospital_id);
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    // Get the most recent welfare report for this hospital
+    const latestReport = await prisma.report.findFirst({
+      where: {
+        medical_center_id: parseInt(hospital_id),
+        hospital_type: 'welfare'
+      },
+      include: {
+        welfare_report_data: true
+      },
+      orderBy: {
+        report_date: 'desc'
+      }
+    });
 
+    if (!latestReport?.welfare_report_data) {
+      return response.error("No welfare report found for this hospital", res, next);
+    }
+
+    // Update section names in the latest welfare report data
+    await prisma.welfare_report_data.update({
+      where: { id: latestReport.welfare_report_data.id },
+      data: {
+        section4_name: section_names.section4 || 'ABCD1',
+        section5_name: section_names.section5 || 'ABCD2',
+        section6_name: section_names.section6 || 'ABCD3',
+        section7_name: section_names.section7 || 'ABCD4',
+        updated_at: new Date()
+      }
+    });
+
+    response.success({
+      success: true,
+      message: 'Section names updated successfully'
+    }, res);
+  } catch (error) {
+    console.error('Error in updateSectionNames:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Get departments for welfare (empty for now, could be used for section mapping)
+export const getDepartments = async (req, res, next) => {
+  try {
+    const { hospital_id } = req.body;
+
+    if (!hospital_id) {
+      return response.error("Hospital ID is required", res, next);
+    }
+
+    // For welfare, we might not have departments in the traditional sense
+    // Return empty array or specialized sections
+    const welfareSections = [
+      { id: 1, name: '入所', type: 'long_term' },
+      { id: 2, name: '短期入所', type: 'short_term' },
+      { id: 3, name: 'ケアハウス', type: 'care_house' }
+    ];
+
+    response.success(welfareSections, res);
+  } catch (error) {
+    console.error('Error in getDepartments:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Get last report's welfare data
+export const getLastReportWelfareDataApi = async (req, res, next) => {
+  try {
+    const { hospital_id, report_date } = req.body;
+    
+    if (!hospital_id) {
+      return response.error("Hospital ID is required", res, next);
+    }
+    
+    if (!report_date) {
+      return response.error("Report date is required", res, next);
+    }
+
+    const currentDate = new Date(report_date);
+    const lastReportData = await getLastReportWelfareData(hospital_id, currentDate);
+
+    if (!lastReportData) {
+      return response.error("No previous welfare report data found", res, next);
+    }
+
+    response.success(lastReportData, res);
+  } catch (error) {
+    console.error('Error in getLastReportWelfareDataApi:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Get welfare report statistics
+export const getReportStatistics = async (req, res, next) => {
+  try {
+    const { hospital_id, start_date, end_date } = req.body;
+
+    if (!hospital_id) {
+      return response.error("Hospital ID is required", res, next);
+    }
+
+    const startDate = start_date ? new Date(start_date) : new Date();
+    const endDate = end_date ? new Date(end_date) : new Date();
+    startDate.setUTCHours(0, 0, 0, 0);
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    // Get all welfare reports in date range
     const reports = await prisma.report.findMany({
       where: {
-        medical_center_id: hospitalId,
+        medical_center_id: parseInt(hospital_id),
+        hospital_type: 'welfare',
         report_date: {
           gte: startDate,
           lte: endDate
         },
-        status: {
-          in: ['submitted', 'approved']
-        }
+        OR: [
+          { status: 'submitted' },
+          { status: 'approved' }
+        ]
       },
       include: {
-        report_details_sm: true
+        welfare_report_data: true
       },
       orderBy: {
         report_date: 'asc'
       }
     });
 
-    // Calculate monthly totals and averages
+    // Calculate statistics
     const statistics = {
-      admission: {
-        total: 0,
-        average: 0,
-        days_with_data: 0
+      total_reports: reports.length,
+      date_range: {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0]
       },
-      short_term: {
-        total: 0,
-        average: 0,
-        days_with_data: 0
-      },
-      care_house: {
-        total: 0,
-        average: 0,
-        days_with_data: 0
-      },
-      services: {}
+      sections: {
+        section1: { total_admissions: 0, total_discharges: 0, avg_admissions: 0 },
+        section2: { total_admissions: 0, total_discharges: 0, avg_admissions: 0 },
+        section3: { total_admissions: 0, total_discharges: 0, avg_admissions: 0 },
+        section4: { total_users: 0, avg_users: 0 },
+        section5: { total_users: 0, avg_users: 0 },
+        section6: { total_users: 0, avg_users: 0 },
+        section7: { total_users: 0, avg_users: 0 }
+      }
     };
 
     reports.forEach(report => {
-      report.report_details_sm.forEach(detail => {
-        switch(detail.report_type) {
-          case 'admission':
-            if (detail.daily_admission > 0) {
-              statistics.admission.total += detail.daily_admission;
-              statistics.admission.days_with_data++;
-            }
-            break;
-          case 'short_term':
-            if (detail.daily_admission > 0) {
-              statistics.short_term.total += detail.daily_admission;
-              statistics.short_term.days_with_data++;
-            }
-            break;
-          case 'care_house':
-            if (detail.daily_users > 0) {
-              statistics.care_house.total += detail.daily_users;
-              statistics.care_house.days_with_data++;
-            }
-            break;
-          default:
-            // Service sections
-            if (!statistics.services[detail.report_type]) {
-              statistics.services[detail.report_type] = {
-                total: 0,
-                average: 0,
-                days_with_data: 0
-              };
-            }
-            if (detail.daily_users > 0) {
-              statistics.services[detail.report_type].total += detail.daily_users;
-              statistics.services[detail.report_type].days_with_data++;
-            }
-        }
-      });
+      if (report.welfare_report_data) {
+        const data = report.welfare_report_data;
+        
+        // Section 1
+        statistics.sections.section1.total_admissions += data.section1_admission_count || 0;
+        statistics.sections.section1.total_discharges += data.section1_discharge_count || 0;
+        
+        // Section 2
+        statistics.sections.section2.total_admissions += data.section2_admission_count || 0;
+        statistics.sections.section2.total_discharges += data.section2_discharge_count || 0;
+        
+        // Section 3
+        statistics.sections.section3.total_admissions += data.section3_admission_count || 0;
+        statistics.sections.section3.total_discharges += data.section3_discharge_count || 0;
+        
+        // Sections 4-7
+        statistics.sections.section4.total_users += data.section4_daily_users || 0;
+        statistics.sections.section5.total_users += data.section5_daily_users || 0;
+        statistics.sections.section6.total_users += data.section6_daily_users || 0;
+        statistics.sections.section7.total_users += data.section7_daily_users || 0;
+      }
     });
 
     // Calculate averages
-    statistics.admission.average = statistics.admission.days_with_data > 0 ? 
-      Math.round(statistics.admission.total / statistics.admission.days_with_data) : 0;
-    
-    statistics.short_term.average = statistics.short_term.days_with_data > 0 ? 
-      Math.round(statistics.short_term.total / statistics.short_term.days_with_data) : 0;
-    
-    statistics.care_house.average = statistics.care_house.days_with_data > 0 ? 
-      Math.round(statistics.care_house.total / statistics.care_house.days_with_data) : 0;
+    if (reports.length > 0) {
+      statistics.sections.section1.avg_admissions = Math.round(statistics.sections.section1.total_admissions / reports.length);
+      statistics.sections.section2.avg_admissions = Math.round(statistics.sections.section2.total_admissions / reports.length);
+      statistics.sections.section3.avg_admissions = Math.round(statistics.sections.section3.total_admissions / reports.length);
+      
+      statistics.sections.section4.avg_users = Math.round(statistics.sections.section4.total_users / reports.length);
+      statistics.sections.section5.avg_users = Math.round(statistics.sections.section5.total_users / reports.length);
+      statistics.sections.section6.avg_users = Math.round(statistics.sections.section6.total_users / reports.length);
+      statistics.sections.section7.avg_users = Math.round(statistics.sections.section7.total_users / reports.length);
+    }
 
-    // Calculate service averages
-    Object.keys(statistics.services).forEach(key => {
-      const service = statistics.services[key];
-      service.average = service.days_with_data > 0 ? 
-        Math.round(service.total / service.days_with_data) : 0;
-    });
-
-    response.success({
-      reports: reports.length,
-      statistics,
-      period: {
-        start: startDate,
-        end: endDate,
-        days: (endDate - startDate) / (1000 * 60 * 60 * 24) + 1
-      }
-    }, res);
-
+    response.success(statistics, res);
   } catch (error) {
-    console.error('Error in getMonthlyStatistics:', error);
+    console.error('Error in getReportStatistics:', error);
     response.error(error.message, res, next);
   }
 };
 
-// Get yearly statistics for a hospital
-export const getYearlyStatistics = async (req, res, next) => {
+// Export welfare reports
+export const exportReports = async (req, res, next) => {
   try {
-    const { hospital_id, year } = req.body;
-    
-    if (!hospital_id || !year) {
-      return response.error("Hospital ID and year are required", res, next);
+    const { hospital_id, start_date, end_date, format = 'json' } = req.body;
+
+    if (!hospital_id) {
+      return response.error("Hospital ID is required", res, next);
     }
 
-    const hospitalId = parseInt(hospital_id);
-    const startDate = new Date(year, 0, 1);
-    const endDate = new Date(year, 11, 31);
+    const startDate = start_date ? new Date(start_date) : new Date();
+    const endDate = end_date ? new Date(end_date) : new Date();
+    startDate.setUTCHours(0, 0, 0, 0);
+    endDate.setUTCHours(23, 59, 59, 999);
 
+    // Get reports with welfare data
     const reports = await prisma.report.findMany({
       where: {
-        medical_center_id: hospitalId,
+        medical_center_id: parseInt(hospital_id),
+        hospital_type: 'welfare',
         report_date: {
           gte: startDate,
           lte: endDate
-        },
-        status: {
-          in: ['submitted', 'approved']
         }
       },
       include: {
-        report_details_sm: true
+        welfare_report_data: true,
+        medical_center: true
+      },
+      orderBy: {
+        report_date: 'asc'
       }
     });
 
-    // Calculate yearly totals and averages
-    const statistics = {
-      admission: {
-        total: 0,
-        average: 0,
-        reports_with_data: 0
-      },
-      short_term: {
-        total: 0,
-        average: 0,
-        reports_with_data: 0
-      },
-      care_house: {
-        total: 0,
-        average: 0,
-        reports_with_data: 0
-      },
-      services: {}
-    };
-
-    reports.forEach(report => {
-      report.report_details_sm.forEach(detail => {
-        switch(detail.report_type) {
-          case 'admission':
-            if (detail.daily_admission > 0) {
-              statistics.admission.total += detail.daily_admission;
-              statistics.admission.reports_with_data++;
-            }
-            break;
-          case 'short_term':
-            if (detail.daily_admission > 0) {
-              statistics.short_term.total += detail.daily_admission;
-              statistics.short_term.reports_with_data++;
-            }
-            break;
-          case 'care_house':
-            if (detail.daily_users > 0) {
-              statistics.care_house.total += detail.daily_users;
-              statistics.care_house.reports_with_data++;
-            }
-            break;
-          default:
-            // Service sections
-            if (!statistics.services[detail.report_type]) {
-              statistics.services[detail.report_type] = {
-                total: 0,
-                average: 0,
-                reports_with_data: 0
-              };
-            }
-            if (detail.daily_users > 0) {
-              statistics.services[detail.report_type].total += detail.daily_users;
-              statistics.services[detail.report_type].reports_with_data++;
-            }
-        }
+    if (format === 'csv') {
+      // Generate CSV
+      let csv = 'Report No,Date,Status,Section 1 Admissions,Section 1 Discharges,Section 2 Admissions,Section 2 Discharges,Section 3 Admissions,Section 3 Discharges,Section 4 Users,Section 5 Users,Section 6 Users,Section 7 Users\n';
+      
+      reports.forEach(report => {
+        const data = report.welfare_report_data || {};
+        csv += `"${report.report_no}","${report.report_date.toISOString().split('T')[0]}","${report.status}",`;
+        csv += `${data.section1_admission_count || 0},${data.section1_discharge_count || 0},`;
+        csv += `${data.section2_admission_count || 0},${data.section2_discharge_count || 0},`;
+        csv += `${data.section3_admission_count || 0},${data.section3_discharge_count || 0},`;
+        csv += `${data.section4_daily_users || 0},${data.section5_daily_users || 0},`;
+        csv += `${data.section6_daily_users || 0},${data.section7_daily_users || 0}\n`;
       });
-    });
 
-    // Calculate averages
-    statistics.admission.average = statistics.admission.reports_with_data > 0 ? 
-      Math.round(statistics.admission.total / statistics.admission.reports_with_data) : 0;
-    
-    statistics.short_term.average = statistics.short_term.reports_with_data > 0 ? 
-      Math.round(statistics.short_term.total / statistics.short_term.reports_with_data) : 0;
-    
-    statistics.care_house.average = statistics.care_house.reports_with_data > 0 ? 
-      Math.round(statistics.care_house.total / statistics.care_house.reports_with_data) : 0;
-
-    // Calculate service averages
-    Object.keys(statistics.services).forEach(key => {
-      const service = statistics.services[key];
-      service.average = service.reports_with_data > 0 ? 
-        Math.round(service.total / service.reports_with_data) : 0;
-    });
-
-    response.success({
-      reports: reports.length,
-      statistics,
-      period: {
-        start: startDate,
-        end: endDate,
-        year: year
-      }
-    }, res);
-
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=welfare-reports-${new Date().toISOString().split('T')[0]}.csv`);
+      res.send(csv);
+    } else {
+      // Return JSON
+      response.success({
+        reports: reports.map(report => ({
+          report_no: report.report_no,
+          report_date: report.report_date,
+          status: report.status,
+          welfare_data: report.welfare_report_data
+        }))
+      }, res);
+    }
   } catch (error) {
-    console.error('Error in getYearlyStatistics:', error);
-    response.error(error.message, res, next);
-  }
-};
-
-// Get all section types with default titles
-export const getSectionTypes = async (req, res, next) => {
-  try {
-    const sectionTypes = [
-      { type: 'admission', default_title: '入所', required: true },
-      { type: 'short_term', default_title: '短期入所', required: true },
-      { type: 'care_house', default_title: 'ケアハウス', required: true },
-      { type: 'day_service_1', default_title: '通所介護', required: false },
-      { type: 'day_service_2', default_title: '通所リハビリテーション', required: false },
-      { type: 'rehabilitation', default_title: 'リハビリテーション', required: false },
-      { type: 'care_management', default_title: 'ケアマネジメント', required: false },
-      { type: 'dementia_support', default_title: '認知症支援', required: false }
-    ];
-
-    response.success(sectionTypes, res);
-  } catch (error) {
-    console.error('Error in getSectionTypes:', error);
+    console.error('Error in exportReports:', error);
     response.error(error.message, res, next);
   }
 };

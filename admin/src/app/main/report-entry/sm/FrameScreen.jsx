@@ -14,7 +14,13 @@ import {
   Paper,
   Alert,
   Tooltip,
-  Snackbar
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
+  LinearProgress
 } from "@mui/material";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
@@ -22,24 +28,21 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
+import EditIcon from '@mui/icons-material/Edit';
+import WarningIcon from '@mui/icons-material/Warning';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
+import axios from 'axios';
+import apiConfig from '../../../configs/apiConfig';
+
 import StatusBadge from './utils/StatusBadge'; 
 import {
   formatDateForAPI,
   formatJapaneseDate,
-  shouldDisableDate,
-  prepareFormData as prepareFormDataUtil,
-  validateForm as validateFormUtil
+  shouldDisableDate
 } from './utils/frameScreenUtils';
-  
-
-import DailyAdmissionReportSm from './DailyAdmissionReportSm'; 
-import CareHouseDashboard from './CareHouseDashboard'; 
-import MonthlyUsageSummarySm from './MonthlyUsageSummarySm'; 
-
 
 const FrameScreen = React.memo(({
   formData = null,
@@ -61,114 +64,423 @@ const FrameScreen = React.memo(({
   onHeaderSaveDraft,
   onHeaderSubmit,
   isEditingFromView = false,
-  hospital_type = 'hospital'
+  hospital_type = 'welfare'
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   // State management
-  const [allow, setallow] = useState(false);
   const [date, setDate] = useState(reportDate || new Date());
   
-  // Patient counts - now editable
-  const [patientsCount, setPatientsCount] = useState("0");
-  const [outpatientsCount, setOutpatientsCount] = useState("0");
-  
+  // Welfare data state - all writable fields
+  const [welfareData, setWelfareData] = useState({
+    // Section 1: 入所 (Long-term care)
+    section1_admission_count: "0",
+    section1_discharge_count: "0",
+    section1_outside_hospital: "0",
+    section1_admission_treated: "0",
+    section1_hospitalization_count: "0",
+    section1_discharge_treated: "0",
+    
+    // Section 2: 短期入所 (Short-term care)
+    section2_admission_count: "0",
+    section2_discharge_count: "0",
+    section2_outside_hospital: "0",
+    section2_admission_treated: "0",
+    section2_hospitalization_count: "0",
+    section2_discharge_treated: "0",
+    
+    // Section 3: ケアハウス (Care house)
+    section3_admission_count: "0",
+    section3_discharge_count: "0",
+    section3_outside_hospital: "0",
+    section3_hospitalization_count: "0",
+    
+    // Sections 4-7: ABCD sections
+    section4_daily_users: "0",
+    section5_daily_users: "0",
+    section6_daily_users: "0",
+    section7_daily_users: "0"
+  });
+
+  // Calculated fields state (readonly, calculated in backend)
+  const [calculatedFields, setCalculatedFields] = useState({
+    // Section 1 calculated fields
+    section1_end_users: "0", // 前日入所者数
+    section1_monthly_admission: "0", // 当月入所者数
+    section1_monthly_avg: "0", // 当月平均入所者数
+    section1_monthly_utilization: "0", // 当月稼働率
+    
+    // Section 2 calculated fields
+    section2_end_users: "0",
+    section2_monthly_admission: "0",
+    section2_monthly_avg: "0",
+    section2_monthly_utilization: "0",
+    
+    // Section 3 calculated fields
+    section3_end_users: "0",
+    section3_monthly_admission: "0",
+    section3_monthly_avg: "0",
+    section3_monthly_utilization: "0",
+    
+    // Sections 4-7 calculated fields
+    section4_monthly_users: "0", // 当月利用者数
+    section4_monthly_avg: "0", // 当月平均利用者数
+    section4_monthly_utilization: "0", // 当月稼働率
+    section5_monthly_users: "0",
+    section5_monthly_avg: "0",
+    section5_monthly_utilization: "0",
+    section6_monthly_users: "0",
+    section6_monthly_avg: "0",
+    section6_monthly_utilization: "0",
+    section7_monthly_users: "0",
+    section7_monthly_avg: "0",
+    section7_monthly_utilization: "0",
+    
+    // Annual calculated fields (年度)
+    section1_annual_users: "0", // 年度延入所者数
+    section1_annual_avg: "0", // 年度平均入所者数
+    section1_annual_utilization: "0", // 年度稼働率
+    section2_annual_users: "0",
+    section2_annual_avg: "0",
+    section2_annual_utilization: "0",
+    section3_annual_users: "0",
+    section3_annual_avg: "0",
+    section3_annual_utilization: "0",
+    section4_annual_users: "0",
+    section4_annual_avg: "0",
+    section4_annual_utilization: "0",
+    section5_annual_users: "0",
+    section5_annual_avg: "0",
+    section5_annual_utilization: "0",
+    section6_annual_users: "0",
+    section6_annual_avg: "0",
+    section6_annual_utilization: "0",
+    section7_annual_users: "0",
+    section7_annual_avg: "0",
+    section7_annual_utilization: "0"
+  });
+
+  // Section names state
+  const [sectionNames, setSectionNames] = useState({
+    section4: 'ABCD1',
+    section5: 'ABCD2',
+    section6: 'ABCD3',
+    section7: 'ABCD4'
+  });
+
+  // Capacity
+  const [capacity, setCapacity] = useState("100");
+
   // Special notes
   const [specialNotes, setSpecialNotes] = useState("");
-  
+
+  // Edit section name dialog
+  const [editDialog, setEditDialog] = useState({
+    open: false,
+    section: null,
+    name: ''
+  });
+
+  // Loading states
+  const [loadingSectionNames, setLoadingSectionNames] = useState(false);
+  const [savingSectionName, setSavingSectionName] = useState(false);
+
   const [validationErrors, setValidationErrors] = useState({});
-  const [activeTab, setActiveTab] = useState(0);
-  
-  // Track if form data has been loaded
   const [formDataLoaded, setFormDataLoaded] = useState(false);
 
-  // Refs to track form state and prevent flickering
+  // Refs
   const isInitialMountRef = useRef(true);
-  const previousFormDataRef = useRef(null);
   const loadingRef = useRef(false);
-  const dataInitializedRef = useRef(false);
 
-  // Local state for snackbar
+  // Local snackbar
   const [localSnackbar, setLocalSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
 
-  // Initialize form when formData changes
+  // Responsive values
+  const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;
+  const textFieldHeight = isMobile ? 40 : isTablet ? 44 : 48;
+  const fontSize = {
+    small: isMobile ? '0.875rem' : isTablet ? '0.9375rem' : '1rem',
+    medium: isMobile ? '1rem' : isTablet ? '1.125rem' : '1.25rem',
+    large: isMobile ? '1.125rem' : isTablet ? '1.25rem' : '1.5rem',
+  };
+
+  // Initialize welfare data when formData changes
   useEffect(() => {
-    // Skip if loading
-    if (loading) {
-      loadingRef.current = true;
+    if (hospital_type === 'welfare' && formData?.welfare_data) {
+      const data = formData.welfare_data;
+      
+      // Extract writable fields
+      const writableFields = {};
+      const writableFieldNames = [
+        // Section 1
+        'section1_admission_count', 'section1_discharge_count', 'section1_outside_hospital',
+        'section1_admission_treated', 'section1_hospitalization_count', 'section1_discharge_treated',
+        // Section 2
+        'section2_admission_count', 'section2_discharge_count', 'section2_outside_hospital',
+        'section2_admission_treated', 'section2_hospitalization_count', 'section2_discharge_treated',
+        // Section 3
+        'section3_admission_count', 'section3_discharge_count', 'section3_outside_hospital',
+        'section3_hospitalization_count',
+        // Sections 4-7
+        'section4_daily_users', 'section5_daily_users', 'section6_daily_users', 'section7_daily_users'
+      ];
+      
+      writableFieldNames.forEach(field => {
+        writableFields[field] = data[field]?.toString() || "0";
+      });
+      
+      setWelfareData(writableFields);
+      
+      // Extract calculated fields
+      const calcFields = {};
+      const calcFieldNames = [
+        // Section 1 calculated
+        'section1_end_users', 'section1_monthly_admission', 'section1_monthly_avg', 'section1_monthly_utilization',
+        // Section 2 calculated
+        'section2_end_users', 'section2_monthly_admission', 'section2_monthly_avg', 'section2_monthly_utilization',
+        // Section 3 calculated
+        'section3_end_users', 'section3_monthly_admission', 'section3_monthly_avg', 'section3_monthly_utilization',
+        // Sections 4-7 calculated
+        'section4_monthly_users', 'section4_monthly_avg', 'section4_monthly_utilization',
+        'section5_monthly_users', 'section5_monthly_avg', 'section5_monthly_utilization',
+        'section6_monthly_users', 'section6_monthly_avg', 'section6_monthly_utilization',
+        'section7_monthly_users', 'section7_monthly_avg', 'section7_monthly_utilization',
+        // Annual calculated
+        'section1_annual_users', 'section1_annual_avg', 'section1_annual_utilization',
+        'section2_annual_users', 'section2_annual_avg', 'section2_annual_utilization',
+        'section3_annual_users', 'section3_annual_avg', 'section3_annual_utilization',
+        'section4_annual_users', 'section4_annual_avg', 'section4_annual_utilization',
+        'section5_annual_users', 'section5_annual_avg', 'section5_annual_utilization',
+        'section6_annual_users', 'section6_annual_avg', 'section6_annual_utilization',
+        'section7_annual_users', 'section7_annual_avg', 'section7_annual_utilization'
+      ];
+      
+      calcFieldNames.forEach(field => {
+        calcFields[field] = data[field]?.toString() || "0";
+      });
+      
+      setCalculatedFields(calcFields);
+      
+      // Set section names
+      if (data.section_names) {
+        setSectionNames(data.section_names);
+      } else {
+        // Load section names from API if not in form data
+        loadSectionNames();
+      }
+      
+      // Set capacity
+      if (data.capacity) {
+        setCapacity(data.capacity.toString());
+      }
+      
+      // Set special notes from report
+      if (formData.special_notes) {
+        setSpecialNotes(formData.special_notes);
+      }
+      
+      setFormDataLoaded(true);
+    } else if (hospital_type === 'welfare' && !formData) {
+      // Initialize empty form for new welfare report
+      loadSectionNames();
+      setFormDataLoaded(true);
+    }
+  }, [formData, hospital_type, hospitalId]);
+
+  // Load section names from API
+  const loadSectionNames = useCallback(async () => {
+    if (!hospitalId) return;
+    
+    setLoadingSectionNames(true);
+    try {
+      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/section-names`, {
+        hospital_id: hospitalId
+      });
+      
+      if (response.data.success !== false) {
+        setSectionNames(response.data.data || {
+          section4: 'ABCD1',
+          section5: 'ABCD2',
+          section6: 'ABCD3',
+          section7: 'ABCD4'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading section names:', error);
+      // Keep default names
+    } finally {
+      setLoadingSectionNames(false);
+    }
+  }, [hospitalId]);
+
+  // Handle welfare data changes
+  const handleWelfareDataChange = (section, field, value) => {
+    // Allow only numbers
+    if (value === '' || /^\d*$/.test(value)) {
+      setWelfareData(prev => ({
+        ...prev,
+        [`${section}_${field}`]: value
+      }));
+      
+      // Clear validation error if fixed
+      if (validationErrors[`${section}_${field}`]) {
+        const newErrors = { ...validationErrors };
+        delete newErrors[`${section}_${field}`];
+        setValidationErrors(newErrors);
+      }
+    }
+  };
+
+  // Handle capacity change
+  const handleCapacityChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || /^\d*$/.test(value)) {
+      setCapacity(value);
+    }
+  };
+
+  // Handle special notes change
+  const handleSpecialNotesChange = (e) => {
+    setSpecialNotes(e.target.value);
+  };
+
+  // Validate form
+  const validateForm = () => {
+    const errors = {};
+    
+    // Validate required fields
+    const requiredFields = [
+      { key: 'section1_admission_count', label: '入所 - 当日入所者数' },
+      { key: 'section1_discharge_count', label: '入所 - 当日退所者数' },
+      { key: 'section2_admission_count', label: '短期入所 - 当日入所者数' },
+      { key: 'section2_discharge_count', label: '短期入所 - 当日退所者数' },
+      { key: 'section3_admission_count', label: 'ケアハウス - 当日入所者数' },
+      { key: 'section3_discharge_count', label: 'ケアハウス - 当日退所者数' },
+      { key: 'section4_daily_users', label: `${sectionNames.section4} - 当日利用者数` },
+      { key: 'section5_daily_users', label: `${sectionNames.section5} - 当日利用者数` },
+      { key: 'section6_daily_users', label: `${sectionNames.section6} - 当日利用者数` },
+      { key: 'section7_daily_users', label: `${sectionNames.section7} - 当日利用者数` }
+    ];
+    
+    requiredFields.forEach(({ key, label }) => {
+      const value = welfareData[key];
+      if (!value || value === "" || isNaN(parseInt(value)) || parseInt(value) < 0) {
+        errors[key] = `${label}は0以上の数値を入力してください`;
+      }
+    });
+    
+    // Validate capacity
+    if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) <= 0) {
+      errors.capacity = '定員は1以上の数値を入力してください';
+    }
+    
+    setValidationErrors(errors);
+    
+    // Scroll to top when there are errors
+    if (Object.keys(errors).length > 0) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    return Object.keys(errors).length === 0;
+  };
+
+  // Prepare form data for submission
+  const prepareFormData = () => {
+    return {
+      admission_count: 0,
+      discharge_count: 0,
+      external_duty: 0,
+      emergency_transport: 0,
+      post_transport_admission: 0,
+      visit_count: 0,
+      special_notes: specialNotes.trim(),
+      report_details: [],
+      report_details_mid: [],
+      external_consultation_details: null,
+      hospital_type: 'welfare',
+      welfare_data: welfareData,
+      section_names: sectionNames,
+      capacity: parseInt(capacity) || 100
+    };
+  };
+
+  // Handle save draft
+  const handleSaveDraftClick = () => {
+    if (validateForm()) {
+      const data = prepareFormData();
+      onSaveDraft(data);
+    } else {
+      showSnackbar('フォームにエラーがあります。確認してください。', 'error');
+    }
+  };
+
+  // Handle submit
+  const handleSubmitClick = () => {
+    if (validateForm()) {
+      const data = prepareFormData();
+      onSubmit(data);
+    } else {
+      showSnackbar('フォームにエラーがあります。確認してください。', 'error');
+    }
+  };
+
+  // Handle edit section name
+  const handleEditSectionName = (section) => {
+    setEditDialog({
+      open: true,
+      section,
+      name: sectionNames[section] || ''
+    });
+  };
+
+  const handleSaveSectionName = async () => {
+    const { section, name } = editDialog;
+    
+    if (!name.trim()) {
+      showLocalSnackbar('セクション名を入力してください', 'error');
       return;
     }
     
-    // If we were loading and now we're not, reset the loading flag
-    if (loadingRef.current && !loading) {
-      loadingRef.current = false;
+    if (!hospitalId) {
+      showLocalSnackbar('病院IDが見つかりません', 'error');
+      return;
     }
     
-    // Check if formData has actually changed
-    const formDataChanged = previousFormDataRef.current !== formData && 
-      JSON.stringify(previousFormDataRef.current) !== JSON.stringify(formData);
-    
-    if (formData && formDataChanged && !loadingRef.current) {
-      console.log('Loading form data into FrameScreen');
-      loadFormData(formData);
-      previousFormDataRef.current = formData;
-      setFormDataLoaded(true);
-    } else if ((formData === null || Object.keys(formData).length === 0) && formDataLoaded) {
-      console.log('No form data, resetting form');
-      resetForm();
-      setFormDataLoaded(false);
+    setSavingSectionName(true);
+    try {
+      // Update section name via API
+      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/update-section-names`, {
+        hospital_id: hospitalId,
+        section_names: {
+          [section]: name.trim()
+        }
+      });
+      
+      if (response.data.success) {
+        // Update local state
+        setSectionNames(prev => ({
+          ...prev,
+          [section]: name.trim()
+        }));
+        
+        setEditDialog({ open: false, section: null, name: '' });
+        showLocalSnackbar('セクション名を更新しました', 'success');
+      } else {
+        showLocalSnackbar(response.data.message || 'セクション名の更新に失敗しました', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating section name:', error);
+      const errorMessage = error.response?.data?.message || 'セクション名の更新に失敗しました';
+      showLocalSnackbar(errorMessage, 'error');
+    } finally {
+      setSavingSectionName(false);
     }
-    
-    // Reset formDataLoaded flag when formData becomes null
-    if (!formData && formDataLoaded) {
-      setFormDataLoaded(false);
-    }
-  }, [formData, loading]);
-
-  // Load form data from existing report
-  const loadFormData = async (data) => {
-    console.log('Loading form data:', data);
-    
-    // Reset the initialization flag
-    dataInitializedRef.current = false;
-    
-    // Mark that we've loaded form data
-    setFormDataLoaded(true);
-    
-    // Load patient counts from API response
-    setPatientsCount(data.admission_count?.toString() || "0");
-    setOutpatientsCount(data.discharge_count?.toString() || "0");
-    
-    // Special notes
-    setSpecialNotes(data.special_notes || "");
-    
-    // Clear validation errors when loading data
-    setValidationErrors({});
-    
-    console.log('Form data loading complete');
-  };
-
-  // Reset form to initial state (complete reset)
-  const resetForm = () => {
-    console.log('Resetting form completely');
-    
-    // Reset patient counts
-    setPatientsCount("0");
-    setOutpatientsCount("0");
-    
-    // Reset special notes
-    setSpecialNotes("");
-    
-    setFormDataLoaded(false);
-    setValidationErrors({});
-    
-    console.log('Form reset complete');
   };
 
   // Handle date navigation
@@ -216,110 +528,7 @@ const FrameScreen = React.memo(({
     onDateChange(newDate);
   };
 
-  // Handle patient count changes
-  const handlePatientsCountChange = (e) => {
-    const value = e.target.value;
-    // Allow only numbers
-    if (value === '' || /^\d+$/.test(value)) {
-      setPatientsCount(value);
-      // Clear error if fixed
-      if (validationErrors.patientsCount) {
-        const newErrors = { ...validationErrors };
-        delete newErrors.patientsCount;
-        setValidationErrors(newErrors);
-      }
-    }
-  };
-
-  const handleOutpatientsCountChange = (e) => {
-    const value = e.target.value;
-    // Allow only numbers
-    if (value === '' || /^\d+$/.test(value)) {
-      setOutpatientsCount(value);
-      // Clear error if fixed
-      if (validationErrors.outpatientsCount) {
-        const newErrors = { ...validationErrors };
-        delete newErrors.outpatientsCount;
-        setValidationErrors(newErrors);
-      }
-    }
-  };
-
-  // Validate form
-  const validateForm = () => {
-    const errors = validateFormUtil(
-      hospitalId,
-      patientsCount,
-      outpatientsCount
-    );
-    
-    setValidationErrors(errors);
-    
-    // Scroll to top when there are errors
-    if (Object.keys(errors).length > 0) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    
-    return Object.keys(errors).length === 0;
-  };
-
-  const prepareFormData = () => {
-    return {
-      admission_count: patientsCount || "0",
-      discharge_count: outpatientsCount || "0",
-      external_duty: "0", // Always 0 since night consultation is removed
-      emergency_transport: "0", // PET removed
-      post_transport_admission: "0", // MR removed
-      visit_count: "0", // CT removed
-      special_notes: specialNotes || "",
-      report_details: [], // Empty array since component is removed
-      report_details_mid: [], // Empty array
-      external_consultation_details: null, // External consultation removed
-      hospital_type: hospital_type // Keep hospital_type for backend
-    };
-  };
-
-  // Handle save draft
-  const handleSaveDraftClick = () => {
-    if (validateForm()) {
-      const data = prepareFormData();
-      // Call parent's onSaveDraft which will show snackbar
-      onSaveDraft(data);
-    } else {
-      // Show error snackbar using parent's function
-      if (showSnackbar) {
-        showSnackbar('フォームにエラーがあります。確認してください。', 'error');
-      } else {
-        showLocalSnackbar('フォームにエラーがあります。確認してください。', 'error');
-      }
-    }
-  };
-
-  // Handle submit
-  const handleSubmitClick = () => {
-    if (validateForm()) {
-      const data = prepareFormData();
-      // Call parent's onSubmit which will show snackbar
-      onSubmit(data);
-    } else {
-      // Show error snackbar using parent's function
-      if (showSnackbar) {
-        showSnackbar('フォームにエラーがあります。確認してください。', 'error');
-      } else {
-        showLocalSnackbar('フォームにエラーがあります。確認してください。', 'error');
-      }
-    }
-  };
-
-  const handleSpecialNotesChange = (e) => {
-    setSpecialNotes(e.target.value);
-  };
-
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
-
-  // Show local snackbar (for date warnings only)
+  // Show local snackbar
   const showLocalSnackbar = (message, severity = 'success') => {
     setLocalSnackbar({
       open: true,
@@ -333,36 +542,24 @@ const FrameScreen = React.memo(({
     setLocalSnackbar({ ...localSnackbar, open: false });
   };
 
-  // Notify parent of form data changes - with debouncing
+  // Notify parent of form data changes
   useEffect(() => {
-    if (onFormDataChange && !loadingRef.current) {
-      // Use a timeout to debounce rapid updates
-      const timeoutId = setTimeout(() => {
-        const currentFormData = prepareFormData();
-        onFormDataChange(currentFormData);
-      }, 100); // 100ms debounce
-      
-      return () => clearTimeout(timeoutId);
+    if (onFormDataChange && formDataLoaded && !loadingRef.current) {
+      const currentFormData = prepareFormData();
+      onFormDataChange(currentFormData);
     }
-  }, [
-    patientsCount,
-    outpatientsCount,
-    specialNotes
-  ]);
+  }, [welfareData, specialNotes, capacity, sectionNames, formDataLoaded, onFormDataChange]);
 
-  // Create a function that the parent can call to trigger save draft
+  // Create functions for header buttons
   const triggerSaveDraft = useCallback(() => {
-    console.log('Header save draft button clicked, triggering form save draft');
     handleSaveDraftClick();
   }, [validateForm, prepareFormData, onSaveDraft, showSnackbar]);
 
-  // Create a function that the parent can call to trigger submit
   const triggerSubmit = useCallback(() => {
-    console.log('Header submit button clicked, triggering form submit');
     handleSubmitClick();
   }, [validateForm, prepareFormData, onSubmit, showSnackbar]);
 
-  // Notify parent of the trigger functions when they change
+  // Notify parent of the trigger functions
   useEffect(() => {
     if (onHeaderSaveDraft) {
       onHeaderSaveDraft(triggerSaveDraft);
@@ -372,13 +569,223 @@ const FrameScreen = React.memo(({
     }
   }, [onHeaderSaveDraft, onHeaderSubmit, triggerSaveDraft, triggerSubmit]);
 
-  // Responsive values
-  const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;
-  const textFieldHeight = isMobile ? 40 : isTablet ? 44 : 48;
-  const fontSize = {
-    small: isMobile ? '0.875rem' : isTablet ? '0.9375rem' : '1rem',
-    medium: isMobile ? '1rem' : isTablet ? '1.125rem' : '1.25rem',
-    large: isMobile ? '1.125rem' : isTablet ? '1.25rem' : '1.5rem',
+  // Render field component
+  const renderField = (section, field, label, required = false, editable = true, isCapacity = false) => {
+    const value = editable ? 
+      (isCapacity ? capacity : welfareData[`${section}_${field}`]) : 
+      calculatedFields[`${section}_${field}`];
+    
+    const error = validationErrors[`${section}_${field}`] || (isCapacity && validationErrors.capacity);
+    const helperText = error || (editable ? `${label}を入力してください` : '自動計算されます');
+    
+    return (
+      <Grid item xs={12} sm={6} md={3} key={`${section}_${field}`}>
+        <Stack spacing={1}>
+          <Typography sx={{ 
+            fontWeight: 600, 
+            fontSize: fontSize.small,
+            color: "#36394a",
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5
+          }}>
+            {label}
+            {required && (
+              <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
+                *
+              </Typography>
+            )}
+          </Typography>
+          <TextField
+            value={value || "0"}
+            onChange={(e) => {
+              if (isCapacity) {
+                handleCapacityChange(e);
+              } else if (editable) {
+                handleWelfareDataChange(section, field, e.target.value);
+              }
+            }}
+            variant="outlined"
+            fullWidth
+            size="small"
+            error={!!error}
+            helperText={helperText}
+            disabled={readOnly || reportStatus === 'submitted' || !editable}
+            InputProps={{
+              sx: {
+                borderRadius: "8px",
+                bgcolor: editable ? "#ffffff" : "#f5f5f5",
+                height: textFieldHeight,
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: error ? "#df1c41" : "#bdbdbd",
+                },
+                "& input": {
+                  fontSize: fontSize.small,
+                  textAlign: 'right',
+                  paddingRight: 2,
+                  fontWeight: 500,
+                  color: editable ? "#2c3e50" : "#666",
+                },
+                "&.Mui-disabled": {
+                  bgcolor: "#f5f5f5",
+                  "& input": {
+                    color: "#666",
+                  }
+                }
+              },
+            }}
+          />
+        </Stack>
+      </Grid>
+    );
+  };
+
+  // Render a section
+  const renderSection = (sectionNumber, sectionTitle, fields, showAnnual = false) => {
+    const isABCDSection = sectionNumber >= 4;
+    
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          p: sectionPadding,
+          borderRadius: '12px',
+          border: '1px solid #e0e0e0',
+          backgroundColor: '#ffffff',
+          mb: 3
+        }}
+      >
+        <Stack spacing={3}>
+          {/* Section Header */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            mb: 2
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography sx={{ 
+                fontWeight: 700, 
+                fontSize: fontSize.large,
+                color: "#2c3e50",
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                <Box component="span" sx={{ 
+                  width: 4, 
+                  height: 20, 
+                  backgroundColor: '#3498db',
+                  borderRadius: '2px'
+                }} />
+                {isABCDSection ? sectionNames[`section${sectionNumber}`] : sectionTitle}
+              </Typography>
+              
+              {isABCDSection && !readOnly && reportStatus !== 'submitted' && (
+                <Tooltip title="セクション名を編集">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleEditSectionName(`section${sectionNumber}`)}
+                    sx={{ color: '#666' }}
+                    disabled={loadingSectionNames}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+            
+            {loadingSectionNames && isABCDSection && (
+              <CircularProgress size={20} />
+            )}
+          </Box>
+
+          {/* Capacity field for first section only */}
+          {sectionNumber === 1 && (
+            <Grid container spacing={isMobile ? 2 : 3}>
+              {renderField('', 'capacity', '定員', true, true, true)}
+            </Grid>
+          )}
+
+          {/* Fields Grid */}
+          <Grid container spacing={isMobile ? 2 : 3}>
+            {fields.map((field, index) => (
+              <React.Fragment key={index}>
+                {renderField(
+                  `section${sectionNumber}`, 
+                  field.key, 
+                  field.label, 
+                  field.required, 
+                  field.editable
+                )}
+              </React.Fragment>
+            ))}
+          </Grid>
+
+          {/* Annual statistics (only for sections 1-3) */}
+          {showAnnual && !isABCDSection && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              
+              <Typography sx={{ 
+                fontWeight: 600, 
+                fontSize: fontSize.medium,
+                color: "#2c3e50",
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mt: 2
+              }}>
+                <Box component="span" sx={{ 
+                  width: 4, 
+                  height: 20, 
+                  backgroundColor: '#27ae60',
+                  borderRadius: '2px'
+                }} />
+                年度統計
+              </Typography>
+              
+              <Grid container spacing={isMobile ? 2 : 3}>
+                {renderField(`section${sectionNumber}`, 'annual_users', '年度延入所者数', false, false)}
+                {renderField(`section${sectionNumber}`, 'annual_avg', '年度平均入所者数', false, false)}
+                {renderField(`section${sectionNumber}`, 'annual_utilization', '年度稼働率', false, false)}
+              </Grid>
+            </>
+          )}
+
+          {/* Annual statistics for ABCD sections */}
+          {isABCDSection && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              
+              <Typography sx={{ 
+                fontWeight: 600, 
+                fontSize: fontSize.medium,
+                color: "#2c3e50",
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mt: 2
+              }}>
+                <Box component="span" sx={{ 
+                  width: 4, 
+                  height: 20, 
+                  backgroundColor: '#27ae60',
+                  borderRadius: '2px'
+                }} />
+                年度統計
+              </Typography>
+              
+              <Grid container spacing={isMobile ? 2 : 3}>
+                {renderField(`section${sectionNumber}`, 'annual_users', '年度利用者数', false, false)}
+                {renderField(`section${sectionNumber}`, 'annual_avg', '年度平均利用者数', false, false)}
+                {renderField(`section${sectionNumber}`, 'annual_utilization', '年度稼働率', false, false)}
+              </Grid>
+            </>
+          )}
+        </Stack>
+      </Paper>
+    );
   };
 
   // Loading state
@@ -413,12 +820,12 @@ const FrameScreen = React.memo(({
         p: 3,
         textAlign: 'center'
       }}>
-        <InfoOutlinedIcon sx={{ fontSize: 48, color: '#ff9800', mb: 1 }} />
+        <WarningIcon sx={{ fontSize: 48, color: '#ff9800', mb: 1 }} />
         <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
           病院が選択されていません
         </Typography>
         <Typography sx={{ color: '#666', mb: 3 }}>
-          レポートを作成するには、まず病院を選択してください。
+          福祉施設レポートを作成するには、まず病院を選択してください。
         </Typography>
       </Box>
     );
@@ -436,7 +843,7 @@ const FrameScreen = React.memo(({
           pb: 4
         }}
       >
-        {/* Local Snackbar (for date warnings only) */}
+        {/* Local Snackbar */}
         <Snackbar
           open={localSnackbar.open}
           autoHideDuration={6000}
@@ -559,7 +966,7 @@ const FrameScreen = React.memo(({
               以下のエラーを修正してください:
             </Typography>
             <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {Object.values(validationErrors).map((error, index) => (
+              {Object.entries(validationErrors).map(([key, error], index) => (
                 <li key={index} style={{ marginBottom: 4 }}>
                   <Typography sx={{ fontSize: fontSize.small }}>
                     {error}
@@ -570,392 +977,149 @@ const FrameScreen = React.memo(({
           </Alert>
         )}
 
-        {/* Patients Statistics Section - Now editable */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Stack spacing={3}>
-            {/* Section Header */}
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              mb: 2
-            }}>
-              <Typography sx={{ 
-                fontWeight: 700, 
-                fontSize: fontSize.large,
-                color: "#2c3e50",
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <Box component="span" sx={{ 
-                  width: 4, 
-                  height: 20, 
-                  backgroundColor: '#3498db',
-                  borderRadius: '2px'
-                }} />
-                患者数
-              </Typography>
-              <Tooltip title="患者数に関する統計情報">
-                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-              </Tooltip>
-            </Box>
+        {/* Loading indicator for form data */}
+        {!formDataLoaded && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2 }}>
+            <CircularProgress size={24} />
+            <Typography sx={{ fontSize: fontSize.small, color: '#666' }}>
+              フォームデータを読み込み中...
+            </Typography>
+          </Box>
+        )}
 
-            <Grid container spacing={isMobile ? 2 : 3}>
-              {/* Patients Count - Now editable */}
-              <Grid item xs={12} sm={6}>
-                <Stack spacing={1}>
-                  <Typography sx={{ 
-                    fontWeight: 600, 
-                    fontSize: fontSize.medium,
-                    color: "#36394a",
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}>
-                    午前診
-                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
-                    </Typography>
-                  </Typography>
-                  <TextField
-                    value={patientsCount}
-                    onChange={handlePatientsCountChange}
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    error={!!validationErrors.patientsCount}
-                    helperText={validationErrors.patientsCount || "午前診の患者数を入力してください"}
-                    disabled={readOnly || reportStatus === 'submitted'}
-                    InputProps={{
-                      sx: {
-                        borderRadius: "8px",
-                        bgcolor: "#ffffff",
-                        height: textFieldHeight,
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.patientsCount ? "#df1c41" : "#bdbdbd",
-                        },
-                        "& input": {
-                          fontSize: fontSize.medium,
-                          textAlign: 'right',
-                          paddingRight: 2,
-                          fontWeight: 500,
-                          color: "#2c3e50",
-                        },
-                      },
-                    }}
-                  />
-                </Stack>
-              </Grid>
+        {/* Welfare Report Sections */}
+        {formDataLoaded && (
+          <>
+            {/* Section 1: 入所 */}
+            {renderSection(1, '入所', [
+              { key: 'admission_count', label: '当日入所者数', required: true, editable: true },
+              { key: 'discharge_count', label: '当日退所者数', required: true, editable: true },
+              { key: 'outside_hospital', label: '外泊・入院者数', required: false, editable: true },
+              { key: 'admission_treated', label: '入所扱', required: false, editable: true },
+              { key: 'hospitalization_count', label: '入院者数', required: false, editable: true },
+              { key: 'discharge_treated', label: '退所扱', required: false, editable: true },
+              { key: 'end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'monthly_admission', label: '当月入所者数', required: false, editable: false },
+              { key: 'monthly_avg', label: '当月平均入所者数', required: false, editable: false },
+              { key: 'monthly_utilization', label: '当月稼働率', required: false, editable: false }
+            ], true)}
 
-              {/* Outpatients Count - Now editable */}
-              <Grid item xs={12} sm={6}>
-                <Stack spacing={1}>
-                  <Typography sx={{ 
-                    fontWeight: 600, 
-                    fontSize: fontSize.medium,
-                    color: "#36394a",
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}>
-                    午後診
-                    <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
-                    </Typography>
-                  </Typography>
-                  <TextField
-                    value={outpatientsCount}
-                    onChange={handleOutpatientsCountChange}
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    error={!!validationErrors.outpatientsCount}
-                    helperText={validationErrors.outpatientsCount || "午後診の患者数を入力してください"}
-                    disabled={readOnly || reportStatus === 'submitted'}
-                    InputProps={{
-                      sx: {
-                        borderRadius: "8px",
-                        bgcolor: "#ffffff",
-                        height: textFieldHeight,
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: validationErrors.outpatientsCount ? "#df1c41" : "#bdbdbd",
-                        },
-                        "& input": {
-                          fontSize: fontSize.medium,
-                          textAlign: 'right',
-                          paddingRight: 2,
-                          fontWeight: 500,
-                          color: "#2c3e50",
-                        },
-                      },
-                    }}
-                  />
-                </Stack>
-              </Grid>
-            </Grid>
-          </Stack>
-        </Paper>
+            {/* Section 2: 短期入所 */}
+            {renderSection(2, '短期入所', [
+              { key: 'admission_count', label: '当日入所者数', required: true, editable: true },
+              { key: 'discharge_count', label: '当日退所者数', required: true, editable: true },
+              { key: 'outside_hospital', label: '外泊・入院者数', required: false, editable: true },
+              { key: 'admission_treated', label: '入所扱', required: false, editable: true },
+              { key: 'hospitalization_count', label: '入院者数', required: false, editable: true },
+              { key: 'discharge_treated', label: '退所扱', required: false, editable: true },
+              { key: 'end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'monthly_admission', label: '当月入所者数', required: false, editable: false },
+              { key: 'monthly_avg', label: '当月平均入所者数', required: false, editable: false },
+              { key: 'monthly_utilization', label: '当月稼働率', required: false, editable: false }
+            ], true)}
 
+            {/* Section 3: ケアハウス */}
+            {renderSection(3, 'ケアハウス', [
+              { key: 'admission_count', label: '当日入所者数', required: true, editable: true },
+              { key: 'discharge_count', label: '当日退所者数', required: true, editable: true },
+              { key: 'outside_hospital', label: '外泊・入院者数', required: false, editable: true },
+              { key: 'hospitalization_count', label: '入院者数', required: false, editable: true },
+              { key: 'end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'monthly_admission', label: '当月入所者数', required: false, editable: false },
+              { key: 'monthly_avg', label: '当月平均入所者数', required: false, editable: false },
+              { key: 'monthly_utilization', label: '当月稼働率', required: false, editable: false }
+            ], true)}
 
-                {/* Patients Statistics Section - Now editable */}
-      
-      
-      
-      <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Stack spacing={3}>
-            {/* Section Header */}
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              mb: 2
-            }}>
-              <Typography sx={{ 
-                fontWeight: 700, 
-                fontSize: fontSize.large,
-                color: "#2c3e50",
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <Box component="span" sx={{ 
-                  width: 4, 
-                  height: 20, 
-                  backgroundColor: '#3498db',
-                  borderRadius: '2px'
-                }} />
-               入所
-              </Typography>
-              <Tooltip title="">
-                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-              </Tooltip>
-            </Box>
+            {/* Sections 4-7: ABCD Sections */}
+            {[4, 5, 6, 7].map(sectionNum => (
+              renderSection(sectionNum, '', [
+                { key: 'daily_users', label: '当日利用者数', required: true, editable: true },
+                { key: 'monthly_users', label: '当月利用者数', required: false, editable: false },
+                { key: 'monthly_avg', label: '当月平均利用者数', required: false, editable: false },
+                { key: 'monthly_utilization', label: '当月稼働率', required: false, editable: false }
+              ], true)
+            ))}
 
-            <Grid container spacing={isMobile ? 2 : 3}>
-              {/* Patients Count - Now editable */}
-              <Grid item xs={12} sm={12}>
-                <Stack spacing={1}>
-                    <DailyAdmissionReportSm/>
-                </Stack>
-              </Grid>
-            </Grid>
-          </Stack>
-        </Paper>
-      
-      
+            {/* Administrative Matters Section */}
             <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Stack spacing={3}>
-            {/* Section Header */}
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              mb: 2
-            }}>
-              <Typography sx={{ 
-                fontWeight: 700, 
-                fontSize: fontSize.large,
-                color: "#2c3e50",
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <Box component="span" sx={{ 
-                  width: 4, 
-                  height: 20, 
-                  backgroundColor: '#3498db',
-                  borderRadius: '2px'
-                }} />
-              ケアハウス
-              </Typography>
-              <Tooltip title="">
-                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-              </Tooltip>
-            </Box>
+              elevation={0}
+              sx={{
+                p: sectionPadding,
+                borderRadius: '12px',
+                border: '1px solid #e0e0e0',
+                backgroundColor: '#ffffff',
+              }}
+            >
+              <Stack spacing={3}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  mb: 2
+                }}>
+                  <Typography sx={{ 
+                    fontWeight: 700, 
+                    fontSize: fontSize.large,
+                    color: "#2c3e50",
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <Box component="span" sx={{ 
+                      width: 4, 
+                      height: 20, 
+                      backgroundColor: '#27ae60',
+                      borderRadius: '2px'
+                    }} />
+                    管理事項
+                  </Typography>
+                  <Tooltip title="特記事項や備考を入力">
+                    <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
+                  </Tooltip>
+                </Box>
 
-            <Grid container spacing={isMobile ? 2 : 3}>
-              {/* Patients Count - Now editable */}
-              <Grid item xs={12} sm={12}>
                 <Stack spacing={1}>
-                    <CareHouseDashboard/>
-                </Stack>
-              </Grid>
-            </Grid>
-          </Stack>
-        </Paper>
-
-
-
-      
-        <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Stack spacing={3}>
-            {/* Section Header */}
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              mb: 2
-            }}>
-              <Typography sx={{ 
-                fontWeight: 700, 
-                fontSize: fontSize.large,
-                color: "#2c3e50",
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <Box component="span" sx={{ 
-                  width: 4, 
-                  height: 20, 
-                  backgroundColor: '#3498db',
-                  borderRadius: '2px'
-                }} />
-                ABCD
-              </Typography>
-              <Tooltip title="患者数に関する統計情報">
-                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-              </Tooltip>
-            </Box>
-
-            <Grid container spacing={isMobile ? 2 : 3}>
-              {/* Patients Count - Now editable */}
-              <Grid item xs={12} sm={12}>
-                <Stack spacing={1}>
-                      <MonthlyUsageSummarySm/>
-                </Stack>
-              </Grid>
-            </Grid>
-          </Stack>
-        </Paper>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        {/* Administrative Matters Section */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: sectionPadding,
-            borderRadius: '12px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Stack spacing={3}>
-            {/* Section Header */}
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              mb: 2
-            }}>
-              <Typography sx={{ 
-                fontWeight: 700, 
-                fontSize: fontSize.large,
-                color: "#2c3e50",
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <Box component="span" sx={{ 
-                  width: 4, 
-                  height: 20, 
-                  backgroundColor: '#27ae60',
-                  borderRadius: '2px'
-                }} />
-                管理事項
-              </Typography>
-              <Tooltip title="特記事項や備考を入力">
-                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-              </Tooltip>
-            </Box>
-
-            <Stack spacing={1}>
-              <Typography
-                sx={{
-                  fontWeight: 600,
-                  fontSize: fontSize.medium,
-                  color: "#36394a",
-                }}
-              >
-                特記事項
-              </Typography>
-
-              <TextField
-                variant="outlined"
-                value={specialNotes}
-                onChange={handleSpecialNotesChange}
-                fullWidth
-                multiline
-                rows={4}
-                placeholder="特記事項があれば入力してください..."
-                disabled={readOnly || reportStatus === 'submitted'}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    bgcolor: "#ffffff",
-                    borderRadius: "8px",
-                    "& fieldset": {
-                      borderColor: "#dfe1e7",
-                    },
-                    "& textarea": {
+                  <Typography
+                    sx={{
+                      fontWeight: 600,
                       fontSize: fontSize.medium,
-                      lineHeight: 1.5,
-                    },
-                  },
-                }}
-              />
-            </Stack>
-          </Stack>
-        </Paper>
+                      color: "#36394a",
+                    }}
+                  >
+                    特記事項
+                  </Typography>
+
+                  <TextField
+                    variant="outlined"
+                    value={specialNotes}
+                    onChange={handleSpecialNotesChange}
+                    fullWidth
+                    multiline
+                    rows={4}
+                    placeholder="特記事項があれば入力してください..."
+                    disabled={readOnly || reportStatus === 'submitted'}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: "#ffffff",
+                        borderRadius: "8px",
+                        "& fieldset": {
+                          borderColor: "#dfe1e7",
+                        },
+                        "& textarea": {
+                          fontSize: fontSize.medium,
+                          lineHeight: 1.5,
+                        },
+                      },
+                    }}
+                  />
+                </Stack>
+              </Stack>
+            </Paper>
+          </>
+        )}
 
         {/* Action Buttons - Only show if not submitted */}
-        {reportStatus !== 'submitted' && !readOnly && (
+        {reportStatus !== 'submitted' && !readOnly && formDataLoaded && (
           <Paper
             elevation={0}
             sx={{
@@ -1049,6 +1213,44 @@ const FrameScreen = React.memo(({
             </Alert>
           </Paper>
         )}
+
+        {/* Edit Section Name Dialog */}
+        <Dialog
+          open={editDialog.open}
+          onClose={() => !savingSectionName && setEditDialog({ open: false, section: null, name: '' })}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>セクション名を編集</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="セクション名"
+              fullWidth
+              value={editDialog.name}
+              onChange={(e) => setEditDialog(prev => ({ ...prev, name: e.target.value }))}
+              disabled={savingSectionName}
+              sx={{ mt: 2 }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={() => setEditDialog({ open: false, section: null, name: '' })}
+              disabled={savingSectionName}
+            >
+              キャンセル
+            </Button>
+            <Button 
+              onClick={handleSaveSectionName} 
+              variant="contained"
+              disabled={savingSectionName || !editDialog.name.trim()}
+              startIcon={savingSectionName ? <CircularProgress size={20} /> : null}
+            >
+              {savingSectionName ? '保存中...' : '保存'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </LocalizationProvider>
   );

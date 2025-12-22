@@ -49,7 +49,7 @@ import ja from 'date-fns/locale/ja';
 import { useAppSelector } from 'app/store/hooks';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 
-// Lazy load the main report component
+// Lazy load the welfare report component
 const FrameScreen = React.lazy(() => import('./sm/FrameScreen'));
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
@@ -58,7 +58,7 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
     borderBottomWidth: 1,
     borderStyle: 'solid',
     borderColor: theme.palette.divider,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)', 
   },
   '& .FusePageSimple-content': {
     backgroundColor: '#f8f9fa',
@@ -68,7 +68,7 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
 }));
 
 // Custom Header Component
-const ReportEntryHeader = ({ 
+const WelfareReportHeader = ({ 
   title, 
   reportDate, 
   reportStatus, 
@@ -260,7 +260,7 @@ const ReportEntryHeader = ({
                   textOverflow: 'ellipsis'
                 }}
               >
-                {hospitalName}
+                {hospitalName} (福祉施設)
               </Typography>
             )}
           </Box>
@@ -382,98 +382,6 @@ const ReportEntryHeader = ({
   );
 };
 
-// Validation helper function
-const validateReportData = (formData) => {
-  const errors = {};
-  
-  if (!formData || Object.keys(formData).length === 0) {
-    errors.general = 'フォームデータが空です';
-    return { isValid: false, errors };
-  }
-
-  // Validate admission count (patientsCount)
-  if (!formData.admission_count && formData.admission_count !== 0) {
-    errors.admission_count = '患者数は必須です';
-  } else if (isNaN(parseInt(formData.admission_count))) {
-    errors.admission_count = '有効な数値を入力してください';
-  }
-
-  // Validate discharge count (outpatientsCount)
-  if (!formData.discharge_count && formData.discharge_count !== 0) {
-    errors.discharge_count = '午後診数は必須です';
-  } else if (isNaN(parseInt(formData.discharge_count))) {
-    errors.discharge_count = '有効な数値を入力してください';
-  }
-
-  // Validate external_duty (nightConsultation)
-  if (!formData.external_duty && formData.external_duty !== 0) {
-    errors.external_duty = '夜診数は必須です';
-  } else if (isNaN(parseInt(formData.external_duty))) {
-    errors.external_duty = '有効な数値を入力してください';
-  }
-
-  // Validate emergency_transport (PET)
-  if (!formData.emergency_transport && formData.emergency_transport !== 0) {
-    errors.emergency_transport = 'PET数は必須です';
-  } else if (isNaN(parseInt(formData.emergency_transport))) {
-    errors.emergency_transport = '有効な数値を入力してください';
-  }
-
-  // Validate post_transport_admission (MR)
-  if (!formData.post_transport_admission && formData.post_transport_admission !== 0) {
-    errors.post_transport_admission = 'MR数は必須です';
-  } else if (isNaN(parseInt(formData.post_transport_admission))) {
-    errors.post_transport_admission = '有効な数値を入力してください';
-  }
-
-  // Validate visit_count (CT)
-  if (!formData.visit_count && formData.visit_count !== 0) {
-    errors.visit_count = 'CT数は必須です';
-  } else if (isNaN(parseInt(formData.visit_count))) {
-    errors.visit_count = '有効な数値を入力してください';
-  }
-
-  // Validate both types of consolidated data
-  /*const hasDoctorData = formData.report_details && formData.report_details.length > 0;
-  const hasCountData = formData.report_details_mid && formData.report_details_mid.length > 0;
-  
-  if (!hasDoctorData && !hasCountData) {
-    errors.consolidated_data = '少なくとも1つの診療部門データは必須です';
-  }
-
-  // Validate report_details (doctor-based data)
-  if (hasDoctorData) {
-    formData.report_details.forEach((detail, index) => {
-      if (!detail.department_id) {
-        errors[`report_details_${index}_department`] = '診療区の選択は必須です';
-      }
-      if (!detail.patient_count && detail.patient_count !== 0) {
-        errors[`report_details_${index}_patient_count`] = '患者数は必須です';
-      }
-    });
-  }
-
-  // Validate report_details_mid (count-based data)
-  if (hasCountData) {
-    formData.report_details_mid.forEach((detail, index) => {
-      if (!detail.department_id) {
-        errors[`report_details_mid_${index}_department`] = '診療区の選択は必須です';
-      }
-      if (!detail.total_patients && detail.total_patients !== 0) {
-        errors[`report_details_mid_${index}_total_patients`] = '合計患者数は必須です';
-      }
-      if (!detail.new_patients && detail.new_patients !== 0) {
-        errors[`report_details_mid_${index}_new_patients`] = '新規患者数は必須です';
-      }
-    });
-  }*/
-
-  return {
-    isValid: Object.keys(errors).length === 0,
-    errors
-  };
-};
-
 // Helper function to parse URL parameters
 const getUrlParams = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -484,126 +392,7 @@ const getUrlParams = () => {
   return params;
 };
 
-// Helper function to determine hospital priority
-const getCurrentHospital = (hospitalFromContext, urlParams, hasHospitalChangedFromContext) => {
-  // If user has changed hospital from context, use context
-  if (hasHospitalChangedFromContext && hospitalFromContext?.id) {
-    return {
-      id: hospitalFromContext.id,
-      name: hospitalFromContext.name,
-      type: hospitalFromContext.type
-    };
-  }
-  
-  // Otherwise, use URL parameter (initial load)
-  if (urlParams.hospitalId) {
-    return {
-      id: parseInt(urlParams.hospitalId, 10), // Ensure it's a number
-      name: hospitalFromContext?.name || `Hospital ID: ${urlParams.hospitalId}`,
-      type: hospitalFromContext?.type || urlParams.type
-    };
-  }
-  
-  // Fallback to context
-  return hospitalFromContext ? {
-    id: hospitalFromContext.id,
-    name: hospitalFromContext.name,
-    type: hospitalFromContext.type
-  } : null;
-};
-
-// Function to check if form data has actual changes (ignores empty strings vs null)
-const hasFormDataChanged = (currentData, initialData) => {
-  if (!currentData || !initialData) {
-    return true;
-  }
-  
-  // Compare key fields that matter
-  const fieldsToCompare = [
-    'admission_count',
-    'discharge_count',
-    'external_duty',
-    'emergency_transport',
-    'post_transport_admission',
-    'visit_count',
-    'special_notes',
-    'report_details',
-    'report_details_mid'
-  ];
-  
-  for (const field of fieldsToCompare) {
-    const current = currentData[field];
-    const initial = initialData[field];
-    
-    // Handle arrays
-    if (Array.isArray(current) && Array.isArray(initial)) {
-      if (field === 'report_details') {
-        // For report details, compare cleaned data
-        const currentClean = current
-          .filter(item => item.department_id && (item.patient_count || item.patient_count === 0))
-          .map(item => ({
-            department_id: item.department_id,
-            patient_count: item.patient_count || 0
-          }));
-        const initialClean = initial
-          .filter(item => item.department_id && (item.patient_count || item.patient_count === 0))
-          .map(item => ({
-            department_id: item.department_id,
-            patient_count: item.patient_count || 0
-          }));
-        
-        if (JSON.stringify(currentClean) !== JSON.stringify(initialClean)) {
-          return true;
-        }
-      } else if (field === 'report_details_mid') {
-        // For report details mid, compare cleaned data
-        const currentClean = current
-          .filter(item => item.department_id && (item.total_patients !== undefined || item.new_patients !== undefined))
-          .map(item => ({
-            department_id: item.department_id,
-            total_patients: item.total_patients || 0,
-            new_patients: item.new_patients || 0
-          }));
-        const initialClean = initial
-          .filter(item => item.department_id && (item.total_patients !== undefined || item.new_patients !== undefined))
-          .map(item => ({
-            department_id: item.department_id,
-            total_patients: item.total_patients || 0,
-            new_patients: item.new_patients || 0
-          }));
-        
-        if (JSON.stringify(currentClean) !== JSON.stringify(initialClean)) {
-          return true;
-        }
-      } else if (JSON.stringify(current) !== JSON.stringify(initial)) {
-        return true;
-      }
-    } 
-    // Handle numbers (including 0)
-    else if ((field.includes('_count') || field.includes('transport') || field.includes('visit')) && 
-             (current || current === 0) && (initial || initial === 0)) {
-      if (parseInt(current) !== parseInt(initial)) {
-        return true;
-      }
-    }
-    // Handle strings (ignore empty vs null/undefined)
-    else if (field === 'special_notes') {
-      const currentTrimmed = (current || '').trim();
-      const initialTrimmed = (initial || '').trim();
-      if (currentTrimmed !== initialTrimmed) {
-        return true;
-      }
-    }
-    // Handle other fields
-    else if (current !== initial) {
-      return true;
-    }
-  } 
-  
-  return false;
-};
-
-function ReportEntrySm({newHospital}) {
+function ReportEntrySm({ newHospital }) {
   const { t } = useTranslation('shared-components');
   const { hospital: hospitalFromContext } = useTheme();
   const muiTheme = useMuiTheme();
@@ -619,13 +408,34 @@ function ReportEntrySm({newHospital}) {
   // Get initial URL parameters
   const [urlParams, setUrlParams] = useState(() => getUrlParams());
   
-  // Track if hospital has been changed from context
-  const [hasHospitalChangedFromContext, setHasHospitalChangedFromContext] = useState(false);
-  
-  // Current hospital state - determines priority
-  const [currentHospital, setCurrentHospital] = useState(() => 
-    getCurrentHospital(hospitalFromContext, urlParams, false)
-  );
+  // Current hospital state
+  const [currentHospital, setCurrentHospital] = useState(() => {
+    if (newHospital && newHospital.id) {
+      return {
+        id: newHospital.id,
+        name: newHospital.name,
+        type: newHospital.type
+      };
+    }
+    
+    if (hospitalFromContext?.id) {
+      return {
+        id: hospitalFromContext.id,
+        name: hospitalFromContext.name,
+        type: hospitalFromContext.type
+      };
+    }
+    
+    if (urlParams.hospitalId) {
+      return {
+        id: parseInt(urlParams.hospitalId, 10),
+        name: hospitalFromContext?.name || `Hospital ID: ${urlParams.hospitalId}`,
+        type: hospitalFromContext?.type || urlParams.type || 'welfare'
+      };
+    }
+    
+    return null;
+  });
 
   // State management
   const [loading, setLoading] = useState(true);
@@ -634,22 +444,25 @@ function ReportEntrySm({newHospital}) {
   const [loadingReport, setLoadingReport] = useState(false);
 
   const [formData, setFormData] = useState(null);
-  const [formDataSubmit, setformDataSubmit] = useState(null);
-
+  const [formDataSubmit, setFormDataSubmit] = useState(null);
   const [initialFormData, setInitialFormData] = useState(null);
+  
   const [departments, setDepartments] = useState([]);
   const [doctors, setDoctors] = useState([]);
+  
   const [reportDate, setReportDate] = useState(new Date());
   const [reportStatus, setReportStatus] = useState(null);
   const [reportExists, setReportExists] = useState(false);
   const [reportId, setReportId] = useState(null);
-  const [hospital_type, sethospital_type] = useState('hospital');
+  const [hospital_type, setHospitalType] = useState('welfare');
+  
   const [snackbar, setSnackbar] = useState({ 
     open: false, 
     message: '', 
     severity: 'success',
     duration: 6000 
   });
+  
   const [validationErrors, setValidationErrors] = useState({});
   const [confirmDialog, setConfirmDialog] = useState({
     open: false,
@@ -658,6 +471,7 @@ function ReportEntrySm({newHospital}) {
     action: null,
     actionType: ''
   });
+  
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -665,19 +479,13 @@ function ReportEntrySm({newHospital}) {
   const [isEditingFromView, setIsEditingFromView] = useState(false);
   const [originalReportDate, setOriginalReportDate] = useState(null);
   
-  // Refs for form data to avoid stale closures
+  // Refs
   const formDataRef = useRef(formData);
   const reportDateRef = useRef(reportDate);
   const currentHospitalRef = useRef(currentHospital);
   const initialFormDataRef = useRef(null);
-  
-  // Track if we're currently loading data to prevent flickering
   const isLoadingDataRef = useRef(false);
-  
-  // Track if we've already loaded data for current state
   const hasLoadedDataRef = useRef(false);
-  
-  // Add a ref to track initial load
   const initialLoadRef = useRef(false);
 
   // Get reportId from URL params
@@ -726,8 +534,6 @@ function ReportEntrySm({newHospital}) {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  const { hospital, toggleHospital } = useTheme();
 
   // Format date for display
   const formatJapaneseDate = (date) => {
@@ -792,14 +598,14 @@ function ReportEntrySm({newHospital}) {
     setLoadingReport(true);
     isLoadingDataRef.current = true;
     try {
-      const response = await axios.post(`${apiConfig.baseURL}/report-mid/get-by-id`, {
+      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/get-by-id`, {
         report_id: reportIdToLoad
       });
 
       const { data } = response.data;
       
       if (data && data.success !== false) {
-        const { report, departments: depts, doctors: docs } = data;
+        const { report, welfare_data, departments: depts, doctors: docs } = data;
         
         // Update departments and doctors
         setDepartments(depts || []);
@@ -820,36 +626,29 @@ function ReportEntrySm({newHospital}) {
             report_no: report.report_no,
             status: report.status,
             special_notes: report.special_notes || '',
-            admission_count: report.admission_count || 0,
-            discharge_count: report.discharge_count || 0,
-            external_duty: report.external_duty || 0,
-            emergency_transport: report.emergency_transport || 0,
-            post_transport_admission: report.post_transport_admission || 0,
-            visit_count: report.visit_count || 0,
-            report_details: report.report_details || [],
-            report_details_mid: report.report_details_mid || [],
-            external_consultation_details: report.external_consultation_details || null
+            welfare_data: welfare_data || {},
+            hospital_type: report.hospital_type || 'welfare'
           };
           
-          sethospital_type(report.hospital_type || 'hospital');
+          setHospitalType(report.hospital_type || 'welfare');
           setFormData(formattedReport);
-          setformDataSubmit(formattedReport);
+          setFormDataSubmit(formattedReport);
           setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(formattedReport));
           setReportStatus(report.status);
           setReportId(report.id);
           setHasUnsavedChanges(false);
           
-          showSnackbar(`${formatJapaneseDate(new Date(report.report_date))}のレポートを読み込みました`, 'info');
+          showSnackbar(`${formatJapaneseDate(new Date(report.report_date))}の福祉施設レポートを読み込みました`, 'info');
         } else {
-          sethospital_type('hospital');
+          setHospitalType('welfare');
         }
         
         setValidationErrors({});
       }
     } catch (error) {
-      console.error('Error loading report by ID:', error);
-      const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
+      console.error('Error loading welfare report by ID:', error);
+      const errorMessage = error.response?.data?.message || '福祉施設レポートの読み込みに失敗しました';
       showSnackbar(errorMessage, 'error');
       
       // Fall back to loading by date if we have hospital ID
@@ -868,7 +667,7 @@ function ReportEntrySm({newHospital}) {
   const loadReportData = useCallback(async (date, forceReload = false) => {
     const hospitalId = currentHospitalRef.current?.id;
     if (!hospitalId) {
-      showSnackbar('病院が選択されていません', 'warning');
+      showSnackbar('福祉施設が選択されていません', 'warning');
       setLoading(false);
       return;
     }
@@ -882,7 +681,7 @@ function ReportEntrySm({newHospital}) {
     setLoadingReport(true);
     isLoadingDataRef.current = true;
     try {
-      const response = await axios.post(`${apiConfig.baseURL}/report-mid/get-by-date`, {
+      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/get-by-date`, {
         date: formatDateForAPI(date),
         hospital_id: hospitalId
       });
@@ -890,12 +689,13 @@ function ReportEntrySm({newHospital}) {
       const { data } = response.data;
       
       if (data && data.success !== false) {
-        const { report, departments: depts, doctors: docs, exists } = data;
+        const { report, welfare_data, departments: depts, doctors: docs, exists, hospital_type: hospType } = data;
         
         // Always update departments and doctors
         setDepartments(depts || []);
         setDoctors(docs || []);
         setReportExists(exists);
+        setHospitalType(hospType || 'welfare');
         
         if (exists && report) {
           // Format the report data for the form
@@ -904,20 +704,12 @@ function ReportEntrySm({newHospital}) {
             report_no: report.report_no,
             status: report.status,
             special_notes: report.special_notes || '',
-            admission_count: report.admission_count || 0,
-            discharge_count: report.discharge_count || 0,
-            external_duty: report.external_duty || 0,
-            emergency_transport: report.emergency_transport || 0,
-            post_transport_admission: report.post_transport_admission || 0,
-            visit_count: report.visit_count || 0,
-            report_details: report.report_details || [],
-            report_details_mid: report.report_details_mid || [],
-            external_consultation_details: report.external_consultation_details || null
+            welfare_data: welfare_data || {},
+            hospital_type: hospType || 'welfare'
           };
           
-          sethospital_type(report.hospital_type || 'hospital');
           setFormData(formattedReport);
-          setformDataSubmit(formattedReport);
+          setFormDataSubmit(formattedReport);
           setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(formattedReport));
           setReportStatus(report.status);
@@ -925,25 +717,46 @@ function ReportEntrySm({newHospital}) {
           setHasUnsavedChanges(false);
           
           if (!forceReload) {
-            showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
+            showSnackbar(`${formatJapaneseDate(date)}の福祉施設レポートを読み込みました`, 'info');
           }
         } else {
-          sethospital_type('hospital');
-          // Initialize empty form
+          // Initialize empty form for welfare
           const emptyForm = {
-            admission_count: 0,
-            discharge_count: 0,
-            external_duty: 0,
-            emergency_transport: 0,
-            post_transport_admission: 0,
-            visit_count: 0,
             special_notes: '',
-            report_details: [],
-            report_details_mid: []
+            welfare_data: welfare_data || {
+              capacity: 100,
+              section1_admission_count: 0,
+              section1_discharge_count: 0,
+              section1_outside_hospital: 0,
+              section1_admission_treated: 0,
+              section1_hospitalization_count: 0,
+              section1_discharge_treated: 0,
+              section2_admission_count: 0,
+              section2_discharge_count: 0,
+              section2_outside_hospital: 0,
+              section2_admission_treated: 0,
+              section2_hospitalization_count: 0,
+              section2_discharge_treated: 0,
+              section3_admission_count: 0,
+              section3_discharge_count: 0,
+              section3_outside_hospital: 0,
+              section3_hospitalization_count: 0,
+              section4_daily_users: 0,
+              section5_daily_users: 0,
+              section6_daily_users: 0,
+              section7_daily_users: 0,
+              section_names: {
+                section4: 'ABCD1',
+                section5: 'ABCD2',
+                section6: 'ABCD3',
+                section7: 'ABCD4'
+              }
+            },
+            hospital_type: 'welfare'
           };
           
           setFormData(emptyForm);
-          setformDataSubmit(emptyForm);
+          setFormDataSubmit(emptyForm);
           setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(emptyForm));
           setReportStatus(null);
@@ -952,30 +765,53 @@ function ReportEntrySm({newHospital}) {
           setHasUnsavedChanges(false);
           
           if (!forceReload) {
-            showSnackbar('新しいレポートを作成できます', 'info');
+            showSnackbar('新しい福祉施設レポートを作成できます', 'info');
           }
         }
         
         setValidationErrors({});
       }
     } catch (error) {
-      console.error('Error loading report:', error);
-      const errorMessage = error.response?.data?.message || 'レポートの読み込みに失敗しました';
+      console.error('Error loading welfare report:', error);
+      const errorMessage = error.response?.data?.message || '福祉施設レポートの読み込みに失敗しました';
       
       // Initialize empty form on error
       const emptyForm = {
-        admission_count: 0,
-        discharge_count: 0,
-        external_duty: 0,
-        emergency_transport: 0,
-        post_transport_admission: 0,
-        visit_count: 0,
         special_notes: '',
-        report_details: [],
-        report_details_mid: []
+        welfare_data: {
+          capacity: 100,
+          section1_admission_count: 0,
+          section1_discharge_count: 0,
+          section1_outside_hospital: 0,
+          section1_admission_treated: 0,
+          section1_hospitalization_count: 0,
+          section1_discharge_treated: 0,
+          section2_admission_count: 0,
+          section2_discharge_count: 0,
+          section2_outside_hospital: 0,
+          section2_admission_treated: 0,
+          section2_hospitalization_count: 0,
+          section2_discharge_treated: 0,
+          section3_admission_count: 0,
+          section3_discharge_count: 0,
+          section3_outside_hospital: 0,
+          section3_hospitalization_count: 0,
+          section4_daily_users: 0,
+          section5_daily_users: 0,
+          section6_daily_users: 0,
+          section7_daily_users: 0,
+          section_names: {
+            section4: 'ABCD1',
+            section5: 'ABCD2',
+            section6: 'ABCD3',
+            section7: 'ABCD4'
+          }
+        },
+        hospital_type: 'welfare'
       };
+      
       setFormData(emptyForm);
-      setformDataSubmit(emptyForm);
+      setFormDataSubmit(emptyForm);
       setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
       initialFormDataRef.current = JSON.parse(JSON.stringify(emptyForm));
       setReportStatus(null);
@@ -988,7 +824,7 @@ function ReportEntrySm({newHospital}) {
       isLoadingDataRef.current = false;
       hasLoadedDataRef.current = true;
     }
-  }, [hospital, newHospital]);
+  }, []);
 
   // Handle date change
   const handleDateChange = async (newDate) => {
@@ -996,14 +832,6 @@ function ReportEntrySm({newHospital}) {
     if (newDate.getTime() === reportDate.getTime()) {
       return;
     }
-
-    // Check if there are actual unsaved changes
-    const currentData = formDataRef.current;
-    const initialData = initialFormDataRef.current;
-    
-    // Use the improved comparison function
-    const hasActualChanges = currentData && initialData ? 
-      hasFormDataChanged(currentData, initialData) : false;
 
     if (isEditingFromView && originalReportDate) {
       // When editing from view mode, check if date is different from original
@@ -1022,7 +850,7 @@ function ReportEntrySm({newHospital}) {
           actionType: 'dateChangeFromView'
         });
       } else {
-        // Same date, normal reload - only warn if there are actual changes
+        // Same date, normal reload
         setReportDate(newDate);
         if (reportIdFromUrl) {
           loadReportById(reportIdFromUrl);
@@ -1056,12 +884,12 @@ function ReportEntrySm({newHospital}) {
     handleDateChange(new Date());
   };
 
-  // Save as draft - this is the parent's version, FrameScreen will have its own
+  // Save as draft
   const handleSaveDraft = async () => {
     const hospitalId = currentHospitalRef.current?.id;
     
     if (!hospitalId) {
-      showSnackbar('病院が選択されていません', 'error');
+      showSnackbar('福祉施設が選択されていません', 'error');
       return;
     }
 
@@ -1072,7 +900,7 @@ function ReportEntrySm({newHospital}) {
 
     setSavingDraft(true);
     try {
-      const response = await axios.post(`${apiConfig.baseURL}/report-mid/submit`, {
+      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/submit`, {
         ...formDataSubmit,
         hospital_id: hospitalId,
         report_date: formatDateForAPI(reportDate),
@@ -1094,12 +922,12 @@ function ReportEntrySm({newHospital}) {
           setOriginalReportDate(reportDate);
         }
         
-        showSnackbar('下書きを保存しました', 'success');
+        showSnackbar('福祉施設レポートを下書き保存しました', 'success');
       } else {
         showSnackbar(response.data.message || '下書きの保存に失敗しました', 'error');
       }
     } catch (error) {
-      console.error('Error saving draft:', error);
+      console.error('Error saving welfare draft:', error);
       const errorMessage = error.response?.data?.message || '下書きの保存に失敗しました';
       showSnackbar(errorMessage, 'error');
     } finally {
@@ -1107,12 +935,12 @@ function ReportEntrySm({newHospital}) {
     }
   };
 
-  // Submit report - this is the parent's version, FrameScreen will have its own
+  // Submit report
   const handleSubmit = async () => {
     const hospitalId = currentHospitalRef.current?.id;
     
-    if (!formDataSubmit) {
-      showSnackbar('病院が選択されていません', 'error');
+    if (!hospitalId) {
+      showSnackbar('福祉施設が選択されていません', 'error');
       return;
     }
 
@@ -1121,17 +949,9 @@ function ReportEntrySm({newHospital}) {
       return;
     }
 
-    // Validate form data
-    const validation = validateReportData(formDataSubmit);
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
-      showSnackbar('フォームにエラーがあります。確認してください。', 'error');
-      return;
-    }
-
     setConfirmDialog({
       open: true,
-      title: 'レポートを提出しますか？',
+      title: '福祉施設レポートを提出しますか？',
       message: reportExists 
         ? '既存のレポートを更新して提出します。この操作は取り消せません。'
         : '新しいレポートを提出します。この操作は取り消せません。',
@@ -1148,7 +968,7 @@ function ReportEntrySm({newHospital}) {
     
     setSubmitting(true);
     try {
-      const response = await axios.post(`${apiConfig.baseURL}/report-mid/submit`, {
+      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/submit`, {
         ...data,
         hospital_id: hospitalId,
         report_date: formatDateForAPI(reportDate),
@@ -1170,27 +990,23 @@ function ReportEntrySm({newHospital}) {
           setOriginalReportDate(reportDate);
         }
         
-        showSnackbar('レポートを提出しました', 'success');
+        showSnackbar('福祉施設レポートを提出しました', 'success');
         
         // Close confirmation dialog
         setConfirmDialog({ ...confirmDialog, open: false });
         
         // If editing from view mode, redirect back to view page
         if (isEditingFromView && response.data.report?.id) {
-          // Get type from URL params
-          const params = getUrlParams();
-          const type = params.type || '1';
-          
           // Redirect to view page after submission
           setTimeout(() => {
-            navigate(`/report-view?id=${response.data.report.id}&type=${type}`);
+            navigate(`/report-view?id=${response.data.report.id}&type=welfare`);
           }, 1500);
         }
       } else {
         showSnackbar(response.data.message || 'レポートの提出に失敗しました', 'error');
       }
     } catch (error) {
-      console.error('Error submitting report:', error);
+      console.error('Error submitting welfare report:', error);
       const errorMessage = error.response?.data?.message || 'レポートの提出に失敗しました';
       showSnackbar(errorMessage, 'error');
     } finally {
@@ -1199,42 +1015,32 @@ function ReportEntrySm({newHospital}) {
   };
 
   // Handle form data change
-// Handle form data change
-const handleFormDataChange = useCallback((newData) => {
-  // Don't update if we're currently loading data
-  if (isLoadingDataRef.current) {
-    return;
-  }
+  const handleFormDataChange = useCallback((newData) => {
+    // Don't update if we're currently loading data
+    if (isLoadingDataRef.current) {
+      return;
+    }
 
-  const currentData = formDataRef.current;
-  
-  // Check if data has actually changed
-  if (currentData && JSON.stringify(newData) === JSON.stringify(currentData)) {
-    return;
-  }
-  
-  console.log('Form data changed:', newData);
-  setformDataSubmit(newData);
-  formDataRef.current = newData;
-  
-  // Check if there are changes from initial data
-  const initialData = initialFormDataRef.current;
-  if (initialData) {
-    const hasActualChanges = hasFormDataChanged(newData, initialData);
-    setHasUnsavedChanges(hasActualChanges);
-  } else {
-    setHasUnsavedChanges(true);
-  }
-}, []);
-
-  // Handle form validation request
-  const handleValidate = () => {
-    if (!formData) return { isValid: false, errors: {} };
+    const currentData = formDataRef.current;
     
-    const validation = validateReportData(formData);
-    setValidationErrors(validation.errors);
-    return validation;
-  };
+    // Check if data has actually changed
+    if (currentData && JSON.stringify(newData) === JSON.stringify(currentData)) {
+      return;
+    }
+    
+    console.log('Form data changed:', newData);
+    setFormDataSubmit(newData);
+    formDataRef.current = newData;
+    
+    // Check if there are changes from initial data
+    const initialData = initialFormDataRef.current;
+    if (initialData) {
+      const hasActualChanges = JSON.stringify(newData) !== JSON.stringify(initialData);
+      setHasUnsavedChanges(hasActualChanges);
+    } else {
+      setHasUnsavedChanges(true);
+    }
+  }, []);
 
   // Snackbar helper
   const showSnackbar = (message, severity = 'success', duration = 6000) => {
@@ -1274,17 +1080,10 @@ const handleFormDataChange = useCallback((newData) => {
 
   // Handle back to report list or view
   const handleBack = () => {
-    const currentData = formDataRef.current;
-    const initialData = initialFormDataRef.current;
-    const hasActualChanges = currentData && initialData ? 
-      hasFormDataChanged(currentData, initialData) : false;
-
     if (isEditingFromView && reportIdFromUrl) {
       // If editing from view mode and we have a report ID, go back to view
-      const params = getUrlParams();
-      const type = params.type || '1';
-      navigate(`/report-view?id=${reportIdFromUrl}&type=${type}`);
-    } else if (hasActualChanges) {
+      navigate(`/report-view?id=${reportIdFromUrl}&type=welfare`);
+    } else if (hasUnsavedChanges) {
       // Show confirmation for unsaved changes
       setConfirmDialog({
         open: true,
@@ -1308,11 +1107,11 @@ const handleFormDataChange = useCallback((newData) => {
       
       // If we have reportId in URL (coming from view mode), load by ID
       if (reportIdFromUrl) {
-        console.log('Loading by report ID:', reportIdFromUrl);
+        console.log('Loading welfare report by ID:', reportIdFromUrl);
         loadReportById(reportIdFromUrl);
       } else {
         // Otherwise, load by date as normal
-        console.log('Loading by date:', reportDate, 'hospital:', currentHospital.id);
+        console.log('Loading welfare report by date:', reportDate, 'hospital:', currentHospital.id);
         loadReportData(reportDate);
       }
     } else if (!currentHospital?.id) {
@@ -1320,6 +1119,7 @@ const handleFormDataChange = useCallback((newData) => {
     }
   }, [currentHospital?.id, reportDate, loadReportData, loadReportById, reportIdFromUrl]);
 
+  // Handle new hospital prop
   useEffect(() => {
     if (newHospital && newHospital.id) {
       // Update the current hospital with the new hospital data
@@ -1328,9 +1128,6 @@ const handleFormDataChange = useCallback((newData) => {
         name: newHospital.name,
         type: newHospital.type
       });
-      
-      // Set flag to indicate hospital has been changed from context
-      setHasHospitalChangedFromContext(true);
       
       // Reset loading states
       setLoading(true);
@@ -1345,55 +1142,26 @@ const handleFormDataChange = useCallback((newData) => {
       
       // Clear existing data
       setFormData(null);
-      setformDataSubmit(null);
+      setFormDataSubmit(null);
       setInitialFormData(null);
       setReportStatus(null);
       setReportId(null);
       setReportExists(false);
-      sethospital_type('hospital');
+      setHospitalType('welfare');
       setHasUnsavedChanges(false);
       setValidationErrors({});
       
       // If we have a reportId from URL (edit mode), reload by ID
       if (reportIdFromUrl) {
-        console.log('Reloading report by ID with new hospital:', newHospital.id);
+        console.log('Reloading welfare report by ID with new hospital:', newHospital.id);
         loadReportById(reportIdFromUrl);
       } else {
         // Otherwise reload by date with new hospital
-        console.log('Reloading report by date with new hospital:', newHospital.id);
+        console.log('Reloading welfare report by date with new hospital:', newHospital.id);
         loadReportData(reportDate, true);
       }
     }
   }, [newHospital]);
-
-  // Effect to handle when hospital context changes
-  useEffect(() => {
-    if (hospitalFromContext?.id && !hasHospitalChangedFromContext) {
-      setCurrentHospital({
-        id: hospitalFromContext.id,
-        name: hospitalFromContext.name,
-        type: hospitalFromContext.type
-      });
-    }
-  }, [hospitalFromContext, hasHospitalChangedFromContext]);
-
-  // Format time for last saved display
-  const formatLastSavedTime = () => {
-    if (!lastSaved) return 'まだ保存されていません';
-    
-    const now = new Date();
-    const diffMs = now - lastSaved;
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'たった今';
-    if (diffMins < 60) return `${diffMins}分前`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}時間前`;
-    
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}日前`;
-  };
 
   // Check if form is read-only (not draft status)
   const isReadOnly = reportStatus && reportStatus !== 'draft';
@@ -1402,8 +1170,8 @@ const handleFormDataChange = useCallback((newData) => {
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
       <Root
         header={
-          <ReportEntryHeader
-            title={`レポート - ${formatJapaneseDate(reportDate)}`}
+          <WelfareReportHeader
+            title={`福祉施設レポート - ${formatJapaneseDate(reportDate)}`}
             reportDate={reportDate}
             reportStatus={reportStatus}
             loadingReport={loadingReport}
@@ -1451,7 +1219,7 @@ const handleFormDataChange = useCallback((newData) => {
               }}>
                 <CircularProgress size={60} thickness={4} />
                 <Typography sx={{ mt: 2, color: '#666', fontSize: '0.875rem' }}>
-                  {reportIdFromUrl ? 'レポートを読み込み中...' : 'データを読み込み中...'}
+                  {reportIdFromUrl ? '福祉施設レポートを読み込み中...' : 'データを読み込み中...'}
                 </Typography>
               </Box>
             )}
@@ -1481,10 +1249,10 @@ const handleFormDataChange = useCallback((newData) => {
                 }}
               >
                 <Typography variant="body2">
-                  {reportIdFromUrl ? 'レポート編集モードです。' : '編集モードです。'}
-                  日付と病院を変更することはできません
+                  {reportIdFromUrl ? '福祉施設レポート編集モードです。' : '編集モードです。'}
+                  日付と福祉施設を変更することはできません
                   {originalReportDate && reportDate.getTime() !== originalReportDate.getTime() && (
-                    <strong> （日付と病院を変更することはできません）</strong>
+                    <strong> （日付を変更すると新しいレポートになります）</strong>
                   )}
                 </Typography>
               </Alert>
@@ -1513,11 +1281,11 @@ const handleFormDataChange = useCallback((newData) => {
                 }}>
                   <ErrorOutlineIcon sx={{ fontSize: 64, color: '#ff9800' }} />
                   <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50' }}>
-                    病院が選択されていません
+                    福祉施設が選択されていません
                   </Typography>
                   <Typography sx={{ color: '#666', maxWidth: '400px' }}>
-                    レポートを作成するには、まず病院を選択してください。
-                    レポート一覧から「レポート追加」をクリックして病院を選択してください。
+                    福祉施設レポートを作成するには、まず福祉施設を選択してください。
+                    レポート一覧から「レポート追加」をクリックして福祉施設を選択してください。
                   </Typography>
                   <Button
                     variant="contained"
@@ -1540,7 +1308,7 @@ const handleFormDataChange = useCallback((newData) => {
                 }}>
                   <CircularProgress />
                   <Typography sx={{ color: '#666' }}>
-                    {reportIdFromUrl ? 'レポートデータを読み込み中...' : 'データを読み込み中...'}
+                    {reportIdFromUrl ? '福祉施設レポートデータを読み込み中...' : 'データを読み込み中...'}
                   </Typography>
                 </Box>
               ) : (
@@ -1556,7 +1324,7 @@ const handleFormDataChange = useCallback((newData) => {
                   }}>
                     <CircularProgress />
                     <Typography sx={{ color: '#666' }}>
-                      フォームを読み込み中...
+                      福祉施設フォームを読み込み中...
                     </Typography>
                   </Box>
                 }>
@@ -1571,7 +1339,7 @@ const handleFormDataChange = useCallback((newData) => {
                     onDateChange={handleDateChange}
                     onSaveDraft={handleSaveDraft}
                     onSubmit={handleSubmit}
-                    onValidate={handleValidate}
+                    onValidate={() => {}}
                     isSubmitting={submitting}
                     isSavingDraft={savingDraft}
                     reportStatus={reportStatus}
