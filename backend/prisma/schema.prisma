@@ -135,6 +135,7 @@ model medical_center {
 
   // Reports for this medical center
   reports      report[]
+  report_sm_sections report_sm_section[] // Customizable section titles
 
   // Relations
   created_admin admins? @relation("MedicalCenterCreatedBy", fields: [created_by], references: [id])
@@ -340,6 +341,7 @@ model report {
   duty_staff              report_duty_staff[] // Duty staff
   approvals               report_approval[] // Approvals
   report_details_mid        report_detail_mid[] // Mid report details
+  report_details_sm       report_detail_sm[] 
   
   @@index([medical_center_id])
   @@index([report_date])
@@ -502,4 +504,70 @@ model report_duty_staff {
   
   @@unique([report_id, position])
   @@index([report_id])
+}
+
+
+
+
+
+/////////////////////////////
+// Report Detail Small (Child Table for Small Hospital/Welfare)
+/////////////////////////////
+model report_detail_sm {
+  id                      Int         @id @default(autoincrement())
+  report_id               Int         // Parent report - Foreign key to report
+  report_type             String      // 'admission' | 'short_term' | 'care_house' | 'day_service' | 'rehabilitation' | 'care_management' | 'dementia_support'
+  sequence_no             Int         // Sequence number
+  category                String?     // Category or section name (for customizable sections)
+  
+  // Admission/Short-term fields
+  daily_admission         Int?        @default(0)  // 当日入所者数
+  daily_discharge         Int?        @default(0)  // 当日退所者数
+  outside_hospital        Int?        @default(0)  // 外泊・入院者数
+  admission_treated       Int?        @default(0)  // 入所扱
+  hospitalized            Int?        @default(0)  // 入院者数
+  discharge_treated       Int?        @default(0)  // 退所扱
+  
+  // Care house fields
+  daily_users             Int?        @default(0)  // 当日利用者数
+  
+  // Special fields
+  meetings_events         String?     @db.Text     // 会議・行事等
+  special_notes           String?     @db.Text     // 特記事項
+  
+  // Capacity
+  capacity                Int?        @default(0)  // 定員
+  
+  // Relations
+  report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  
+  created_at              DateTime?   @default(now())
+  updated_at              DateTime?   @default(now())
+  
+  @@unique([report_id, report_type, sequence_no])
+  @@index([report_id])
+  @@index([report_type])
+}
+
+/////////////////////////////
+// Small Hospital Section Titles (for customizable section names)
+/////////////////////////////
+model report_sm_section {
+  id                      Int         @id @default(autoincrement())
+  medical_center_id       Int         // Foreign key to medical_center
+  section_type            String      // 'day_service_1' | 'day_service_2' | 'rehabilitation' | 'care_management' | 'dementia_support'
+  title                   String      // Custom title
+  display_order           Int         @default(0)
+  status                  Int         @default(1)
+  
+  // Relations
+  medical_center          medical_center @relation(fields: [medical_center_id], references: [id], onDelete: Cascade)
+  
+  created_by              Int
+  created_at              DateTime?   @default(now())
+  updated_by              Int?
+  updated_at              DateTime?   @default(now())
+  
+  @@unique([medical_center_id, section_type])
+  @@index([medical_center_id])
 }

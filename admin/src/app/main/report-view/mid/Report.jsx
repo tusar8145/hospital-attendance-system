@@ -17,6 +17,7 @@ import SendIcon from '@mui/icons-material/Send';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 import { useAppSelector } from 'app/store/hooks';
 import { useNavigate } from 'react-router-dom';
+import {  Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
@@ -30,7 +31,7 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-sidebarContent': {}
 }));
 
-// 1. Patient Count Table Component
+// 1. Patient Count Table Component - UPDATED DESIGN
 const PatientCountTable = ({ reportData }) => {
   if (!reportData?.report) return null;
   
@@ -43,66 +44,55 @@ const PatientCountTable = ({ reportData }) => {
   ];
 
   return (
-    <Paper 
-      elevation={2} 
-      className="border border-gray-300 rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-300"
-    >
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th 
-                className="border border-gray-300 p-3 sm:p-4 text-center font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white"
-                colSpan="4"
-              >
-                患　者　数
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {patientCountData[0].map((header, index) => (
-                <td
-                  key={`header-${index}`}
-                  className={`
-                    border border-gray-300 p-3 sm:p-4 text-center
-                    ${index < 3 ? 'border-r border-gray-300' : ''}
-                    ${index === patientCountData[0].length - 1 ? 'bg-blue-50' : ''}
-                  `}
-                >
-                  <div className="text-sm sm:text-base font-medium text-gray-700">
-                    {header}
-                  </div>
-                </td>
-              ))}
-            </tr>
-            <tr>
-              {patientCountData[1].map((value, index) => (
-                <td
-                  key={`value-${index}`}
-                  className={`
-                    border border-gray-300 p-3 sm:p-4 text-center
-                    ${index < 3 ? 'border-r border-gray-300' : ''}
-                    ${index === patientCountData[1].length - 1 ? 'bg-blue-50 font-bold text-blue-700' : 'font-semibold text-gray-800'}
-                  `}
-                >
-                  <div className="text-lg sm:text-xl">
-                    {value}
-                  </div>
-                  {index === patientCountData[1].length - 1 && (
-                    <div className="text-xs text-gray-500 mt-1">合計患者数</div>
-                  )}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
+    <div className="detailed-duty-table w-full h-full">
+      <div className="overflow-hidden rounded-md mb-4">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse table-fixed bg-white border border-gray-300">
+            <thead>
+              <tr>
+                <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan="4">
+                  <div className="text-md">患　者　数</div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Headers row */}
+              <tr>
+                {patientCountData[0].map((header, index) => (
+                  <th 
+                    key={`header-${index}`}
+                    className="bg-gray-300 text-black font-bold p-2 text-center w-1/4"
+                  >
+                    <div className="text-sm">{header}</div>
+                  </th>
+                ))}
+              </tr>
+              
+              {/* Values row */}
+              <tr>
+                {patientCountData[1].map((value, index) => (
+                  <td 
+                    key={`value-${index}`}
+                    className="border border-gray-300 p-3 text-center w-1/4"
+                  >
+                    <div className="text-base font-medium text-gray-800">
+                      {value}
+                    </div>
+                    {index === patientCountData[1].length - 1 && (
+                      <div className="text-xs text-gray-500 mt-1">合計患者数</div>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </Paper>
+    </div>
   );
 };
 
-// 2. Treatment Time Table Component
+// 2. Treatment Time Table Component - UPDATED DESIGN
 const TreatmentTimeTable = ({ reportDetails, doctors }) => {
   if (!reportDetails || reportDetails.length === 0) return null;
   
@@ -151,75 +141,180 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
     { key: 'night', label: '夜診' }
   ];
 
+
+
+             {/*<tr>
+                <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan="5">
+                  <div className="text-md">診療時間</div>
+                </th>
+              </tr>*/}
+
+
   return (
-    <Paper 
-      elevation={2} 
-      className="border border-gray-300 rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-300"
-    >
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <tbody>
-            {/* Header row */}
-            <tr className="bg-gradient-to-r from-indigo-500 to-purple-600">
-              <td 
-                className="border border-gray-300 p-2 text-center text-white font-bold"
-                rowSpan="4"
-                style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
-              >
-                <div className="transform rotate-180 text-sm sm:text-base">
-                  診療時間
-                </div>
-              </td>
-              <td className="border border-gray-300 p-3 text-center bg-indigo-50"></td>
-              {floors.map((floorData, index) => (
-                <td
-                  key={`floor-${index}`}
-                  className={`
-                    border border-gray-300 p-3 text-center
-                    ${index < floors.length - 1 ? 'border-r border-gray-300' : ''}
-                    bg-indigo-50 text-gray-700 font-medium
-                  `}
+    <div className="detailed-duty-table w-full h-full">
+      <div className="overflow-hidden rounded-md mb-4">
+        <div className="overflow-x-auto">
+
+
+<table className="w-full border-collapse table-fixed bg-white border border-gray-300 shadow-lg">
+  <thead>
+    <tr>
+      {/* Empty header for vertical text column */}
+      <th 
+        className="bg-gradient-to-b from-blue-700 to-blue-600 border-r-2 border-gray-400"
+        style={{ width: '50px' }}
+      />
+      
+      {/* Empty header for row labels column */}
+      <th 
+        className="bg-gray-100 border-r border-gray-300"
+        style={{ width: '80px' }}
+      />
+      
+      {/* Floor headers */}
+      {floors.map((floorData, index) => (
+        <th
+          key={`floor-${index}`}
+          className="bg-gradient-to-b from-gray-200 to-gray-300 text-gray-800 font-bold p-3 text-center border border-gray-400"
+        >
+          <div className="flex flex-col items-center">
+            <span className="text-lg font-bold text-gray-900">診{index + 1}</span>
+            <span className="text-xs text-gray-600 mt-1 bg-white px-2 py-1 rounded-full shadow-sm">
+              {floorData.floor}
+            </span>
+          </div>
+        </th>
+      ))}
+    </tr>
+  </thead>
+  
+  <tbody>
+    {/* First row with vertical text and first row label */}
+    <tr className="bg-white hover:bg-blue-50 transition-colors duration-150">
+      {/* Vertical text cell - spans all rows */}
+<td 
+  className="bg-gradient-to-b from-blue-700 to-blue-600 text-white font-bold border-r-2 border-gray-400"
+  rowSpan={consultationTypes.length}
+>
+  <div className="h-full flex items-center justify-center p-0">
+    <div className="text-center">
+      <span className="block leading-tight" style={{
+        fontSize: '18px',
+        fontWeight: 'bold',
+        letterSpacing: '4px',
+         lineHeight: '1.4',
+		 color: 'gray'
+      }}>
+        診<br/>療<br/>時<br/>間<br/><br/>
+      </span>
+    </div>
+  </div>
+</td>
+      
+      {/* First row label (午前診) */}
+      <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
+        午前診
+      </td>
+      
+      {/* First row data cells */}
+      {floors.map((floorData, colIndex) => (
+        <td
+          key={`cell-morning-${colIndex}`}
+          className="border border-gray-200 p-3 text-center align-middle"
+        >
+          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-center gap-1">
+            {floorData['morning'] && floorData['morning'].length > 0 ? (
+              floorData['morning'].map((item, idx) => (
+                <span 
+                  key={idx}
+                  className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium shadow-sm hover:bg-blue-200 transition-colors"
                 >
-                  <div className="text-sm sm:text-base">
-                    診{index + 1}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">{floorData.floor}</div>
-                </td>
-              ))}
-            </tr>
-            
-            {/* Data rows */}
-            {consultationTypes.map((type, rowIndex) => (
-              <tr key={`row-${type.key}`}>
-                <td className="border border-gray-300 p-3 text-center bg-gray-50">
-                  <div className="text-sm sm:text-base font-medium text-gray-700">
-                    {type.label}
-                  </div>
-                </td>
-                {floors.map((floorData, colIndex) => (
-                  <td
-                    key={`cell-${type.key}-${colIndex}`}
-                    className={`
-                      border border-gray-300 p-3 text-center
-                      ${colIndex < floors.length - 1 ? 'border-r border-gray-300' : ''}
-                      hover:bg-blue-50 transition-colors duration-200
-                    `}
-                  >
-                    <div className="text-sm text-gray-600 min-h-[40px] flex items-center justify-center">
-                      {floorData[type.key].join(', ') || '-'}
-                    </div>
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  {item}
+                </span>
+              ))
+            ) : (
+              <span className="text-gray-400 italic text-sm">-</span>
+            )}
+          </div>
+        </td>
+      ))}
+    </tr>
+    
+    {/* Second row (午後診) */}
+    <tr className="bg-gray-50 hover:bg-blue-50 transition-colors duration-150">
+      {/* No first cell - covered by rowSpan from first row */}
+      
+      {/* Second row label */}
+      <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
+        午後診
+      </td>
+      
+      {/* Second row data cells */}
+      {floors.map((floorData, colIndex) => (
+        <td
+          key={`cell-afternoon-${colIndex}`}
+          className="border border-gray-200 p-3 text-center align-middle"
+        >
+          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-center gap-1">
+            {floorData['afternoon'] && floorData['afternoon'].length > 0 ? (
+              floorData['afternoon'].map((item, idx) => (
+                <span 
+                  key={idx}
+                  className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium shadow-sm hover:bg-green-200 transition-colors"
+                >
+                  {item}
+                </span>
+              ))
+            ) : (
+              <span className="text-gray-400 italic text-sm">-</span>
+            )}
+          </div>
+        </td>
+      ))}
+    </tr>
+    
+    {/* Third row (夜診) */}
+    <tr className="bg-white hover:bg-blue-50 transition-colors duration-150">
+      {/* No first cell - covered by rowSpan from first row */}
+      
+      {/* Third row label */}
+      <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
+        夜診
+      </td>
+      
+      {/* Third row data cells */}
+      {floors.map((floorData, colIndex) => (
+        <td
+          key={`cell-night-${colIndex}`}
+          className="border border-gray-200 p-3 text-center align-middle"
+        >
+          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-center gap-1">
+            {floorData['night'] && floorData['night'].length > 0 ? (
+              floorData['night'].map((item, idx) => (
+                <span 
+                  key={idx}
+                  className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-sm font-medium shadow-sm hover:bg-purple-200 transition-colors"
+                >
+                  {item}
+                </span>
+              ))
+            ) : (
+              <span className="text-gray-400 italic text-sm">-</span>
+            )}
+          </div>
+        </td>
+      ))}
+    </tr>
+  </tbody>
+</table>
+
+        </div>
       </div>
-    </Paper>
+    </div>
   );
 };
 
-// 3. Diagnosis Table Component
+// 3. Diagnosis Table Component - UPDATED DESIGN
 const DiagnosisTable = ({ reportDetailsMid }) => {
   if (!reportDetailsMid || reportDetailsMid.length === 0) return null;
   
@@ -281,80 +376,376 @@ const DiagnosisTable = ({ reportDetailsMid }) => {
     }, 0)
   };
 
+  // Calculate how many additional empty columns we need
+  const totalColumns = 15; // Fixed total columns like in the example
+  const usedColumns = departments.length + 2; // Departments + time header + total column
+  const additionalColumnsCount = Math.max(0, totalColumns - usedColumns);
+
   return (
-    <Paper 
-      elevation={2} 
-      className="border border-gray-300 rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-300"
-    >
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gradient-to-r from-emerald-500 to-teal-600">
-              <th className="border border-gray-300 p-3 text-center text-white font-bold"></th>
-              {departments.map((dept, index) => (
+    <div className="diagnosis-table w-full h-full">
+      <div className="overflow-hidden rounded-md mb-4">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+            <thead>
+              <tr>
                 <th 
-                  key={`dept-${index}`}
-                  className={`
-                    border border-gray-300 p-3 text-center text-white font-bold
-                    ${index < departments.length - 1 ? 'border-r border-white/30' : ''}
-                  `}
+                  className="bg-blue-600 text-white font-bold p-2 text-center" 
+                  colSpan={totalColumns+1}
                 >
-                  {dept}
+                  <div className="text-md">診療科別患者数</div>
                 </th>
-              ))}
-              <th className="border border-gray-300 p-3 text-center text-white font-bold bg-teal-700">
-                合 計
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { key: 'morning', label: '午前診' },
-              { key: 'afternoon', label: '午後診' },
-              { key: 'night', label: '夜診' }
-            ].map((type, rowIndex) => (
-              <tr key={type.key} className="hover:bg-gray-50 transition-colors duration-200">
-                <td className="border border-gray-300 p-3 text-center bg-gray-50 font-medium text-gray-700">
-                  {type.label}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Department headers row */}
+              <tr>
+                <td 
+                  className="border border-gray-200 bg-gray-100 font-medium p-1 text-center"
+                  rowSpan="5"
+                  style={{ 
+                    width: '40px',
+                    height: '60px'
+                  }}
+                >
+                  <div className="flex flex-col justify-center items-center h-full leading-none">
+                    <span className="block text-sm">診</span>
+                    <span className="block text-sm">療</span>
+                    <span className="block text-sm">時</span>
+                    <span className="block text-sm">間</span>
+                  </div>
                 </td>
-                {departments.map((dept, colIndex) => (
-                  <td
-                    key={`${type.key}-${dept}`}
-                    className={`
-                      border border-gray-300 p-3 text-center
-                      ${colIndex < departments.length - 1 ? 'border-r border-gray-300' : ''}
-                    `}
+                
+                <td 
+                  className="border border-gray-200 bg-white text-black p-1 text-center"
+                  rowSpan="2"
+                  style={{ 
+                    width: '40px',
+                    height: '24px'
+                  }}
+                >
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-xs"></span>
+                  </div>
+                </td>
+                
+                {/* Department headers */}
+                {departments.map((dept, index) => (
+                  <td 
+                    key={`dept-header-${index}`}
+                    className="border border-gray-200 bg-white text-black font-bold p-1 text-center"
+                    style={{ 
+                      width: '50px',
+                      height: '24px'
+                    }}
                   >
-                    <div className="flex flex-col items-center justify-center min-h-[50px]">
-                      <span className="text-sm font-semibold text-gray-800">
-                        {groupedData[dept][type.key].total}
+                    <div className="text-xs leading-none font-bold">{index + 1}</div>
+                  </td>
+                ))}
+                
+                {/* Empty columns if needed */}
+                {Array.from({ length: additionalColumnsCount }).map((_, i) => (
+                  <td
+                    key={`empty-${i}`}
+                    className="border border-gray-200 bg-white text-black p-1 text-center"
+                    style={{ 
+                      width: '50px',
+                      height: '24px'
+                    }}
+                  >
+                    <div className="text-xs text-gray-400">{i + departments.length + 1}</div>
+                  </td>
+                ))}
+                
+                {/* Total column header */}
+                <td 
+                  className="border border-gray-200 bg-gray-300 font-bold p-1 text-center"
+                  style={{ 
+                    width: '60px',
+                    height: '24px'
+                  }}
+                >
+                  <div className="text-xs leading-none">合計</div>
+                </td>
+              </tr>
+              
+              {/* Sub-headers row (department names) */}
+              <tr>
+                {departments.map((dept, index) => (
+                  <td 
+                    key={`subheader-${dept}`}
+                    className="border border-gray-200 bg-gray-300 font-semibold p-1 text-center"
+                    style={{ 
+                      width: '50px',
+                      height: '24px'
+                    }}
+                  >
+                    <div className="text-xs leading-tight font-semibold">{dept}</div>
+                  </td>
+                ))}
+                
+                {Array.from({ length: additionalColumnsCount }).map((_, i) => (
+                  <td
+                    key={`empty-sub-${i}`}
+                    className="border border-gray-200 bg-gray-300 font-semibold p-1 text-center"
+                    style={{ 
+                      width: '50px',
+                      height: '24px'
+                    }}
+                  >
+                    <div className="text-xs text-gray-600">空欄</div>
+                  </td>
+                ))}
+                
+                <td 
+                  className="border border-gray-200 bg-gray-300 font-bold p-1 text-center"
+                  style={{ 
+                    width: '60px',
+                    height: '24px'
+                  }}
+                >
+                  <div className="text-xs leading-none">全体</div>
+                </td>
+              </tr>
+              
+              {/* Morning diagnosis row */}
+              <tr>
+                <td 
+                  className="border border-gray-200 bg-gray-100 font-medium p-1 text-center"
+                  style={{ 
+                    width: '40px',
+                    height: '30px'
+                  }}
+                >
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-xs font-medium">午前診</span>
+                  </div>
+                </td>
+                
+                {departments.map((dept, index) => (
+                  <td 
+                    key={`morning-${dept}`}
+                    className="border border-gray-200 p-1 text-center bg-blue-50"
+                    style={{ 
+                      width: '50px',
+                      height: '30px'
+                    }}
+                  >
+                    <div className="text-xs leading-tight flex flex-col justify-center h-full">
+                      <span className="font-semibold text-gray-900 ml-10">
+                        {groupedData[dept]?.morning.total || 0}
                       </span>
-                      <span className="text-xs text-gray-500">
-                        （{groupedData[dept][type.key].new}）
+                      <span className="font-semibold text-[12px] text-gray-900">
+                        （ {groupedData[dept]?.morning.new || 0} ）
                       </span>
                     </div>
                   </td>
                 ))}
-                <td className="border border-gray-300 p-3 text-center bg-emerald-50">
-                  <div className="flex flex-col items-center justify-center min-h-[50px]">
-                    <span className="text-sm font-bold text-gray-900">
-                      {rowTotals[type.key]}
+                
+                {Array.from({ length: additionalColumnsCount }).map((_, i) => (
+                  <td
+                    key={`empty-morning-${i}`}
+                    className="border border-gray-200 p-1 text-center bg-gray-50"
+                    style={{ 
+                      width: '50px',
+                      height: '30px'
+                    }}
+                  >
+                    <div className="text-xs text-gray-400 flex items-center justify-center h-full leading-none">-</div>
+                  </td>
+                ))}
+                
+                <td className="border border-gray-200 p-1 text-center bg-blue-100">
+                  <div className="text-xs leading-tight flex flex-col justify-center h-full">
+                    <span className="font-bold text-gray-900 ml-32">
+                      {rowTotals.morning}
                     </span>
-                    <span className="text-xs text-gray-500">
-                      （合計{rowTotals[type.key]}）
+                    <span className="text-[12px] text-gray-900">
+                      （合計{rowTotals.morning}）
                     </span>
                   </div>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+              
+              {/* Afternoon diagnosis row */}
+              <tr>
+                <td 
+                  className="border border-gray-200 bg-gray-100 font-medium p-1 text-center"
+                  style={{ 
+                    width: '40px',
+                    height: '30px'
+                  }}
+                >
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-xs font-medium">午後診</span>
+                  </div>
+                </td>
+                
+                {departments.map((dept, index) => (
+                  <td 
+                    key={`afternoon-${dept}`}
+                    className="border border-gray-200 p-1 text-center bg-green-50"
+                    style={{ 
+                      width: '50px',
+                      height: '30px'
+                    }}
+                  >
+                    <div className="text-xs leading-tight flex flex-col justify-center h-full">
+                      <span className="font-semibold text-gray-900 ml-10">
+                        {groupedData[dept]?.morning.total || 0}
+                      </span>
+                      <span className="font-semibold text-[12px] text-gray-900">
+                        （ {groupedData[dept]?.morning.new || 0} ）
+                      </span>
+                    </div>
+                  </td>
+                ))}
+                
+                {Array.from({ length: additionalColumnsCount }).map((_, i) => (
+                  <td
+                    key={`empty-afternoon-${i}`}
+                    className="border border-gray-200 p-1 text-center bg-gray-50"
+                    style={{ 
+                      width: '50px',
+                      height: '30px'
+                    }}
+                  >
+                    <div className="text-xs text-gray-400 flex items-center justify-center h-full leading-none">-</div>
+                  </td>
+                ))}
+                
+                <td className="border border-gray-200 p-1 text-center bg-green-100">
+                  <div className="text-xs leading-tight flex flex-col justify-center h-full">
+                    <span className="font-bold text-gray-900 ml-32">
+                      {rowTotals.afternoon}
+                    </span>
+                    <span className="text-[12px] text-gray-900">
+                      （合計{rowTotals.afternoon}）
+                    </span>
+                  </div>
+                </td>
+              </tr>
+              
+              {/* Night diagnosis row */}
+              <tr>
+                <td 
+                  className="border border-gray-200 bg-gray-100 font-medium p-1 text-center"
+                  style={{ 
+                    width: '40px',
+                    height: '30px'
+                  }}
+                >
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-xs font-medium">夜診</span>
+                  </div>
+                </td>
+                
+                {departments.map((dept, index) => (
+                  <td 
+                    key={`night-${dept}`}
+                    className="border border-gray-200 p-1 text-center bg-purple-50"
+                    style={{ 
+                      width: '50px',
+                      height: '30px'
+                    }}
+                  >
+                    <div className="text-xs leading-tight flex flex-col justify-center h-full">
+                      <span className="font-semibold text-gray-900 ml-10">
+                        {groupedData[dept]?.morning.total || 0}
+                      </span>
+                      <span className="font-semibold text-[12px] text-gray-900">
+                        （ {groupedData[dept]?.morning.new || 0} ）
+                      </span>
+                    </div>
+                  </td>
+                ))}
+                
+                {Array.from({ length: additionalColumnsCount }).map((_, i) => (
+                  <td
+                    key={`empty-night-${i}`}
+                    className="border border-gray-200 p-1 text-center bg-gray-50"
+                    style={{ 
+                      width: '50px',
+                      height: '30px'
+                    }}
+                  >
+                    <div className="text-xs text-gray-400 flex items-center justify-center h-full leading-none">-</div>
+                  </td>
+                ))}
+                
+                <td className="border border-gray-200 p-1 text-center bg-purple-100">
+                  <div className="text-xs leading-tight flex flex-col justify-center h-full">
+                    <span className="font-bold text-gray-900 ml-32">
+                      {rowTotals.night}
+                    </span>
+                    <span className="text-[12px] text-gray-900">
+                      （ 合計{rowTotals.night} ）
+                    </span>
+                  </div>
+                </td>
+              </tr>
+              
+              {/* Grand total row */}
+              <tr>
+                <td 
+                  className="border border-gray-200 bg-gray-100 font-bold p-1 text-center"
+                  colSpan={2}
+                  style={{ 
+                    height: '30px'
+                  }}
+                >
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-xs font-bold">合計</span>
+                  </div>
+                </td>
+                
+                {departments.map((dept, index) => {
+                  const deptTotal = (groupedData[dept]?.morning.total || 0) + 
+                                    (groupedData[dept]?.afternoon.total || 0) + 
+                                    (groupedData[dept]?.night.total || 0);
+                  return (
+                    <td 
+                      key={`total-${dept}`}
+                      className="border border-gray-200 p-1 text-center bg-gray-50 font-bold"
+                      style={{ 
+                        width: '50px',
+                        height: '30px'
+                      }}
+                    >
+                      <div className="text-xs font-bold text-gray-900">
+                        {deptTotal}
+                      </div>
+                    </td>
+                  );
+                })}
+                
+                {Array.from({ length: additionalColumnsCount }).map((_, i) => (
+                  <td
+                    key={`empty-total-${i}`}
+                    className="border border-gray-200 p-1 text-center bg-gray-50"
+                    style={{ 
+                      width: '50px',
+                      height: '30px'
+                    }}
+                  >
+                    <div className="text-xs text-gray-400">-</div>
+                  </td>
+                ))}
+                
+                <td className="border border-gray-200 p-1 text-center bg-gray-200 font-bold">
+                  <div className="text-xs font-bold text-gray-900">
+                    {rowTotals.grandTotal}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </Paper>
+    </div>
   );
 };
 
-// 4. External Consultation Summary Table
+// 4. External Consultation Summary Table - UPDATED DESIGN
 const ExternalConsultationSummary = ({ externalConsultationDetails }) => {
   if (!externalConsultationDetails) return null;
   
@@ -376,342 +767,513 @@ const ExternalConsultationSummary = ({ externalConsultationDetails }) => {
   const grandTotal = petTotal + mrTotal + ctTotal;
 
   return (
-    <Paper 
-      elevation={2} 
-      className="border border-gray-300 rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-300 mt-8"
-    >
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th 
-                className="border border-gray-300 p-3 sm:p-4 text-center font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white"
-                colSpan="5"
-              >
-                患者数
-              </th>
-            </tr>
-            <tr className="bg-purple-50">
-              <th className="border border-gray-300 p-3 text-center font-medium text-gray-700"></th>
-              <th className="border border-gray-300 p-3 text-center font-medium text-gray-700">PET</th>
-              <th className="border border-gray-300 p-3 text-center font-medium text-gray-700">MR</th>
-              <th className="border border-gray-300 p-3 text-center font-medium text-gray-700">CT</th>
-              <th className="border border-gray-300 p-3 text-center font-medium text-gray-700 bg-purple-100">合計</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="border border-gray-300 p-3 text-center bg-gray-50 font-medium text-gray-700">
-                患者数
-              </td>
-              <td className="border border-gray-300 p-3 text-center font-semibold text-gray-800">
-                {petTotal}
-              </td>
-              <td className="border border-gray-300 p-3 text-center font-semibold text-gray-800">
-                {mrTotal}
-              </td>
-              <td className="border border-gray-300 p-3 text-center font-semibold text-gray-800">
-                {ctTotal}
-              </td>
-              <td className="border border-gray-300 p-3 text-center font-bold text-purple-700 bg-purple-50">
-                {grandTotal}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <div className="detailed-duty-table w-full h-full mt-8">
+      <div className="overflow-hidden rounded-md mb-4">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse table-fixed bg-white border border-gray-300">
+            <thead>
+              <tr>
+                <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan="5">
+                  <div className="text-md">患者数（外部診療）</div>
+                </th>
+              </tr>
+              <tr className="bg-gray-300">
+                <th className="border border-gray-300 p-2 text-center font-bold text-black"></th>
+                <th className="border border-gray-300 p-2 text-center font-bold text-black">PET</th>
+                <th className="border border-gray-300 p-2 text-center font-bold text-black">MR</th>
+                <th className="border border-gray-300 p-2 text-center font-bold text-black">CT</th>
+                <th className="border border-gray-300 p-2 text-center font-bold text-black">合計</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-gray-300 p-2 text-center bg-gray-100 font-bold text-gray-800">
+                  患者数
+                </td>
+                <td className="border border-gray-300 p-2 text-center font-semibold text-gray-800">
+                  {petTotal}
+                </td>
+                <td className="border border-gray-300 p-2 text-center font-semibold text-gray-800">
+                  {mrTotal}
+                </td>
+                <td className="border border-gray-300 p-2 text-center font-semibold text-gray-800">
+                  {ctTotal}
+                </td>
+                <td className="border border-gray-300 p-2 text-center font-bold text-gray-900 bg-blue-50">
+                  {grandTotal}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </Paper>
+    </div>
   );
 };
 
-// 5. Detailed External Consultation Table (Updated with dynamic data)
+// 5. Detailed External Consultation Table (Updated for better scaling)
+
 const DetailedExternalConsultationTable = ({ externalConsultationDetails }) => {
   if (!externalConsultationDetails) return null;
+
+  // Header data
+  const categories = [
+    { key: 'PET', label: 'PET' },
+    { key: 'MR', label: 'MR' },
+    { key: 'CT', label: 'CT' }
+  ];
+
+  // Get sub-items for each category
+  const getSubItems = (category) => {
+    if (!externalConsultationDetails[category]) return [];
+    return Object.keys(externalConsultationDetails[category]);
+  };
+
+  // Calculate totals
+  const calculateCategoryTotal = (category) => {
+    if (!externalConsultationDetails[category]) return 0;
+    return Object.values(externalConsultationDetails[category])
+      .reduce((sum, item) => item.enabled ? sum + (parseInt(item.value) || 0) : sum, 0);
+  };
+
+  const calculateGrandTotal = () => {
+    return categories.reduce((total, category) => 
+      total + calculateCategoryTotal(category.key), 0
+    );
+  };
+
+  // Get the value for a specific sub-item
+  const getSubItemValue = (category, subItemKey) => {
+    const item = externalConsultationDetails[category]?.[subItemKey];
+    return item?.enabled ? item.value : '0';
+  };
+
+  const petTotal = calculateCategoryTotal('PET');
+  const mrTotal = calculateCategoryTotal('MR');
+  const ctTotal = calculateCategoryTotal('CT');
+  const grandTotal = calculateGrandTotal();
+
+  // Get all unique sub-item keys for each category
+  const petSubItems = getSubItems('PET');
+  const mrSubItems = getSubItems('MR');
+  const ctSubItems = getSubItems('CT');
   
-  const headerData = [
-    { label: "PET-CT", left: 70, top: 30 },
-    { label: "PET", left: 195, top: 6 },
-    { label: "MR", left: 497, top: 6 },
-    { label: "CT", left: 801, top: 6 },
-  ];
-
-  // Extract sub-items from data
-  const getSubItems = () => {
-    const subItems = [];
-    
-    // PET sub-items
-    if (externalConsultationDetails.PET) {
-      Object.keys(externalConsultationDetails.PET).forEach(key => {
-        subItems.push({
-          label: key,
-          left: getLeftPositionForSubItem('PET', key),
-          top: 30,
-          fontSize: key.length > 5 ? 10.6 : 13.6
-        });
-      });
-    }
-    
-    // Add totals
-    subItems.push({ 
-      label: "合計", 
-      left: 1000, 
-      top: 30, 
-      letterSpacing: 6.8 
-    });
-    
-    return subItems;
-  };
-
-  // Helper function to calculate position (simplified version)
-  const getLeftPositionForSubItem = (category, itemName) => {
-    const positions = {
-      'PET': {
-        'PET-CT': 106,
-        'エグゼクティブ': 181,
-        '保険': 257,
-        '〇〇〇〇': 289
-      },
-      'MR': {
-        '頭蓋骨盤': 406,
-        'エコー': 482,
-        '脳ドック': 558,
-        '保険': 632
-      },
-      'CT': {
-        '〇〇〇〇': 712,
-        '〇〇〇〇2': 790,
-        '〇〇〇〇3': 866,
-        '〇〇〇〇4': 920
-      }
-    };
-    
-    return positions[category]?.[itemName] || 200;
-  };
-
-  // Get data points
-  const getDataPoints = () => {
-    const dataPoints = [];
-    
-    // Patient count row
-    if (externalConsultationDetails.PET) {
-      Object.entries(externalConsultationDetails.PET).forEach(([key, item]) => {
-        if (item.enabled) {
-          const left = getLeftPositionForSubItem('PET', key);
-          dataPoints.push({
-            value: item.value,
-            left: left,
-            top: 57
-          });
-        }
-      });
-    }
-    
-    if (externalConsultationDetails.MR) {
-      Object.entries(externalConsultationDetails.MR).forEach(([key, item]) => {
-        if (item.enabled) {
-          const left = getLeftPositionForSubItem('MR', key);
-          dataPoints.push({
-            value: item.value,
-            left: left,
-            top: 57
-          });
-        }
-      });
-    }
-    
-    if (externalConsultationDetails.CT) {
-      Object.entries(externalConsultationDetails.CT).forEach(([key, item]) => {
-        if (item.enabled) {
-          const left = getLeftPositionForSubItem('CT', key);
-          dataPoints.push({
-            value: item.value,
-            left: left,
-            top: 57
-          });
-        }
-      });
-    }
-    
-    // Total row calculations
-    const petTotal = Object.values(externalConsultationDetails.PET || {}).reduce((sum, item) => 
-      item.enabled ? sum + (parseInt(item.value) || 0) : sum, 0
-    );
-    const mrTotal = Object.values(externalConsultationDetails.MR || {}).reduce((sum, item) => 
-      item.enabled ? sum + (parseInt(item.value) || 0) : sum, 0
-    );
-    const ctTotal = Object.values(externalConsultationDetails.CT || {}).reduce((sum, item) => 
-      item.enabled ? sum + (parseInt(item.value) || 0) : sum, 0
-    );
-    const grandTotal = petTotal + mrTotal + ctTotal;
-    
-    // Add total row data points
-    dataPoints.push({ value: petTotal.toString(), left: 181, top: 91 });
-    dataPoints.push({ value: mrTotal.toString(), left: 482, top: 91 });
-    dataPoints.push({ value: ctTotal.toString(), left: 802, top: 91 });
-    dataPoints.push({ value: grandTotal.toString(), left: 1018, top: 95 });
-    
-    return dataPoints;
-  };
-
-  const subHeaderData = getSubItems();
-  const dataPoints = getDataPoints();
-  
-  const verticalLines = [
-    { left: 53, top: 0, height: 119, width: 3 },
-    { left: 130, top: 26, height: 57, width: 2 },
-    { left: 583, top: 26, height: 59, width: 2 },
-    { left: 357, top: 0.5, height: 118, width: 2 },
-    { left: 810, top: 26, height: 59, width: 2 },
-    { left: 205, top: 26, height: 57, width: 2 },
-    { left: 659, top: 0, height: 119, width: 2 },
-    { left: 432, top: 26, height: 59, width: 2 },
-    { left: 885, top: 26, height: 59, width: 2 },
-    { left: 281, top: 26, height: 59, width: 2 },
-    { left: 734, top: 26, height: 59, width: 2 },
-    { left: 508, top: 26, height: 57, width: 2 },
-    { left: 961, top: 0, height: 119, width: 2 },
-  ];
-
-  const horizontalBorders = [
-    { top: 24, height: 26, borderWidth: 1.51 },
-    { top: 0, height: 26, borderWidth: 1.51 },
-    { top: 48, height: 36, borderWidth: 1.51 },
-    { top: 83, height: 36, borderWidth: 1.51 },
-  ];
+  // Find the maximum number of sub-items among all categories
+  const maxSubItems = Math.max(petSubItems.length, mrSubItems.length, ctSubItems.length);
 
   return (
-    <Box
-      sx={{
-        position: 'relative',
-        width: 1068,
-        height: 119,
-        marginTop: 4,
-        border: '1px solid #e5e7eb',
-        borderRadius: '0.75rem',
-        backgroundColor: 'white',
-        overflow: 'hidden'
-      }}
-    >
+    <Box sx={{ width: '100%', overflowX: 'auto', py: 3 }}>
+      {/* Beautiful Header */}
+ 
+   
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: "'Noto Sans JP', 'Inter', sans-serif",
+                fontWeight: 700,
+                color: 'white',
+                fontSize: '14px',
+                letterSpacing: '0.5px',
+                marginBottom: '4px',
+                textAlign: 'center',
+                padding: '2px',
+                background: 'linear-gradient(135deg, #667eea 0%, #8a6da8ff 100%)',
+                textShadow: '0 2px 4px rgba(146, 122, 122, 0.6)'
+              }}
+            >
+              詳細外部診療データ
+            </Typography>
+          </Box>
+ 
+ 
+
+      {/* Table Container */}
       <Box
         sx={{
-          position: 'relative',
-          width: 1136,
-          height: 119,
+          width: '100%',
+          margin: '0 auto',
+          borderRadius: '0 0 16px 16px',
+          overflow: 'hidden',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.08)',
+          border: '1px solid #e5e7eb',
+          background: 'white',
         }}
       >
-        {/* Row Labels */}
-        {[
-          { label: '患者数', left: 8, top: 57 },
-          { label: '合計', left: 8, top: 91 },
-        ].map((item, index) => (
-          <Typography
-            key={`row-label-${index}`}
-            sx={{
-              position: 'absolute',
-              top: item.top,
-              left: item.left,
-              fontFamily: 'Inter-Regular, Helvetica',
-              fontWeight: 400,
-              color: 'black',
-              fontSize: 13.6,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {item.label}
-          </Typography>
-        ))}
+        <TableContainer component={Paper} elevation={0}>
+          <Table sx={{ minWidth: 1000, borderCollapse: 'separate', borderSpacing: 0 }}>
+            <TableHead>
+              {/* Main Header Row */}
+              <TableRow>
+                <TableCell
+                  rowSpan={2}
+                  sx={{
+                    width: '100px',
+                    borderRight: '2px solid #e5e7eb',
+                    borderBottom: '2px solid #e5e7eb',
+                    background: 'linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%)',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    fontWeight: 600,
+                    color: '#374151',
+                    fontFamily: "'Noto Sans JP', sans-serif",
+                  }}
+                >
+                  {/* Empty for row labels */}
+                </TableCell>
+                
+                {categories.map((category) => (
+                  <TableCell
+                    key={category.key}
+                    colSpan={4}
+                    sx={{
+                      borderRight: '2px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
+                      textAlign: 'center',
+                      fontWeight: 600,
+                      color: '#1e40af',
+                      background: 'linear-gradient(to right, rgba(37, 99, 235, 0.05), rgba(147, 51, 234, 0.05))',
+                      fontFamily: "'Noto Sans JP', sans-serif",
+                      padding: '12px 8px',
+                    }}
+                  >
+                    {category.label}
+                  </TableCell>
+                ))}
+                
+                <TableCell
+                  rowSpan={2}
+                  sx={{
+                    width: '100px',
+                    borderBottom: '2px solid #e5e7eb',
+                    background: 'linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%)',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    fontWeight: 600,
+                    color: '#1e40af',
+                    fontFamily: "'Noto Sans JP', sans-serif",
+                  }}
+                >
+                  合計
+                </TableCell>
+              </TableRow>
 
-        {/* Main Headers */}
-        {headerData.map((item, index) => (
-          <Typography
-            key={`header-${index}`}
-            sx={{
-              position: 'absolute',
-              top: item.top,
-              left: item.left,
-              fontFamily: 'Inter-Regular, Helvetica',
-              fontWeight: 400,
-              color: 'black',
-              fontSize: 13.6,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {item.label}
-          </Typography>
-        ))}
+              {/* Sub-header Row */}
+              <TableRow>
+                {/* PET Sub-headers */}
+                {petSubItems.map((subItem, index) => (
+                  <TableCell
+                    key={`pet-${subItem}`}
+                    sx={{
+                      borderRight: index === 3 ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '2px solid #e5e7eb',
+                      textAlign: 'center',
+                      fontWeight: 500,
+                      color: '#4b5563',
+                      background: '#f9fafb',
+                      fontFamily: "'Noto Sans JP', sans-serif",
+                      padding: '8px 4px',
+                      fontSize: subItem.length > 5 ? '12px' : '13px',
+                    }}
+                  >
+                    {subItem}
+                  </TableCell>
+                ))}
+                
+                {/* Fill empty cells if PET has less than 4 sub-items */}
+                {Array.from({ length: 4 - petSubItems.length }).map((_, index) => (
+                  <TableCell
+                    key={`pet-empty-${index}`}
+                    sx={{
+                      borderRight: index === (3 - petSubItems.length) ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '2px solid #e5e7eb',
+                      background: '#f9fafb',
+                    }}
+                  />
+                ))}
 
-        {/* Sub Headers */}
-        {subHeaderData.map((item, index) => (
-          <Typography
-            key={`subheader-${index}`}
-            sx={{
-              position: 'absolute',
-              top: item.top,
-              left: item.left,
-              fontFamily: 'Inter-Regular, Helvetica',
-              fontWeight: 400,
-              color: 'black',
-              fontSize: item.fontSize || 13.6,
-              whiteSpace: 'nowrap',
-              letterSpacing: item.letterSpacing || 0,
-            }}
-          >
-            {item.label}
-          </Typography>
-        ))}
+                {/* MR Sub-headers */}
+                {mrSubItems.map((subItem, index) => (
+                  <TableCell
+                    key={`mr-${subItem}`}
+                    sx={{
+                      borderRight: index === 3 ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '2px solid #e5e7eb',
+                      textAlign: 'center',
+                      fontWeight: 500,
+                      color: '#4b5563',
+                      background: '#f9fafb',
+                      fontFamily: "'Noto Sans JP', sans-serif",
+                      padding: '8px 4px',
+                      fontSize: subItem.length > 5 ? '12px' : '13px',
+                    }}
+                  >
+                    {subItem}
+                  </TableCell>
+                ))}
+                
+                {/* Fill empty cells if MR has less than 4 sub-items */}
+                {Array.from({ length: 4 - mrSubItems.length }).map((_, index) => (
+                  <TableCell
+                    key={`mr-empty-${index}`}
+                    sx={{
+                      borderRight: index === (3 - mrSubItems.length) ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '2px solid #e5e7eb',
+                      background: '#f9fafb',
+                    }}
+                  />
+                ))}
 
-        {/* Data Points */}
-        {dataPoints.map((item, index) => (
-          <Typography
-            key={`data-${index}`}
-            sx={{
-              position: 'absolute',
-              top: item.top,
-              left: item.left,
-              fontFamily: 'Inter-Regular, Helvetica',
-              fontWeight: 400,
-              color: 'black',
-              fontSize: 13.6,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {item.value}
-          </Typography>
-        ))}
+                {/* CT Sub-headers */}
+                {ctSubItems.map((subItem, index) => (
+                  <TableCell
+                    key={`ct-${subItem}`}
+                    sx={{
+                      borderRight: index === 3 ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '2px solid #e5e7eb',
+                      textAlign: 'center',
+                      fontWeight: 500,
+                      color: '#4b5563',
+                      background: '#f9fafb',
+                      fontFamily: "'Noto Sans JP', sans-serif",
+                      padding: '8px 4px',
+                      fontSize: subItem.length > 5 ? '12px' : '13px',
+                    }}
+                  >
+                    {subItem}
+                  </TableCell>
+                ))}
+                
+                {/* Fill empty cells if CT has less than 4 sub-items */}
+                {Array.from({ length: 4 - ctSubItems.length }).map((_, index) => (
+                  <TableCell
+                    key={`ct-empty-${index}`}
+                    sx={{
+                      borderRight: index === (3 - ctSubItems.length) ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '2px solid #e5e7eb',
+                      background: '#f9fafb',
+                    }}
+                  />
+                ))}
+              </TableRow>
+            </TableHead>
 
-        {/* Vertical Lines */}
-        {verticalLines.map((line, index) => (
-          <Box
-            key={`vline-${index}`}
-            sx={{
-              position: 'absolute',
-              top: line.top,
-              left: line.left,
-              width: line.width,
-              height: line.height,
-              backgroundColor: 'black',
-            }}
-          />
-        ))}
+            <TableBody>
+              {/* Patient Count Row */}
+              <TableRow>
+                <TableCell
+                  sx={{
+                    borderRight: '2px solid #e5e7eb',
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 600,
+                    color: '#374151',
+                    background: '#f8fafc',
+                    fontFamily: "'Noto Sans JP', sans-serif",
+                    textAlign: 'center',
+                  }}
+                >
+                  患者数
+                </TableCell>
+                
+                {/* PET Data */}
+                {petSubItems.map((subItem, index) => (
+                  <TableCell
+                    key={`pet-data-${subItem}`}
+                    sx={{
+                      borderRight: index === 3 ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
+                      textAlign: 'center',
+                      fontFamily: "'Inter', monospace",
+                      fontWeight: 500,
+                      color: '#1f2937',
+                      background: '#ffffff',
+                      padding: '12px 4px',
+                      '&:hover': {
+                        background: 'rgba(37, 99, 235, 0.05)',
+                      }
+                    }}
+                  >
+                    {getSubItemValue('PET', subItem)}
+                  </TableCell>
+                ))}
+                
+                {/* Fill empty cells for PET */}
+                {Array.from({ length: 4 - petSubItems.length }).map((_, index) => (
+                  <TableCell
+                    key={`pet-data-empty-${index}`}
+                    sx={{
+                      borderRight: index === (3 - petSubItems.length) ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
+                      background: '#ffffff',
+                    }}
+                  />
+                ))}
 
-        {/* Horizontal Borders */}
-        {horizontalBorders.map((border, index) => (
-          <Box
-            key={`hborder-${index}`}
-            sx={{
-              position: 'absolute',
-              top: border.top,
-              left: 0,
-              width: 1068,
-              height: border.height,
-              border: `${border.borderWidth}px solid #484848`,
-            }}
-          />
-        ))}
+                {/* MR Data */}
+                {mrSubItems.map((subItem, index) => (
+                  <TableCell
+                    key={`mr-data-${subItem}`}
+                    sx={{
+                      borderRight: index === 3 ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
+                      textAlign: 'center',
+                      fontFamily: "'Inter', monospace",
+                      fontWeight: 500,
+                      color: '#1f2937',
+                      background: '#ffffff',
+                      padding: '12px 4px',
+                      '&:hover': {
+                        background: 'rgba(37, 99, 235, 0.05)',
+                      }
+                    }}
+                  >
+                    {getSubItemValue('MR', subItem)}
+                  </TableCell>
+                ))}
+                
+                {/* Fill empty cells for MR */}
+                {Array.from({ length: 4 - mrSubItems.length }).map((_, index) => (
+                  <TableCell
+                    key={`mr-data-empty-${index}`}
+                    sx={{
+                      borderRight: index === (3 - mrSubItems.length) ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
+                      background: '#ffffff',
+                    }}
+                  />
+                ))}
+
+                {/* CT Data */}
+                {ctSubItems.map((subItem, index) => (
+                  <TableCell
+                    key={`ct-data-${subItem}`}
+                    sx={{
+                      borderRight: index === 3 ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
+                      textAlign: 'center',
+                      fontFamily: "'Inter', monospace",
+                      fontWeight: 500,
+                      color: '#1f2937',
+                      background: '#ffffff',
+                      padding: '12px 4px',
+                      '&:hover': {
+                        background: 'rgba(37, 99, 235, 0.05)',
+                      }
+                    }}
+                  >
+                    {getSubItemValue('CT', subItem)}
+                  </TableCell>
+                ))}
+                
+                {/* Fill empty cells for CT */}
+                {Array.from({ length: 4 - ctSubItems.length }).map((_, index) => (
+                  <TableCell
+                    key={`ct-data-empty-${index}`}
+                    sx={{
+                      borderRight: index === (3 - ctSubItems.length) ? '2px solid #e5e7eb' : '1px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
+                      background: '#ffffff',
+                    }}
+                  />
+                ))}
+
+                {/* Grand Total for Patient Count Row (empty) */}
+                <TableCell
+                  sx={{
+                    borderBottom: '1px solid #e5e7eb',
+                    background: '#ffffff',
+                  }}
+                >
+                  {/* Empty for patient count row */}
+                </TableCell>
+              </TableRow>
+
+              {/* Totals Row */}
+              <TableRow>
+                <TableCell
+                  sx={{
+                    borderRight: '2px solid #e5e7eb',
+                    fontWeight: 600,
+                    color: '#1e40af',
+                    background: '#f8fafc',
+                    fontFamily: "'Noto Sans JP', sans-serif",
+                    textAlign: 'center',
+                  }}
+                >
+                  合計
+                </TableCell>
+                
+                {/* PET Total */}
+                <TableCell
+                  colSpan={4}
+                  sx={{
+                    borderRight: '2px solid #e5e7eb',
+                    textAlign: 'center',
+                    fontFamily: "'Inter', monospace",
+                    fontWeight: 600,
+                    color: '#1e40af',
+                    background: 'rgba(37, 99, 235, 0.08)',
+                    padding: '12px 4px',
+                  }}
+                >
+                  {petTotal}
+                </TableCell>
+                
+                {/* MR Total */}
+                <TableCell
+                  colSpan={4}
+                  sx={{
+                    borderRight: '2px solid #e5e7eb',
+                    textAlign: 'center',
+                    fontFamily: "'Inter', monospace",
+                    fontWeight: 600,
+                    color: '#1e40af',
+                    background: 'rgba(37, 99, 235, 0.08)',
+                    padding: '12px 4px',
+                  }}
+                >
+                  {mrTotal}
+                </TableCell>
+                
+                {/* CT Total */}
+                <TableCell
+                  colSpan={4}
+                  sx={{
+                    borderRight: '2px solid #e5e7eb',
+                    textAlign: 'center',
+                    fontFamily: "'Inter', monospace",
+                    fontWeight: 600,
+                    color: '#1e40af',
+                    background: 'rgba(37, 99, 235, 0.08)',
+                    padding: '12px 4px',
+                  }}
+                >
+                  {ctTotal}
+                </TableCell>
+                
+                {/* Grand Total */}
+                <TableCell
+                  sx={{
+                    textAlign: 'center',
+                    fontFamily: "'Inter', monospace",
+                    fontWeight: 700,
+                    color: '#1d4ed8',
+                    background: 'rgba(37, 99, 235, 0.12)',
+                    fontSize: '14px',
+                    padding: '12px 4px',
+                  }}
+                >
+                  {grandTotal}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Box>
+ 
     </Box>
   );
 };
+
 
 // Main Report Component
 function Report({ reportId, initialData, hospitalType, onRefresh }) {
@@ -1340,7 +1902,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full p-4 sm:p-6 lg:p-8">
+    <div className="flex flex-col flex-1 w-full p-4 sm:p-6 lg:p-8 overflow-hidden">
       {/* Alerts */}
       {successAlert && (
         <Alert severity="success" className="text-sm mb-4 animate-fade-in" onClose={() => setSuccessAlert(null)}>
@@ -1375,56 +1937,72 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         </div>
       </HeaderSection>
 
-      {/* Status Confirmation Section */}
-      <StatusConfirmationSection
-        statusData={statusData}
-        onStatusChange={() => {}}
-        title="確認状態一覧"
-        showSummary={true}
-        showDate={true}
-        compact={true}
-      />
-
-      {/* Patient Count and Treatment Time Tables */}
-      <Box className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
-        <PatientCountTable reportData={reportData} />
-        <TreatmentTimeTable 
-          reportDetails={reportData.report?.report_details} 
-          doctors={reportData.doctors}
+      {/* Main content with scrolling */}
+      <div className="flex-1 overflow-y-auto pr-2">
+        {/* Status Confirmation Section */}
+        <StatusConfirmationSection
+          statusData={statusData}
+          onStatusChange={() => {}}
+          title="確認状態一覧"
+          showSummary={true}
+          showDate={true}
+          compact={true}
         />
-      </Box>
 
-      {/* Diagnosis Table */}
-      <div className="mt-8">
-        <DiagnosisTable reportDetailsMid={reportData.report?.report_details_mid} />
-      </div>
+        {/* Patient Count and Treatment Time Tables */}
+<Box className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8">
+  <div className="lg:col-span-1">
+    <PatientCountTable reportData={reportData} />
+  </div>
+  <div className="lg:col-span-2">
+    <TreatmentTimeTable 
+      reportDetails={reportData.report?.report_details} 
+      doctors={reportData.doctors}
+    />
+  </div>
+</Box>
 
-      {/* External Consultation Summary */}
-      <ExternalConsultationSummary 
-        externalConsultationDetails={reportData.report?.external_consultation_details}
-      />
-
-      {/* Detailed External Consultation Table */}
-      {reportData.report?.external_consultation_details && (
-        <div className="mt-8">
-          <Typography variant="h6" className="font-bold mb-4">
-            詳細外部診療データ
-          </Typography>
-          <DetailedExternalConsultationTable 
-            externalConsultationDetails={reportData.report.external_consultation_details}
-          />
+        {/* Diagnosis Table */}
+        <div className="mt-20">
+          <DiagnosisTable reportDetailsMid={reportData.report?.report_details_mid} />
         </div>
-      )}
-      
-      {/* Add Comment Section */}
-      <Paper elevation={2} className="border border-gray-300 rounded-xl overflow-hidden mt-8">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
-          <Typography variant="h6" className="font-bold text-white">
-            コメントを追加
-          </Typography>
+ 
+        {/* External Consultation Summary */}
+		{(reportData.report?.emergency_transport>0 || reportData.report?.post_transport_admission>0 || reportData.report?.visit_count>0)  && (
+		<div className="mt-20">
+        <ExternalConsultationSummary 
+          externalConsultationDetails={reportData.report?.external_consultation_details}
+        />
+		</div>
+		)}
+
+        {/* Detailed External Consultation Table */}
+		{(reportData.report?.emergency_transport>0 || reportData.report?.post_transport_admission>0 || reportData.report?.visit_count>0)  && (
+          <div className="mt-20">
+            <DetailedExternalConsultationTable 
+              externalConsultationDetails={reportData.report.external_consultation_details}
+            />
+          </div>
+        )}
+        
+        {/* Add Comment Section */}
+        <div className="detailed-duty-table w-full mt-8">
+          <div className="overflow-hidden rounded-md mb-4">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse table-fixed bg-white border border-gray-300">
+                <thead>
+                  <tr>
+                    <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan="1">
+                      <div className="text-md">コメントを追加</div>
+                    </th>
+                  </tr>
+                </thead>
+              </table>
+            </div>
+          </div>
         </div>
         
-        <div className="p-4">
+        <Box sx={{ p: 3, border: '1px solid #e5e7eb', borderRadius: '0.75rem' }}>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <TextField
               fullWidth
@@ -1448,113 +2026,120 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
               {loading ? '送信中...' : '追加'}
             </Button>
           </Box>
-        </div>
-      </Paper>
-      
-      {/* Management Comments Section */}
-      <div className="mt-8">
-        <ManagementComments
-          comments={managementComments}
-          title="管理事項"
-          showSummary={true}
-          summaryMessage={managementComments.length > 0 ? managementComments[0].text : "管理事項はありません。"}
-          showActionButtons={false}
-          renderComment={(comment, index) => (
-            <Box key={comment.id} className="relative group">
-              {editingCommentId === comment.id ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={editCommentText}
-                    onChange={(e) => setEditCommentText(e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    disabled={loading}
-                  />
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                    <Button
+        </Box>
+        
+        {/* Management Comments Section */}
+        <div className="mt-8">
+          <ManagementComments
+            comments={managementComments}
+            title="管理事項"
+            showSummary={true}
+            summaryMessage={managementComments.length > 0 ? managementComments[0].text : "管理事項はありません。"}
+            showActionButtons={false}
+            renderComment={(comment, index) => (
+              <Box key={comment.id} className="relative group">
+                {editingCommentId === comment.id ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={2}
+                      value={editCommentText}
+                      onChange={(e) => setEditCommentText(e.target.value)}
+                      variant="outlined"
                       size="small"
-                      onClick={() => setEditingCommentId(null)}
                       disabled={loading}
-                    >
-                      キャンセル
-                    </Button>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      onClick={handleSaveEditedComment}
-                      disabled={loading}
-                    >
-                      保存
-                    </Button>
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                      <Button
+                        size="small"
+                        onClick={() => setEditingCommentId(null)}
+                        disabled={loading}
+                      >
+                        キャンセル
+                      </Button>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={handleSaveEditedComment}
+                        disabled={loading}
+                      >
+                        保存
+                      </Button>
+                    </Box>
                   </Box>
-                </Box>
-              ) : (
-                <Box>
-                  <Typography variant="body2" className="text-gray-700 leading-relaxed">
-                    {comment.text}
-                    {comment.is_special_notes && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        特記事項
-                      </span>
-                    )}
-                  </Typography>
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <Typography variant="caption" className="text-gray-500">
-                        報告者: {comment.author} | {comment.date} {comment.time}
-                      </Typography>
-                      {comment.can_edit && !comment.is_special_notes && (
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleEditComment(comment)}
-                            className="text-blue-500 hover:bg-blue-50"
-                            disabled={loading}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteComment(comment.id)}
-                            className="text-red-500 hover:bg-red-50"
-                            disabled={loading}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
+                ) : (
+                  <Box>
+                    <Typography variant="body2" className="text-gray-700 leading-relaxed">
+                      {comment.text}
+                      {comment.is_special_notes && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          特記事項
+                        </span>
                       )}
+                    </Typography>
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <Typography variant="caption" className="text-gray-500">
+                          報告者: {comment.author} | {comment.date} {comment.time}
+                        </Typography>
+                        {comment.can_edit && !comment.is_special_notes && (
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEditComment(comment)}
+                              className="text-blue-500 hover:bg-blue-50"
+                              disabled={loading}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="text-red-500 hover:bg-red-50"
+                              disabled={loading}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Box>
-              )}
-            </Box>
-          )}
-        />
-      </div>
-
-      {/* Footer */}
-      <Paper elevation={1} className="p-4 mt-6 bg-gray-50 border border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500">
-          <div>
-            <span className="font-medium">作成者:</span> {reportData.report?.created_by_admin?.name || '不明'}
-            <span className="mx-2">|</span>
-            <span className="font-medium">承認者:</span> {reportData.report?.approved_by_admin?.name || '未承認'}
-            <span className="mx-2">|</span>
-            <span className="font-medium">コメント数:</span> {managementComments.length}
-            <span className="mx-2">|</span>
-            <span className="font-medium">ステータス:</span> {getReportStatusText()}
-          </div>
-          <div className="mt-2 sm:mt-0">
-            最終更新: {reportData.report?.updated_at ? 
-              new Date(reportData.report.updated_at).toLocaleDateString('ja-JP') + ' ' + 
-              new Date(reportData.report.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-              : reportDate + ' 00:00'}
-          </div>
+                  </Box>
+                )}
+              </Box>
+            )}
+          />
         </div>
-      </Paper>
+
+        {/* Footer */}
+        <Box sx={{ 
+          p: 3, 
+          mt: 6, 
+          bgcolor: 'grey.50', 
+          border: '1px solid', 
+          borderColor: 'grey.200',
+          borderRadius: '0.75rem'
+        }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500">
+            <div>
+              <span className="font-medium">作成者:</span> {reportData.report?.created_by_admin?.name || '不明'}
+              <span className="mx-2">|</span>
+              <span className="font-medium">承認者:</span> {reportData.report?.approved_by_admin?.name || '未承認'}
+              <span className="mx-2">|</span>
+              <span className="font-medium">コメント数:</span> {managementComments.length}
+              <span className="mx-2">|</span>
+              <span className="font-medium">ステータス:</span> {getReportStatusText()}
+            </div>
+            <div className="mt-2 sm:mt-0">
+              最終更新: {reportData.report?.updated_at ? 
+                new Date(reportData.report.updated_at).toLocaleDateString('ja-JP') + ' ' + 
+                new Date(reportData.report.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+                : reportDate + ' 00:00'}
+            </div>
+          </div>
+        </Box>
+      </div>
 
       {/* Loading overlay */}
       {loading && (

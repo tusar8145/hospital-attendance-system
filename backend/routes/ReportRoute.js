@@ -3,6 +3,7 @@ import { auth } from "../middleware/Auth.js";
 
 import * as ReportController from "../controllers/ReportController.js";
 import * as ReportControllerMid from "../controllers/ReportControllerMid.js";
+import * as ReportControllerSm from "../controllers/ReportControllerSm.js";
 
 const router = express.Router();
 
@@ -47,5 +48,15 @@ router.post("/report-mid/submit", auth, ReportControllerMid.submitReport);
 router.post("/report-mid/departments-with-doctors", auth, ReportControllerMid.getDepartmentsWithDoctors);
 router.post('/report-mid/get-last-report-mid-data', auth, ReportControllerMid.getLastReportMidData);
 
+//Sm
+router.post("/report-sm/get-by-date", auth, ReportControllerSm.getReportByDate);
+router.post("/report-sm/get-by-id", auth, ReportControllerSm.getReportById);
+router.post("/report-sm/submit", auth, ReportControllerSm.submitReport);
+router.post("/report-sm/section-titles", auth, ReportControllerSm.getSectionTitles);
+router.put("/report-sm/section-title", auth, ReportControllerSm.updateSectionTitle);
+router.post("/report-sm/last-data", auth, ReportControllerSm.getLastReportSmData);
+router.post("/report-sm/monthly-statistics", auth, ReportControllerSm.getMonthlyStatistics);
+router.post("/report-sm/yearly-statistics", auth, ReportControllerSm.getYearlyStatistics);
+router.get("/report-sm/section-types", auth, ReportControllerSm.getSectionTypes);
 
 export { router as ReportRoute };

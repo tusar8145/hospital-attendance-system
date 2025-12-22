@@ -433,12 +433,16 @@ const validateReportData = (formData) => {
     errors.visit_count = '有効な数値を入力してください';
   }
 
+  // Validate both types of consolidated data
+  /*const hasDoctorData = formData.report_details && formData.report_details.length > 0;
+  const hasCountData = formData.report_details_mid && formData.report_details_mid.length > 0;
+  
+  if (!hasDoctorData && !hasCountData) {
+    errors.consolidated_data = '少なくとも1つの診療部門データは必須です';
+  }
 
-
-  // Validate consolidated data
-  if (!formData.report_details || formData.report_details.length === 0) {
-    errors.report_details = '診療部門データは必須です';
-  } else {
+  // Validate report_details (doctor-based data)
+  if (hasDoctorData) {
     formData.report_details.forEach((detail, index) => {
       if (!detail.department_id) {
         errors[`report_details_${index}_department`] = '診療区の選択は必須です';
@@ -448,6 +452,21 @@ const validateReportData = (formData) => {
       }
     });
   }
+
+  // Validate report_details_mid (count-based data)
+  if (hasCountData) {
+    formData.report_details_mid.forEach((detail, index) => {
+      if (!detail.department_id) {
+        errors[`report_details_mid_${index}_department`] = '診療区の選択は必須です';
+      }
+      if (!detail.total_patients && detail.total_patients !== 0) {
+        errors[`report_details_mid_${index}_total_patients`] = '合計患者数は必須です';
+      }
+      if (!detail.new_patients && detail.new_patients !== 0) {
+        errors[`report_details_mid_${index}_new_patients`] = '新規患者数は必須です';
+      }
+    });
+  }*/
 
   return {
     isValid: Object.keys(errors).length === 0,
@@ -508,7 +527,8 @@ const hasFormDataChanged = (currentData, initialData) => {
     'post_transport_admission',
     'visit_count',
     'special_notes',
-    'report_details'
+    'report_details',
+    'report_details_mid'
   ];
   
   for (const field of fieldsToCompare) {
@@ -517,7 +537,7 @@ const hasFormDataChanged = (currentData, initialData) => {
     
     // Handle arrays
     if (Array.isArray(current) && Array.isArray(initial)) {
-       if (field === 'report_details') {
+      if (field === 'report_details') {
         // For report details, compare cleaned data
         const currentClean = current
           .filter(item => item.department_id && (item.patient_count || item.patient_count === 0))
@@ -530,6 +550,26 @@ const hasFormDataChanged = (currentData, initialData) => {
           .map(item => ({
             department_id: item.department_id,
             patient_count: item.patient_count || 0
+          }));
+        
+        if (JSON.stringify(currentClean) !== JSON.stringify(initialClean)) {
+          return true;
+        }
+      } else if (field === 'report_details_mid') {
+        // For report details mid, compare cleaned data
+        const currentClean = current
+          .filter(item => item.department_id && (item.total_patients !== undefined || item.new_patients !== undefined))
+          .map(item => ({
+            department_id: item.department_id,
+            total_patients: item.total_patients || 0,
+            new_patients: item.new_patients || 0
+          }));
+        const initialClean = initial
+          .filter(item => item.department_id && (item.total_patients !== undefined || item.new_patients !== undefined))
+          .map(item => ({
+            department_id: item.department_id,
+            total_patients: item.total_patients || 0,
+            new_patients: item.new_patients || 0
           }));
         
         if (JSON.stringify(currentClean) !== JSON.stringify(initialClean)) {
@@ -563,7 +603,7 @@ const hasFormDataChanged = (currentData, initialData) => {
   return false;
 };
 
-function ReportEntryMid({newHospital}) {
+function ReportEntrySm({newHospital}) {
   const { t } = useTranslation('shared-components');
   const { hospital: hospitalFromContext } = useTheme();
   const muiTheme = useMuiTheme();
@@ -603,7 +643,7 @@ function ReportEntryMid({newHospital}) {
   const [reportStatus, setReportStatus] = useState(null);
   const [reportExists, setReportExists] = useState(false);
   const [reportId, setReportId] = useState(null);
-  const [hospital_type, sethospital_type] = useState(null);
+  const [hospital_type, sethospital_type] = useState('hospital');
   const [snackbar, setSnackbar] = useState({ 
     open: false, 
     message: '', 
@@ -736,7 +776,7 @@ function ReportEntryMid({newHospital}) {
     }
   };
 
-  // Load report data by ID when coming from view mode - FIXED: useCallback with proper dependencies
+  // Load report data by ID when coming from view mode
   const loadReportById = useCallback(async (reportIdToLoad) => {
     if (!reportIdToLoad) {
       showSnackbar('レポートIDが指定されていません', 'warning');
@@ -786,11 +826,14 @@ function ReportEntryMid({newHospital}) {
             emergency_transport: report.emergency_transport || 0,
             post_transport_admission: report.post_transport_admission || 0,
             visit_count: report.visit_count || 0,
-            report_details: report.report_details || []
+            report_details: report.report_details || [],
+            report_details_mid: report.report_details_mid || [],
+            external_consultation_details: report.external_consultation_details || null
           };
-          sethospital_type(report.hospital_type)
+          
+          sethospital_type(report.hospital_type || 'hospital');
           setFormData(formattedReport);
-          setformDataSubmit(formattedReport)
+          setformDataSubmit(formattedReport);
           setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(formattedReport));
           setReportStatus(report.status);
@@ -799,7 +842,7 @@ function ReportEntryMid({newHospital}) {
           
           showSnackbar(`${formatJapaneseDate(new Date(report.report_date))}のレポートを読み込みました`, 'info');
         } else {
-          sethospital_type(null)
+          sethospital_type('hospital');
         }
         
         setValidationErrors({});
@@ -821,9 +864,8 @@ function ReportEntryMid({newHospital}) {
     }
   }, []);
 
-  // Load report data for selected date (normal flow) - FIXED: useCallback with proper dependencies
+  // Load report data for selected date (normal flow)
   const loadReportData = useCallback(async (date, forceReload = false) => {
-
     const hospitalId = currentHospitalRef.current?.id;
     if (!hospitalId) {
       showSnackbar('病院が選択されていません', 'warning');
@@ -840,7 +882,7 @@ function ReportEntryMid({newHospital}) {
     setLoadingReport(true);
     isLoadingDataRef.current = true;
     try {
-      const response = await axios.post(`${apiConfig.baseURL}/report-mid/get-by-date-table`, {
+      const response = await axios.post(`${apiConfig.baseURL}/report-mid/get-by-date`, {
         date: formatDateForAPI(date),
         hospital_id: hospitalId
       });
@@ -868,11 +910,14 @@ function ReportEntryMid({newHospital}) {
             emergency_transport: report.emergency_transport || 0,
             post_transport_admission: report.post_transport_admission || 0,
             visit_count: report.visit_count || 0,
-            report_details: report.report_details || []
+            report_details: report.report_details || [],
+            report_details_mid: report.report_details_mid || [],
+            external_consultation_details: report.external_consultation_details || null
           };
-          sethospital_type(report.hospital_type)
+          
+          sethospital_type(report.hospital_type || 'hospital');
           setFormData(formattedReport);
-          setformDataSubmit(formattedReport)
+          setformDataSubmit(formattedReport);
           setInitialFormData(JSON.parse(JSON.stringify(formattedReport)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(formattedReport));
           setReportStatus(report.status);
@@ -883,7 +928,7 @@ function ReportEntryMid({newHospital}) {
             showSnackbar(`${formatJapaneseDate(date)}のレポートを読み込みました`, 'info');
           }
         } else {
-          sethospital_type(null)
+          sethospital_type('hospital');
           // Initialize empty form
           const emptyForm = {
             admission_count: 0,
@@ -893,11 +938,12 @@ function ReportEntryMid({newHospital}) {
             post_transport_admission: 0,
             visit_count: 0,
             special_notes: '',
-            report_details: []
+            report_details: [],
+            report_details_mid: []
           };
           
           setFormData(emptyForm);
-          setformDataSubmit(emptyForm)
+          setformDataSubmit(emptyForm);
           setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
           initialFormDataRef.current = JSON.parse(JSON.stringify(emptyForm));
           setReportStatus(null);
@@ -925,10 +971,11 @@ function ReportEntryMid({newHospital}) {
         post_transport_admission: 0,
         visit_count: 0,
         special_notes: '',
-        report_details: []
+        report_details: [],
+        report_details_mid: []
       };
       setFormData(emptyForm);
-      setformDataSubmit(emptyForm)
+      setformDataSubmit(emptyForm);
       setInitialFormData(JSON.parse(JSON.stringify(emptyForm)));
       initialFormDataRef.current = JSON.parse(JSON.stringify(emptyForm));
       setReportStatus(null);
@@ -941,7 +988,7 @@ function ReportEntryMid({newHospital}) {
       isLoadingDataRef.current = false;
       hasLoadedDataRef.current = true;
     }
-  }, [hospital,newHospital]);
+  }, [hospital, newHospital]);
 
   // Handle date change
   const handleDateChange = async (newDate) => {
@@ -1152,31 +1199,33 @@ function ReportEntryMid({newHospital}) {
   };
 
   // Handle form data change
-  const handleFormDataChange = useCallback((newData) => {
-    // Don't update if we're currently loading data
-    if (isLoadingDataRef.current) {
-      return;
-    }
+// Handle form data change
+const handleFormDataChange = useCallback((newData) => {
+  // Don't update if we're currently loading data
+  if (isLoadingDataRef.current) {
+    return;
+  }
 
-    const currentData = formDataRef.current;
-    
-    // Check if data has actually changed
-    if (currentData && JSON.stringify(newData) === JSON.stringify(currentData)) {
-      return;
-    }
-    //setFormData(newData);
-    setformDataSubmit(newData)
-    formDataRef.current = newData;
-    
-    // Check if there are changes from initial data
-    const initialData = initialFormDataRef.current;
-    if (initialData) {
-      const hasActualChanges = hasFormDataChanged(newData, initialData);
-      setHasUnsavedChanges(hasActualChanges);
-    } else {
-      setHasUnsavedChanges(true);
-    }
-  }, []);
+  const currentData = formDataRef.current;
+  
+  // Check if data has actually changed
+  if (currentData && JSON.stringify(newData) === JSON.stringify(currentData)) {
+    return;
+  }
+  
+  console.log('Form data changed:', newData);
+  setformDataSubmit(newData);
+  formDataRef.current = newData;
+  
+  // Check if there are changes from initial data
+  const initialData = initialFormDataRef.current;
+  if (initialData) {
+    const hasActualChanges = hasFormDataChanged(newData, initialData);
+    setHasUnsavedChanges(hasActualChanges);
+  } else {
+    setHasUnsavedChanges(true);
+  }
+}, []);
 
   // Handle form validation request
   const handleValidate = () => {
@@ -1216,33 +1265,11 @@ function ReportEntryMid({newHospital}) {
 
   // Refresh current report
   const handleRefresh = () => {
-    const currentData = formDataRef.current;
-    const initialData = initialFormDataRef.current;
-    const hasActualChanges = currentData && initialData ? 
-      hasFormDataChanged(currentData, initialData) : false;
-
-  /*  if (hasActualChanges) {
-      setConfirmDialog({
-        open: true,
-        title: '未保存の変更があります',
-        message: '更新すると現在の変更が失われます。続行しますか？',
-        action: () => {
-          // If we have reportId from URL, load by ID, otherwise load by date
-          if (reportIdFromUrl) {
-            loadReportById(reportIdFromUrl);
-          } else {
-            loadReportData(reportDate, true);
-          }
-        },
-        actionType: 'refresh'
-      });
-    } else {*/
-      if (reportIdFromUrl) {
-        loadReportById(reportIdFromUrl);
-      } else {
-        loadReportData(reportDate, true);
-      }
-   // }
+    if (reportIdFromUrl) {
+      loadReportById(reportIdFromUrl);
+    } else {
+      loadReportData(reportDate, true);
+    }
   };
 
   // Handle back to report list or view
@@ -1271,7 +1298,7 @@ function ReportEntryMid({newHospital}) {
     }
   };
 
-  // Load initial data - FIXED with better tracking
+  // Load initial data
   useEffect(() => {
     // Only load data once when component mounts or when key dependencies change
     const shouldLoadData = currentHospital?.id && !initialLoadRef.current;
@@ -1293,58 +1320,51 @@ function ReportEntryMid({newHospital}) {
     }
   }, [currentHospital?.id, reportDate, loadReportData, loadReportById, reportIdFromUrl]);
 
-
-
-useEffect(() => {
-
-  if (newHospital && newHospital.id) {
-    // Update the current hospital with the new hospital data
-    setCurrentHospital({
-      id: newHospital.id,
-      name: newHospital.name,
-      type: newHospital.type
-    });
-    
-    // Set flag to indicate hospital has been changed from context
-    setHasHospitalChangedFromContext(true);
-    
-    // Reset loading states
-    setLoading(true);
-    setLoadingReport(true);
-    
-    // Update the ref immediately
-    currentHospitalRef.current = {
-      id: newHospital.id,
-      name: newHospital.name,
-      type: newHospital.type
-    };
-    
-    // Clear existing data
-    setFormData(null);
-    setformDataSubmit(null)
-    setInitialFormData(null);
-    setReportStatus(null);
-    setReportId(null);
-    setReportExists(false);
-    sethospital_type(null);
-    setHasUnsavedChanges(false);
-    setValidationErrors({});
-    
-    // If we have a reportId from URL (edit mode), reload by ID
-    if (reportIdFromUrl) {
-      console.log('Reloading report by ID with new hospital:', newHospital.id);
-      loadReportById(reportIdFromUrl);
-    } else {
-      // Otherwise reload by date with new hospital
-      console.log('Reloading report by date with new hospital:', newHospital.id);
-      loadReportData(reportDate, true);
+  useEffect(() => {
+    if (newHospital && newHospital.id) {
+      // Update the current hospital with the new hospital data
+      setCurrentHospital({
+        id: newHospital.id,
+        name: newHospital.name,
+        type: newHospital.type
+      });
+      
+      // Set flag to indicate hospital has been changed from context
+      setHasHospitalChangedFromContext(true);
+      
+      // Reset loading states
+      setLoading(true);
+      setLoadingReport(true);
+      
+      // Update the ref immediately
+      currentHospitalRef.current = {
+        id: newHospital.id,
+        name: newHospital.name,
+        type: newHospital.type
+      };
+      
+      // Clear existing data
+      setFormData(null);
+      setformDataSubmit(null);
+      setInitialFormData(null);
+      setReportStatus(null);
+      setReportId(null);
+      setReportExists(false);
+      sethospital_type('hospital');
+      setHasUnsavedChanges(false);
+      setValidationErrors({});
+      
+      // If we have a reportId from URL (edit mode), reload by ID
+      if (reportIdFromUrl) {
+        console.log('Reloading report by ID with new hospital:', newHospital.id);
+        loadReportById(reportIdFromUrl);
+      } else {
+        // Otherwise reload by date with new hospital
+        console.log('Reloading report by date with new hospital:', newHospital.id);
+        loadReportData(reportDate, true);
+      }
     }
-  }
-}, [newHospital]);
-
-  
-
-
+  }, [newHospital]);
 
   // Effect to handle when hospital context changes
   useEffect(() => {
@@ -1413,7 +1433,7 @@ useEffect(() => {
               flexDirection: 'column',
               position: 'relative'
             }}
-          >
+          > 
             {/* Loading Overlay - only show during initial load */}
             {loading && (
               <Box sx={{
@@ -1541,26 +1561,27 @@ useEffect(() => {
                   </Box>
                 }>
                   <FrameScreen
-                      formData={formData}
-                      departments={departments}
-                      doctors={doctors}
-                      hospitalId={currentHospital?.id}
-                      onFormDataChange={handleFormDataChange}
-                      loading={loadingReport}
-                      reportDate={reportDate}
-                      onDateChange={handleDateChange}
-                      onSaveDraft={handleSaveDraft}
-                      onSubmit={handleSubmit}
-                      onValidate={handleValidate}
-                      isSubmitting={submitting}
-                      isSavingDraft={savingDraft}
-                      reportStatus={reportStatus}
-                      readOnly={isReadOnly}
-                      showSnackbar={showSnackbar}
-                      onHeaderSaveDraft={setFrameScreenSaveDraft}
-                      onHeaderSubmit={setFrameScreenSubmit}
-                      isEditingFromView={isEditingFromView}
-                    />
+                    formData={formData}
+                    departments={departments}
+                    doctors={doctors}
+                    hospitalId={currentHospital?.id}
+                    onFormDataChange={handleFormDataChange}
+                    loading={loadingReport}
+                    reportDate={reportDate}
+                    onDateChange={handleDateChange}
+                    onSaveDraft={handleSaveDraft}
+                    onSubmit={handleSubmit}
+                    onValidate={handleValidate}
+                    isSubmitting={submitting}
+                    isSavingDraft={savingDraft}
+                    reportStatus={reportStatus}
+                    readOnly={isReadOnly}
+                    showSnackbar={showSnackbar}
+                    onHeaderSaveDraft={setFrameScreenSaveDraft}
+                    onHeaderSubmit={setFrameScreenSubmit}
+                    isEditingFromView={isEditingFromView}
+                    hospital_type={hospital_type}
+                  />
                 </React.Suspense>
               )}
             </Box>
@@ -1650,4 +1671,4 @@ useEffect(() => {
   );
 }
 
-export default ReportEntryMid;
+export default ReportEntrySm;
