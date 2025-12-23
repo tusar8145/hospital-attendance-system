@@ -57,22 +57,27 @@ const ConferenceSpecialNotesSection = ({ welfareData }) => {
   ];
 
   return (
-    <TableContainer component={Paper} sx={{ mb: 2 }}>
-      <Table size="small" sx={{ border: '1px solid #000' }}>
+    <TableContainer component={Paper} sx={{ mb: 2, borderRadius: 0 }}>
+      <Table size="small" sx={{ border: '1px solid #e0e0e0' }}>
         <TableBody>
           {headerData.map((row, index) => (
             <TableRow key={index}>
               <TableCell
                 sx={{
-                  border: '1px solid #000',
+                  border: '1px solid #e0e0e0',
                   width: '150px',
                   fontWeight: 'bold',
-                  backgroundColor: '#f0f0f0'
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 0
                 }}
               >
                 {row.label}
               </TableCell>
-              <TableCell sx={{ border: '1px solid #000', padding: '8px' }}>
+              <TableCell sx={{ 
+                border: '1px solid #e0e0e0', 
+                padding: '8px',
+                borderRadius: 0
+              }}>
                 <Typography variant="body2" sx={{ 
                   letterSpacing: '0.5px',
                   lineHeight: 1.2,
@@ -236,15 +241,17 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
   return (
     <>
       {/* Daily Visitors Table */}
-      <TableContainer component={Paper} sx={{ mb: 2 }}>
-        <Table size="small" sx={{ border: '1px solid #000' }}>
+      <TableContainer component={Paper} sx={{ mb: 2, borderRadius: 0 }}>
+        <Table size="small" sx={{ border: '1px solid #e0e0e0' }}>
           <TableHead>
             <TableRow>
               <TableCell 
                 sx={{ 
-                  border: '1px solid #000', 
+                  border: '1px solid #e0e0e0', 
                   fontWeight: 'bold',
-                  width: '200px'
+                  width: '25%',
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 0
                 }}
               >
               </TableCell>
@@ -253,9 +260,11 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   key={index}
                   align="center"
                   sx={{ 
-                    border: '1px solid #000', 
+                    border: '1px solid #e0e0e0', 
                     fontWeight: 'bold',
-                    width: `${(100 - 200) / sectionNames.length}%` // Equal width for columns
+                    width: '25%',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: 0
                   }}
                 >
                   {col}
@@ -267,9 +276,11 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
             {dailyVisitorRows.map((row, index) => (
               <TableRow key={index}>
                 <TableCell sx={{
-                  border: '1px solid #000',
+                  border: '1px solid #e0e0e0',
                   fontWeight: row.bold ? 'bold' : 'normal',
-                  backgroundColor: row.bold ? '#f0f0f0' : 'white'
+                  backgroundColor: row.bold ? '#f5f5f5' : 'white',
+                  width: '25%',
+                  borderRadius: 0
                 }}>
                   {row.label}
                 </TableCell>
@@ -278,8 +289,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                     key={idx}
                     align="center"
                     sx={{ 
-                      border: '1px solid #000',
-                      backgroundColor: row.bold ? '#f0f0f0' : 'white'
+                      border: '1px solid #e0e0e0',
+                      backgroundColor: row.bold ? '#f5f5f5' : 'white',
+                      width: '25%',
+                      borderRadius: 0
                     }}
                   >
                     {value}
@@ -292,16 +305,17 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       </TableContainer>
 
       {/* Monthly Data Table */}
-      <TableContainer component={Paper} sx={{ mb: 2 }}>
-        <Table size="small" sx={{ border: '1px solid #000' }}>
+      <TableContainer component={Paper} sx={{ mb: 2, borderRadius: 0 }}>
+        <Table size="small" sx={{ border: '1px solid #e0e0e0' }}>
           <TableHead>
             <TableRow>
               <TableCell 
                 sx={{ 
-                  border: '1px solid #000',
+                  border: '1px solid #e0e0e0',
                   fontWeight: 'bold',
-                  backgroundColor: '#f0f0f0',
-                  width: '200px'
+                  backgroundColor: '#f5f5f5',
+                  width: '25%',
+                  borderRadius: 0
                 }}
               >
                 当月統計
@@ -311,10 +325,11 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   key={index}
                   align="center"
                   sx={{ 
-                    border: '1px solid #000',
+                    border: '1px solid #e0e0e0',
                     fontWeight: 'bold',
-                    backgroundColor: '#f0f0f0',
-                    width: `${(100 - 200) / sectionNames.length}%`
+                    backgroundColor: '#f5f5f5',
+                    width: '25%',
+                    borderRadius: 0
                   }}
                 >
                   {col}
@@ -325,14 +340,22 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
           <TableBody>
             {monthlyDataRows.map((row, index) => (
               <TableRow key={index}>
-                <TableCell sx={{ border: '1px solid #000' }}>
+                <TableCell sx={{ 
+                  border: '1px solid #e0e0e0',
+                  width: '25%',
+                  borderRadius: 0
+                }}>
                   {row.label}
                 </TableCell>
                 {row.values.map((value, idx) => (
                   <TableCell
                     key={idx}
                     align="center"
-                    sx={{ border: '1px solid #000' }}
+                    sx={{ 
+                      border: '1px solid #e0e0e0',
+                      width: '25%',
+                      borderRadius: 0
+                    }}
                   >
                     {value}
                   </TableCell>
@@ -344,16 +367,17 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       </TableContainer>
 
       {/* Annual Data Table */}
-      <TableContainer component={Paper} sx={{ mb: 2 }}>
-        <Table size="small" sx={{ border: '1px solid #000' }}>
+      <TableContainer component={Paper} sx={{ mb: 2, borderRadius: 0 }}>
+        <Table size="small" sx={{ border: '1px solid #e0e0e0' }}>
           <TableHead>
             <TableRow>
               <TableCell 
                 sx={{ 
-                  border: '1px solid #000',
+                  border: '1px solid #e0e0e0',
                   fontWeight: 'bold',
-                  backgroundColor: '#f0f0f0',
-                  width: '200px'
+                  backgroundColor: '#f5f5f5',
+                  width: '25%',
+                  borderRadius: 0
                 }}
               >
                 年度統計
@@ -363,10 +387,11 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   key={index}
                   align="center"
                   sx={{ 
-                    border: '1px solid #000',
+                    border: '1px solid #e0e0e0',
                     fontWeight: 'bold',
-                    backgroundColor: '#f0f0f0',
-                    width: `${(100 - 200) / sectionNames.length}%`
+                    backgroundColor: '#f5f5f5',
+                    width: '25%',
+                    borderRadius: 0
                   }}
                 >
                   {col}
@@ -377,14 +402,22 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
           <TableBody>
             {annualDataRows.map((row, index) => (
               <TableRow key={index}>
-                <TableCell sx={{ border: '1px solid #000' }}>
+                <TableCell sx={{ 
+                  border: '1px solid #e0e0e0',
+                  width: '25%',
+                  borderRadius: 0
+                }}>
                   {row.label}
                 </TableCell>
                 {row.values.map((value, idx) => (
                   <TableCell
                     key={idx}
                     align="center"
-                    sx={{ border: '1px solid #000' }}
+                    sx={{ 
+                      border: '1px solid #e0e0e0',
+                      width: '25%',
+                      borderRadius: 0
+                    }}
                   >
                     {value}
                   </TableCell>
@@ -455,15 +488,17 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
   return (
     <>
       {/* Daily Users Table */}
-      <TableContainer component={Paper} sx={{ mb: 2 }}>
-        <Table size="small" sx={{ border: '1px solid #000' }}>
+      <TableContainer component={Paper} sx={{ mb: 2, borderRadius: 0 }}>
+        <Table size="small" sx={{ border: '1px solid #e0e0e0' }}>
           <TableHead>
             <TableRow>
               <TableCell 
                 sx={{ 
-                  border: '1px solid #000', 
+                  border: '1px solid #e0e0e0', 
                   fontWeight: 'bold',
-                  width: '200px'
+                  width: '20%',
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 0
                 }}
               >
               </TableCell>
@@ -472,9 +507,11 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
                   key={section}
                   align="center"
                   sx={{ 
-                    border: '1px solid #000', 
+                    border: '1px solid #e0e0e0', 
                     fontWeight: 'bold',
-                    width: `${(100 - 200) / sections.length}%` // Equal width for columns
+                    width: '20%',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: 0
                   }}
                 >
                   {sectionNames?.[section] || `セクション${index + 4}`}
@@ -486,9 +523,11 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
             {dailyUserRows.map((row, index) => (
               <TableRow key={index}>
                 <TableCell sx={{
-                  border: '1px solid #000',
+                  border: '1px solid #e0e0e0',
                   fontWeight: row.bold ? 'bold' : 'normal',
-                  backgroundColor: row.bold ? '#f0f0f0' : 'white'
+                  backgroundColor: row.bold ? '#f5f5f5' : 'white',
+                  width: '20%',
+                  borderRadius: 0
                 }}>
                   {row.label}
                 </TableCell>
@@ -497,8 +536,10 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
                     key={idx}
                     align="center"
                     sx={{ 
-                      border: '1px solid #000',
-                      backgroundColor: row.bold ? '#f0f0f0' : 'white'
+                      border: '1px solid #e0e0e0',
+                      backgroundColor: row.bold ? '#f5f5f5' : 'white',
+                      width: '20%',
+                      borderRadius: 0
                     }}
                   >
                     {row.getValue(section)}
@@ -511,16 +552,17 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
       </TableContainer>
 
       {/* Yearly Users Table */}
-      <TableContainer component={Paper} sx={{ mb: 2 }}>
-        <Table size="small" sx={{ border: '1px solid #000' }}>
+      <TableContainer component={Paper} sx={{ mb: 2, borderRadius: 0 }}>
+        <Table size="small" sx={{ border: '1px solid #e0e0e0' }}>
           <TableHead>
             <TableRow>
               <TableCell 
                 sx={{ 
-                  border: '1px solid #000',
+                  border: '1px solid #e0e0e0',
                   fontWeight: 'bold',
-                  backgroundColor: '#f0f0f0',
-                  width: '200px'
+                  backgroundColor: '#f5f5f5',
+                  width: '20%',
+                  borderRadius: 0
                 }}
               >
                 年度統計
@@ -530,10 +572,11 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
                   key={section}
                   align="center"
                   sx={{ 
-                    border: '1px solid #000',
+                    border: '1px solid #e0e0e0',
                     fontWeight: 'bold',
-                    backgroundColor: '#f0f0f0',
-                    width: `${(100 - 200) / sections.length}%`
+                    backgroundColor: '#f5f5f5',
+                    width: '20%',
+                    borderRadius: 0
                   }}
                 >
                   {sectionNames?.[section] || `セクション${index + 4}`}
@@ -544,14 +587,22 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
           <TableBody>
             {yearlyUserRows.map((row, index) => (
               <TableRow key={index}>
-                <TableCell sx={{ border: '1px solid #000' }}>
+                <TableCell sx={{ 
+                  border: '1px solid #e0e0e0',
+                  width: '20%',
+                  borderRadius: 0
+                }}>
                   {row.label}
                 </TableCell>
                 {sections.map((section, idx) => (
                   <TableCell
                     key={idx}
                     align="center"
-                    sx={{ border: '1px solid #000' }}
+                    sx={{ 
+                      border: '1px solid #e0e0e0',
+                      width: '20%',
+                      borderRadius: 0
+                    }}
                   >
                     {row.getValue(section)}
                   </TableCell>
@@ -575,23 +626,25 @@ const VacantBedSection = ({ welfareData }) => {
   ];
 
   return (
-    <TableContainer component={Paper}>
-      <Table size="small" sx={{ border: '1px solid #000' }}>
+    <TableContainer component={Paper} sx={{ borderRadius: 0 }}>
+      <Table size="small" sx={{ border: '1px solid #e0e0e0' }}>
         <TableHead>
           <TableRow>
             <TableCell sx={{
-              border: '1px solid #000',
+              border: '1px solid #e0e0e0',
               fontWeight: 'bold',
               width: '50%',
-              backgroundColor: '#f0f0f0'
+              backgroundColor: '#f5f5f5',
+              borderRadius: 0
             }}>
               空床発生事由
             </TableCell>
             <TableCell sx={{
-              border: '1px solid #000',
+              border: '1px solid #e0e0e0',
               fontWeight: 'bold',
               width: '50%',
-              backgroundColor: '#f0f0f0'
+              backgroundColor: '#f5f5f5',
+              borderRadius: 0
             }}>
               対応
             </TableCell>
@@ -600,12 +653,22 @@ const VacantBedSection = ({ welfareData }) => {
         <TableBody>
           {bottomSectionData.map((row, index) => (
             <TableRow key={index}>
-              <TableCell sx={{ border: '1px solid #000', padding: '8px' }}>
+              <TableCell sx={{ 
+                border: '1px solid #e0e0e0', 
+                padding: '8px',
+                width: '50%',
+                borderRadius: 0
+              }}>
                 <Typography variant="body2" sx={{ letterSpacing: '0.5px' }}>
                   {row.reason || renderCircles(40)}
                 </Typography>
               </TableCell>
-              <TableCell sx={{ border: '1px solid #000', padding: '8px' }}>
+              <TableCell sx={{ 
+                border: '1px solid #e0e0e0', 
+                padding: '8px',
+                width: '50%',
+                borderRadius: 0
+              }}>
                 <Typography variant="body2" sx={{ letterSpacing: '0.5px' }}>
                   {row.response || renderCircles(40)}
                 </Typography>
@@ -1329,12 +1392,12 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         
         {/* Add Comment Section */}
         <div className="detailed-duty-table w-full mt-8">
-          <div className="overflow-hidden rounded-md mb-4">
+          <div className="overflow-hidden mb-4">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse table-fixed bg-white border border-gray-300">
+              <table className="w-full border-collapse table-fixed bg-white border border-gray-300" style={{ borderRadius: 0 }}>
                 <thead>
                   <tr>
-                    <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan="1">
+                    <th className="bg-blue-600 text-white font-bold p-2 text-center border border-gray-300" colSpan="1" style={{ borderRadius: 0 }}>
                       <div className="text-md">コメントを追加</div>
                     </th>
                   </tr>
@@ -1344,7 +1407,12 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
           </div>
         </div>
         
-        <Box sx={{ p: 3, border: '1px solid #e5e7eb', borderRadius: '0.75rem' }}>
+        <Box sx={{ 
+          p: 3, 
+          border: '1px solid #e5e7eb', 
+          borderRadius: 0,
+          borderTop: 'none'
+        }}>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <TextField
               fullWidth
@@ -1461,7 +1529,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
           bgcolor: 'grey.50', 
           border: '1px solid', 
           borderColor: 'grey.200',
-          borderRadius: '0.75rem'
+          borderRadius: 0
         }}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500">
             <div>

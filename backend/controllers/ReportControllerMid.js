@@ -177,6 +177,42 @@ export const getReportById = async (req, res, next) => {
         },
         updated_by_admin: {
           select: { name: true }
+        },
+        approved_by_admin: {
+          select: { name: true }
+        },
+        // Include approvals
+        approvals: {
+          include: {
+            admin: {
+              select: {
+                id: true,
+                name: true,
+                role: true
+              }
+            }
+          },
+          orderBy: {
+            created_at: 'asc'
+          }
+        },
+        // Include comments
+        report_comments: {
+          where: {
+            is_internal: false
+          },
+          include: {
+            admin: {
+              select: {
+                id: true,
+                name: true,
+                role: true
+              }
+            }
+          },
+          orderBy: {
+            created_at: 'desc'
+          }
         }
       }
     });
@@ -205,7 +241,9 @@ export const getReportById = async (req, res, next) => {
       report,
       departments,
       doctors,
-      exists: true
+      exists: true,
+      approvals: report.approvals,
+      comments: report.report_comments
     }, res);
 
   } catch (error) {
