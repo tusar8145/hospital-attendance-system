@@ -1,6 +1,3 @@
-// Utility functions for FrameScreen component
-
-// Format date for API (YYYY-MM-DD)
 export const formatDateForAPI = (date) => {
   const d = new Date(date);
   const year = d.getFullYear();
@@ -85,4 +82,4 @@ export const getStatusConfig = (status) => {
   };
   
   return statusConfig[status] || { color: '#9e9e9e', label: '未提出', bgColor: '#f5f5f5' };
-};
+}; 

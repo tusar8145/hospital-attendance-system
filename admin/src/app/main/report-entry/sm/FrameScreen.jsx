@@ -871,7 +871,7 @@ const FrameScreen = React.memo(({
     );
   };
 
-  // Render capacity field (readonly for operator, editable for others)
+  // Render capacity field (ALWAYS readonly - can only be changed via dialog)
   const renderCapacityField = (sectionNumber) => {
     const field = `section${sectionNumber}_capacity`;
     const label = `定員`;
@@ -909,18 +909,17 @@ const FrameScreen = React.memo(({
           </Box>
           <TextField
             value={value}
-            onChange={(e) => canEditCapacities && handleWelfareDataChange(field, e.target.value)}
             variant="outlined"
             fullWidth
             size="small"
             error={!!error}
-            helperText={error || '定員を入力してください'}
-            disabled={!canEditCapacities || readOnly || reportStatus === 'submitted'}
-            onFocus={handleTextFieldFocus(field)}
+            helperText={error || '定員を編集するには設定アイコンをクリックしてください'}
+            disabled={true} // ALWAYS disabled - can only be changed via dialog
             InputProps={{
+              readOnly: true, // Explicitly make it readonly
               sx: {
                 borderRadius: "8px",
-                bgcolor: canEditCapacities ? "#ffffff" : "#f5f5f5",
+                bgcolor: "#f5f5f5",
                 height: textFieldHeight,
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: error ? "#df1c41" : "#bdbdbd",
@@ -930,7 +929,8 @@ const FrameScreen = React.memo(({
                   textAlign: 'right',
                   paddingRight: 2,
                   fontWeight: 500,
-                  color: canEditCapacities ? "#2c3e50" : "#666",
+                  color: "#666",
+                  cursor: 'default',
                   '&::placeholder': {
                     fontSize: fontSize.small,
                   }
@@ -939,6 +939,7 @@ const FrameScreen = React.memo(({
                   bgcolor: "#f5f5f5",
                   "& input": {
                     color: "#666",
+                    WebkitTextFillColor: "#666" // Ensure color stays gray in disabled state
                   }
                 }
               },
@@ -1071,7 +1072,7 @@ const FrameScreen = React.memo(({
             )}
           </Box>
 
-          {/* Capacity field for each section */}
+          {/* Capacity field for each section - ALWAYS readonly */}
           <Grid container spacing={isMobile ? 2 : 3}>
             {renderCapacityField(sectionNumber)}
           </Grid>
