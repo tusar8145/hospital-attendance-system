@@ -92,313 +92,475 @@ const ConferenceSpecialNotesSection = ({ welfareData }) => {
   );
 };
 
-// 2. Daily Visitors Section - UPDATED
-const DailyVisitorsSection = ({ welfareData, capacity }) => {
-  const sectionHeaders = ['入所', '短期入所', '合計'];
+// 2. Daily Visitors Section (入所者状況) - Updated to 3 columns
+const DailyVisitorsSection = ({ welfareData, capacities }) => {
+  const sectionNames = ['入所', '短期入所', '合計'];
   
-  // Section 1 data (入所)
-  const section1Data = [
-    { label: '定員', values: [capacity || 0] },
-    { label: '前日　入所者数', values: [welfareData?.section1_admission_count || 0] },
-    { label: '当日　入所者数', values: [welfareData?.section1_admission_treated || 0] },
-    { label: '当日　退所者数', values: [welfareData?.section1_discharge_treated || 0] },
-    { label: '当日末 入所者数', values: [welfareData?.section1_end_users || 0], bold: true },
-    { label: '外泊・入院者数(入所扱い)', values: [welfareData?.section1_outside_hospital || 0] },
-    { label: '入院者数　　(退所扱い)', values: [welfareData?.section1_hospitalization_count || 0] },
+  // Calculate totals
+  const calculateTotal = (field1, field2) => {
+    const val1 = welfareData?.[field1] || 0;
+    const val2 = welfareData?.[field2] || 0;
+    return val1 + val2;
+  };
+
+  const section1Capacity = capacities?.section1_capacity || 0;
+  const section2Capacity = capacities?.section2_capacity || 0;
+  const totalCapacity = section1Capacity + section2Capacity;
+
+  const dailyVisitorRows = [
+    { 
+      label: '定員', 
+      values: [
+        `${section1Capacity}`,
+        `${section2Capacity}`,
+        `${totalCapacity}`
+      ],
+      bold: false
+    },
+    { 
+      label: '前日 入所者数', 
+      values: [
+        `${welfareData?.section1_admission_count || 0}`,
+        `${welfareData?.section2_admission_count || 0}`,
+        `${calculateTotal('section1_admission_count', 'section2_admission_count')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '当日 入所者数', 
+      values: [
+        `${welfareData?.section1_admission_treated || 0}`,
+        `${welfareData?.section2_admission_treated || 0}`,
+        `${calculateTotal('section1_admission_treated', 'section2_admission_treated')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '当日 退所者数', 
+      values: [
+        `${welfareData?.section1_discharge_treated || 0}`,
+        `${welfareData?.section2_discharge_treated || 0}`,
+        `${calculateTotal('section1_discharge_treated', 'section2_discharge_treated')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '外泊・入院者数（入所扱い）', 
+      values: [
+        `${welfareData?.section1_outside_hospital || 0}`,
+        `${welfareData?.section2_outside_hospital || 0}`,
+        `${calculateTotal('section1_outside_hospital', 'section2_outside_hospital')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '入院者数（退所扱い）', 
+      values: [
+        `${welfareData?.section1_hospitalization_count || 0}`,
+        `${welfareData?.section2_hospitalization_count || 0}`,
+        `${calculateTotal('section1_hospitalization_count', 'section2_hospitalization_count')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '当日末 入所者数', 
+      values: [
+        `${welfareData?.section1_today_end_users || 0}`,
+        `${welfareData?.section2_today_end_users || 0}`,
+        `${calculateTotal('section1_today_end_users', 'section2_today_end_users')}`
+      ],
+      bold: true
+    }
   ];
 
-  // Section 2 data (短期入所)
-  const section2Data = [
-    { label: '定員', values: [capacity || 0] },
-    { label: '前日　入所者数', values: [welfareData?.section2_admission_count || 0] },
-    { label: '当日　入所者数', values: [welfareData?.section2_admission_treated || 0] },
-    { label: '当日　退所者数', values: [welfareData?.section2_discharge_treated || 0] },
-    { label: '当日末 入所者数', values: [welfareData?.section2_end_users || 0], bold: true },
-    { label: '外泊・入院者数(入所扱い)', values: [welfareData?.section2_outside_hospital || 0] },
-    { label: '入院者数　　(退所扱い)', values: [welfareData?.section2_hospitalization_count || 0] },
+  const monthlyDataRows = [
+    { 
+      label: '当月 入所者数', 
+      values: [
+        `${welfareData?.section1_monthly_admission || 0}`,
+        `${welfareData?.section2_monthly_admission || 0}`,
+        `${calculateTotal('section1_monthly_admission', 'section2_monthly_admission')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '当月 平均入所者数', 
+      values: [
+        `${welfareData?.section1_monthly_avg || 0}`,
+        `${welfareData?.section2_monthly_avg || 0}`,
+        `${calculateTotal('section1_monthly_avg', 'section2_monthly_avg')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '当月 稼働率', 
+      values: [
+        `${welfareData?.section1_monthly_utilization || 0}%`,
+        `${welfareData?.section2_monthly_utilization || 0}%`,
+        `${(((welfareData?.section1_monthly_avg || 0) + (welfareData?.section2_monthly_avg || 0)) / totalCapacity * 100).toFixed(1)}%`
+      ],
+      bold: false
+    }
   ];
 
-  // Section 3 data (合計) - calculated from section 1 and 2
-  const section3Data = [
-    { label: '定員', values: [(capacity || 0) * 2] },
-    { label: '前日　入所者数', values: [
-      (welfareData?.section1_admission_count || 0) + (welfareData?.section2_admission_count || 0)
-    ]},
-    { label: '当日　入所者数', values: [
-      (welfareData?.section1_admission_treated || 0) + (welfareData?.section2_admission_treated || 0)
-    ]},
-    { label: '当日　退所者数', values: [
-      (welfareData?.section1_discharge_treated || 0) + (welfareData?.section2_discharge_treated || 0)
-    ]},
-    { label: '当日末 入所者数', values: [
-      (welfareData?.section1_end_users || 0) + (welfareData?.section2_end_users || 0)
-    ], bold: true },
-    { label: '外泊・入院者数(入所扱い)', values: [
-      (welfareData?.section1_outside_hospital || 0) + (welfareData?.section2_outside_hospital || 0)
-    ]},
-    { label: '入院者数　　(退所扱い)', values: [
-      (welfareData?.section1_hospitalization_count || 0) + (welfareData?.section2_hospitalization_count || 0)
-    ]},
+  const annualDataRows = [
+    { 
+      label: '年度 延入所者数', 
+      values: [
+        `${welfareData?.section1_annual_users || 0}`,
+        `${welfareData?.section2_annual_users || 0}`,
+        `${calculateTotal('section1_annual_users', 'section2_annual_users')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '年度 平均入所者数', 
+      values: [
+        `${welfareData?.section1_annual_avg || 0}`,
+        `${welfareData?.section2_annual_avg || 0}`,
+        `${calculateTotal('section1_annual_avg', 'section2_annual_avg')}`
+      ],
+      bold: false
+    },
+    { 
+      label: '年度 稼働率', 
+      values: [
+        `${welfareData?.section1_annual_utilization || 0}%`,
+        `${welfareData?.section2_annual_utilization || 0}%`,
+        `${(((welfareData?.section1_annual_avg || 0) + (welfareData?.section2_annual_avg || 0)) / totalCapacity * 100).toFixed(1)}%`
+      ],
+      bold: false
+    }
   ];
-
-  // Monthly data
-  const monthlyData = [
-    { label: '当月　入所者数', values: [
-      welfareData?.section1_monthly_admission || 0,
-      welfareData?.section2_monthly_admission || 0,
-      welfareData?.section3_monthly_admission || 0
-    ]},
-    { label: '当月　平均入所者数', values: [
-      welfareData?.section1_monthly_avg || 0,
-      welfareData?.section2_monthly_avg || 0,
-      welfareData?.section3_monthly_avg || 0
-    ]},
-    { label: '当月　稼働率', values: [
-      `${welfareData?.section1_monthly_utilization || 0}%`,
-      `${welfareData?.section2_monthly_utilization || 0}%`,
-      `${welfareData?.section3_monthly_utilization || 0}%`
-    ]},
-  ];
-
-  // Yearly data
-  const yearlyData = [
-    { label: '年度　延入所者数', values: [
-      welfareData?.section1_annual_users || 0,
-      welfareData?.section2_annual_users || 0,
-      welfareData?.section3_annual_users || 0
-    ]},
-    { label: '年度　平均入所者数', values: [
-      welfareData?.section1_annual_avg || 0,
-      welfareData?.section2_annual_avg || 0,
-      welfareData?.section3_annual_avg || 0
-    ]},
-    { label: '年度　稼働率', values: [
-      `${welfareData?.section1_annual_utilization || 0}%`,
-      `${welfareData?.section2_annual_utilization || 0}%`,
-      `${welfareData?.section3_annual_utilization || 0}%`
-    ]},
-  ];
-
-  const renderMainTable = (data, title) => (
-    <TableContainer component={Paper} sx={{ mb: 2 }}>
-      <Table size="small" sx={{ border: '1px solid #000' }}>
-        <TableHead>
-          <TableRow>
-            <TableCell 
-              sx={{ 
-                border: '1px solid #000', 
-                fontWeight: 'bold',
-                width: '200px'
-              }}
-            >
-              {title}
-            </TableCell>
-            {sectionHeaders.map((col, index) => (
-              <TableCell
-                key={index}
-                align="center"
-                sx={{ 
-                  border: '1px solid #000', 
-                  fontWeight: 'bold',
-                  width: '100px' // Fixed width for all columns
-                }}
-              >
-                {col}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell sx={{
-                border: '1px solid #000',
-                fontWeight: row.bold ? 'bold' : 'normal',
-                backgroundColor: row.bold ? '#f0f0f0' : 'white'
-              }}>
-                {row.label}
-              </TableCell>
-              {row.values.map((value, idx) => (
-                <TableCell
-                  key={idx}
-                  align="center"
-                  sx={{ 
-                    border: '1px solid #000',
-                    backgroundColor: row.bold ? '#f0f0f0' : 'white'
-                  }}
-                >
-                  {value}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-
-  const renderDataTable = (data, title, isMonthly = false) => (
-    <TableContainer component={Paper} sx={{ mb: 2 }}>
-      <Table size="small" sx={{ border: '1px solid #000', borderTop: isMonthly ? '2px dashed #000' : '1px solid #000' }}>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell sx={{ 
-                border: '1px solid #000', 
-                width: '200px',
-                backgroundColor: index === 0 && isMonthly ? '#f9f9f9' : 'white'
-              }}>
-                {row.label}
-              </TableCell>
-              {row.values.map((value, idx) => (
-                <TableCell
-                  key={idx}
-                  align="center"
-                  sx={{ 
-                    border: '1px solid #000',
-                    width: '100px' // Fixed width for all columns
-                  }}
-                >
-                  {value}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
 
   return (
     <>
-      {/* Section 1 Table */}
-      {renderMainTable(section1Data, '入所')}
-      
-      {/* Section 2 Table */}
-      {renderMainTable(section2Data, '短期入所')}
-      
-      {/* Section 3 Table */}
-      {renderMainTable(section3Data, '合計')}
+      {/* Daily Visitors Table */}
+      <TableContainer component={Paper} sx={{ mb: 2 }}>
+        <Table size="small" sx={{ border: '1px solid #000' }}>
+          <TableHead>
+            <TableRow>
+              <TableCell 
+                sx={{ 
+                  border: '1px solid #000', 
+                  fontWeight: 'bold',
+                  width: '200px'
+                }}
+              >
+              </TableCell>
+              {sectionNames.map((col, index) => (
+                <TableCell
+                  key={index}
+                  align="center"
+                  sx={{ 
+                    border: '1px solid #000', 
+                    fontWeight: 'bold',
+                    width: `${(100 - 200) / sectionNames.length}%` // Equal width for columns
+                  }}
+                >
+                  {col}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {dailyVisitorRows.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell sx={{
+                  border: '1px solid #000',
+                  fontWeight: row.bold ? 'bold' : 'normal',
+                  backgroundColor: row.bold ? '#f0f0f0' : 'white'
+                }}>
+                  {row.label}
+                </TableCell>
+                {row.values.map((value, idx) => (
+                  <TableCell
+                    key={idx}
+                    align="center"
+                    sx={{ 
+                      border: '1px solid #000',
+                      backgroundColor: row.bold ? '#f0f0f0' : 'white'
+                    }}
+                  >
+                    {value}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      {/* Monthly Data */}
-      {renderDataTable(monthlyData, '', true)}
+      {/* Monthly Data Table */}
+      <TableContainer component={Paper} sx={{ mb: 2 }}>
+        <Table size="small" sx={{ border: '1px solid #000' }}>
+          <TableHead>
+            <TableRow>
+              <TableCell 
+                sx={{ 
+                  border: '1px solid #000',
+                  fontWeight: 'bold',
+                  backgroundColor: '#f0f0f0',
+                  width: '200px'
+                }}
+              >
+                当月統計
+              </TableCell>
+              {sectionNames.map((col, index) => (
+                <TableCell
+                  key={index}
+                  align="center"
+                  sx={{ 
+                    border: '1px solid #000',
+                    fontWeight: 'bold',
+                    backgroundColor: '#f0f0f0',
+                    width: `${(100 - 200) / sectionNames.length}%`
+                  }}
+                >
+                  {col}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {monthlyDataRows.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell sx={{ border: '1px solid #000' }}>
+                  {row.label}
+                </TableCell>
+                {row.values.map((value, idx) => (
+                  <TableCell
+                    key={idx}
+                    align="center"
+                    sx={{ border: '1px solid #000' }}
+                  >
+                    {value}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      {/* Yearly Data */}
-      {renderDataTable(yearlyData, '')}
+      {/* Annual Data Table */}
+      <TableContainer component={Paper} sx={{ mb: 2 }}>
+        <Table size="small" sx={{ border: '1px solid #000' }}>
+          <TableHead>
+            <TableRow>
+              <TableCell 
+                sx={{ 
+                  border: '1px solid #000',
+                  fontWeight: 'bold',
+                  backgroundColor: '#f0f0f0',
+                  width: '200px'
+                }}
+              >
+                年度統計
+              </TableCell>
+              {sectionNames.map((col, index) => (
+                <TableCell
+                  key={index}
+                  align="center"
+                  sx={{ 
+                    border: '1px solid #000',
+                    fontWeight: 'bold',
+                    backgroundColor: '#f0f0f0',
+                    width: `${(100 - 200) / sectionNames.length}%`
+                  }}
+                >
+                  {col}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {annualDataRows.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell sx={{ border: '1px solid #000' }}>
+                  {row.label}
+                </TableCell>
+                {row.values.map((value, idx) => (
+                  <TableCell
+                    key={idx}
+                    align="center"
+                    sx={{ border: '1px solid #000' }}
+                  >
+                    {value}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </>
   );
 };
 
-// 3. Daily Users Section - UPDATED
-const DailyUsersSection = ({ welfareData, sectionNames, capacity }) => {
+// 3. Daily Users Section (利用者状況) - 4 columns for sections 4,5,6,7
+const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
   const sections = ['section4', 'section5', 'section6', 'section7'];
-  const sectionHeaders = sections.map(section => sectionNames?.[section] || `セクション${section.slice(-1)}`);
   
+  // Get section capacities
+  const getCapacity = (section) => {
+    switch(section) {
+      case 'section4': return capacities?.section4_capacity || 0;
+      case 'section5': return capacities?.section5_capacity || 0;
+      case 'section6': return capacities?.section6_capacity || 0;
+      case 'section7': return capacities?.section7_capacity || 0;
+      default: return 0;
+    }
+  };
+
   const dailyUserRows = [
     { 
       label: '定員', 
-      getValue: (section) => capacity || 0
+      getValue: (section) => `${getCapacity(section)}`
     },
     { 
       label: '当日 利用者数', 
-      getValue: (section) => welfareData?.[`${section}_daily_users`] || 0,
+      getValue: (section) => `${welfareData?.[`${section}_daily_users`] || 0}`,
       bold: true
     },
     { 
-      label: '当月　利用者数累計', 
-      getValue: (section) => welfareData?.[`${section}_monthly_users`] || 0
+      label: '当月 利用者数累計', 
+      getValue: (section) => `${welfareData?.[`${section}_monthly_users_cumulative`] || 0}`
     },
     { 
-      label: '当月　平均利用者数', 
-      getValue: (section) => welfareData?.[`${section}_monthly_avg`] || 0
+      label: '当月 平均利用者数', 
+      getValue: (section) => `${welfareData?.[`${section}_monthly_avg`] || 0}`
     },
     { 
-      label: '当月　稼働率', 
+      label: '当月 稼働率', 
       getValue: (section) => `${welfareData?.[`${section}_monthly_utilization`] || 0}%`
     },
   ];
 
   const yearlyUserRows = [
     { 
-      label: '年度　利用者数累計', 
-      getValue: (section) => welfareData?.[`${section}_annual_users`] || 0
+      label: '年度 利用者数累計', 
+      getValue: (section) => `${welfareData?.[`${section}_annual_users`] || 0}`
     },
     { 
-      label: '年度　平均利用者数', 
-      getValue: (section) => welfareData?.[`${section}_annual_avg`] || 0
+      label: '年度 平均利用者数', 
+      getValue: (section) => `${welfareData?.[`${section}_annual_avg`] || 0}`
     },
     { 
-      label: '年度　稼働率', 
+      label: '年度 稼働率', 
       getValue: (section) => `${welfareData?.[`${section}_annual_utilization`] || 0}%`
     },
   ];
 
-  const renderTable = (data, title, isYearly = false) => (
-    <TableContainer component={Paper} sx={{ mb: 2 }}>
-      <Table size="small" sx={{ 
-        border: '1px solid #000',
-        borderTop: isYearly ? '2px dashed #000' : '1px solid #000'
-      }}>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ 
-              border: '1px solid #000', 
-              fontWeight: 'bold',
-              width: '200px'
-            }}>
-              {title}
-            </TableCell>
-            {sectionHeaders.map((header, index) => (
-              <TableCell
-                key={index}
-                align="center"
-                sx={{ 
-                  border: '1px solid #000', 
-                  fontWeight: 'bold',
-                  width: '100px' // Fixed width for all columns
-                }}
-              >
-                {header}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell sx={{
-                border: '1px solid #000',
-                fontWeight: row.bold ? 'bold' : 'normal',
-                backgroundColor: row.bold ? '#f0f0f0' : 'white'
-              }}>
-                {row.label}
-              </TableCell>
-              {sections.map((section, idx) => (
-                <TableCell
-                  key={idx}
-                  align="center"
-                  sx={{ 
-                    border: '1px solid #000',
-                    backgroundColor: row.bold ? '#f0f0f0' : 'white'
-                  }}
-                >
-                  {row.getValue(section)}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-
   return (
     <>
       {/* Daily Users Table */}
-      {renderTable(dailyUserRows, '利用者状況')}
+      <TableContainer component={Paper} sx={{ mb: 2 }}>
+        <Table size="small" sx={{ border: '1px solid #000' }}>
+          <TableHead>
+            <TableRow>
+              <TableCell 
+                sx={{ 
+                  border: '1px solid #000', 
+                  fontWeight: 'bold',
+                  width: '200px'
+                }}
+              >
+              </TableCell>
+              {sections.map((section, index) => (
+                <TableCell
+                  key={section}
+                  align="center"
+                  sx={{ 
+                    border: '1px solid #000', 
+                    fontWeight: 'bold',
+                    width: `${(100 - 200) / sections.length}%` // Equal width for columns
+                  }}
+                >
+                  {sectionNames?.[section] || `セクション${index + 4}`}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {dailyUserRows.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell sx={{
+                  border: '1px solid #000',
+                  fontWeight: row.bold ? 'bold' : 'normal',
+                  backgroundColor: row.bold ? '#f0f0f0' : 'white'
+                }}>
+                  {row.label}
+                </TableCell>
+                {sections.map((section, idx) => (
+                  <TableCell
+                    key={idx}
+                    align="center"
+                    sx={{ 
+                      border: '1px solid #000',
+                      backgroundColor: row.bold ? '#f0f0f0' : 'white'
+                    }}
+                  >
+                    {row.getValue(section)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* Yearly Users Table */}
-      {renderTable(yearlyUserRows, '', true)}
+      <TableContainer component={Paper} sx={{ mb: 2 }}>
+        <Table size="small" sx={{ border: '1px solid #000' }}>
+          <TableHead>
+            <TableRow>
+              <TableCell 
+                sx={{ 
+                  border: '1px solid #000',
+                  fontWeight: 'bold',
+                  backgroundColor: '#f0f0f0',
+                  width: '200px'
+                }}
+              >
+                年度統計
+              </TableCell>
+              {sections.map((section, index) => (
+                <TableCell
+                  key={section}
+                  align="center"
+                  sx={{ 
+                    border: '1px solid #000',
+                    fontWeight: 'bold',
+                    backgroundColor: '#f0f0f0',
+                    width: `${(100 - 200) / sections.length}%`
+                  }}
+                >
+                  {sectionNames?.[section] || `セクション${index + 4}`}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {yearlyUserRows.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell sx={{ border: '1px solid #000' }}>
+                  {row.label}
+                </TableCell>
+                {sections.map((section, idx) => (
+                  <TableCell
+                    key={idx}
+                    align="center"
+                    sx={{ border: '1px solid #000' }}
+                  >
+                    {row.getValue(section)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </>
   );
 };
@@ -479,7 +641,8 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       welfare_data: null,
       section_names: {},
       exists: false,
-      report_comments: []
+      report_comments: [],
+      capacities: {}
     };
   });
 
@@ -503,7 +666,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
     
     try {
       setReportLoading(true);
-      const response = await axios.post(`${apiConfig.baseURL}/report-sm/get-by-id`, {
+      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/get-by-id`, {
         report_id: reportId
       });
       
@@ -1140,7 +1303,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
           </Typography>
           <DailyVisitorsSection 
             welfareData={reportData.welfare_data} 
-            capacity={reportData.capacity}
+            capacities={reportData.capacities}
           />
         </div>
 
@@ -1152,7 +1315,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
           <DailyUsersSection 
             welfareData={reportData.welfare_data}
             sectionNames={reportData.section_names}
-            capacity={reportData.capacity}
+            capacities={reportData.capacities}
           />
         </div>
 
@@ -1246,7 +1409,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
                         保存
                       </Button>
                     </Box>
-                </Box>
+                  </Box>
                 ) : (
                   <Box>
                     <Typography variant="body2" className="text-gray-700 leading-relaxed">

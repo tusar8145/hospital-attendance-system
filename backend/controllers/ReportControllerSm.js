@@ -46,135 +46,70 @@ async function getPreviousReports(medicalCenterId, currentDate) {
 }
 
 // Calculate derived fields based on writable fields and historical data
+// Calculate derived fields based on writable fields and historical data
+// Calculate derived fields based on writable fields and historical data
 async function calculateDerivedFields(writableData, medicalCenterId, currentDate) {
   const result = {};
   
-  // Helper function to get value or default
   const getValue = (value) => parseInt(value) || 0;
   
-  // Get current date info
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth() + 1;
-  const currentDay = currentDate.getDate();
   
-  // Get YESTERDAY'S date
+  // Get yesterday's date and report
   const yesterday = new Date(currentDate);
   yesterday.setDate(yesterday.getDate() - 1);
   yesterday.setUTCHours(0, 0, 0, 0);
   
-  // Get yesterday's report
   const yesterdayReport = await prisma.report.findFirst({
     where: {
       medical_center_id: parseInt(medicalCenterId),
       hospital_type: 'welfare',
-      OR: [
-        { status: 'submitted' },
-        { status: 'approved' }
-      ],
+      OR: [{ status: 'submitted' }, { status: 'approved' }],
       report_date: yesterday
     },
-    include: {
-      welfare_report_data: true
-    }
+    include: { welfare_report_data: true }
   });
   
-  // Get all previous reports for monthly/annual calculations
-  const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
-  const startOfYear = new Date(currentYear, 0, 1);
+  // Get all previous reports for cumulative calculations
+  const allPreviousReports = await prisma.report.findMany({
+    where: {
+      medical_center_id: parseInt(medicalCenterId),
+      hospital_type: 'welfare',
+      OR: [{ status: 'submitted' }, { status: 'approved' }],
+      report_date: { lt: currentDate }
+    },
+    include: { welfare_report_data: true },
+    orderBy: { report_date: 'asc' }
+  });
   
-  // Get monthly reports (excluding today)
+  // Get monthly reports
+  const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
   const monthlyReports = await prisma.report.findMany({
     where: {
       medical_center_id: parseInt(medicalCenterId),
       hospital_type: 'welfare',
-      OR: [
-        { status: 'submitted' },
-        { status: 'approved' }
-      ],
-      report_date: {
-        gte: startOfMonth,
-        lt: currentDate // Exclude today's date
-      }
+      OR: [{ status: 'submitted' }, { status: 'approved' }],
+      report_date: { gte: startOfMonth, lt: currentDate }
     },
-    include: {
-      welfare_report_data: true
-    },
-    orderBy: {
-      report_date: 'asc'
-    }
+    include: { welfare_report_data: true },
+    orderBy: { report_date: 'asc' }
   });
   
-  // Get annual reports (excluding today)
+  // Get annual reports
+  const startOfYear = new Date(currentYear, 0, 1);
   const annualReports = await prisma.report.findMany({
     where: {
       medical_center_id: parseInt(medicalCenterId),
       hospital_type: 'welfare',
-      OR: [
-        { status: 'submitted' },
-        { status: 'approved' }
-      ],
-      report_date: {
-        gte: startOfYear,
-        lt: currentDate // Exclude today's date
-      }
+      OR: [{ status: 'submitted' }, { status: 'approved' }],
+      report_date: { gte: startOfYear, lt: currentDate }
     },
-    include: {
-      welfare_report_data: true
-    },
-    orderBy: {
-      report_date: 'asc'
-    }
+    include: { welfare_report_data: true },
+    orderBy: { report_date: 'asc' }
   });
   
-  // Helper function to calculate end users for a section
-  const calculateEndUsers = async (sectionNumber, todayAdmission, todayDischarge) => {
-    // Get yesterday's actual end users for this section
-    let yesterdayActualEndUsers = 0;
-    if (yesterdayReport?.welfare_report_data) {
-      const yesterdayData = yesterdayReport.welfare_report_data;
-      
-      // Get the day before yesterday to calculate properly
-      const dayBeforeYesterday = new Date(yesterday);
-      dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 1);
-      
-      const dayBeforeReport = await prisma.report.findFirst({
-        where: {
-          medical_center_id: parseInt(medicalCenterId),
-          hospital_type: 'welfare',
-          OR: [
-            { status: 'submitted' },
-            { status: 'approved' }
-          ],
-          report_date: dayBeforeYesterday
-        },
-        include: {
-          welfare_report_data: true
-        }
-      });
-      
-      let dayBeforeEndUsers = 0;
-      if (dayBeforeReport?.welfare_report_data) {
-        const dayBeforeData = dayBeforeReport.welfare_report_data;
-        if (sectionNumber === 1) {
-          dayBeforeEndUsers = getValue(dayBeforeData.section1_admission_count) - getValue(dayBeforeData.section1_discharge_count);
-        } else if (sectionNumber === 2) {
-          dayBeforeEndUsers = getValue(dayBeforeData.section2_admission_count) - getValue(dayBeforeData.section2_discharge_count);
-        } else if (sectionNumber === 3) {
-          dayBeforeEndUsers = getValue(dayBeforeData.section3_admission_count) - getValue(dayBeforeData.section3_discharge_count);
-        }
-      }
-      
-      const yesterdayAdmission = getValue(yesterdayData[`section${sectionNumber}_admission_count`]);
-      const yesterdayDischarge = getValue(yesterdayData[`section${sectionNumber}_discharge_count`]);
-      yesterdayActualEndUsers = dayBeforeEndUsers + yesterdayAdmission - yesterdayDischarge;
-    }
-    
-    // Calculate today's end users (当日末入所者数)
-    const todayEndUsers = yesterdayActualEndUsers + getValue(todayAdmission) - getValue(todayDischarge);
-    return { yesterdayActualEndUsers, todayEndUsers };
-  };
-  
-  // Get capacities from writable data
+  // Get capacities
   const capacities = {
     section1: getValue(writableData.section1_capacity),
     section2: getValue(writableData.section2_capacity),
@@ -185,93 +120,67 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
     section7: getValue(writableData.section7_capacity)
   };
   
-  // Section 1: 入所 Calculations
-  const s1Admission = getValue(writableData.section1_admission_count);
-  const s1Discharge = getValue(writableData.section1_discharge_count);
-  
-  // Calculate end users for section 1
-  const s1EndUsers = await calculateEndUsers(1, s1Admission, s1Discharge);
-  result.section1_end_users = s1EndUsers.yesterdayActualEndUsers; // 前日入所者数
-  const s1TodayEndUsers = s1EndUsers.todayEndUsers; // 当日末入所者数
-  result.section1_today_end_users = s1TodayEndUsers; // NEW: 当日末入所者数
-  
-  // Calculate monthly admission for section 1 (including today)
-  let monthlyAdmissionSection1 = s1Admission;
-  monthlyReports.forEach(report => {
-    if (report.welfare_report_data) {
-      monthlyAdmissionSection1 += getValue(report.welfare_report_data.section1_admission_count);
+  // For Sections 1-3 (入所, 短期入所, ケアハウス)
+  for (let i = 1; i <= 3; i++) {
+    const todayAdmission = getValue(writableData[`section${i}_admission_count`]);
+    const todayDischarge = getValue(writableData[`section${i}_discharge_count`]);
+    
+    // 前日入所者数 = yesterday's admission count
+    let yesterdayAdmission = 0;
+    if (yesterdayReport?.welfare_report_data) {
+      yesterdayAdmission = getValue(yesterdayReport.welfare_report_data[`section${i}_admission_count`]);
     }
-  });
-  result.section1_monthly_admission = monthlyAdmissionSection1;
+    result[`section${i}_end_users`] = yesterdayAdmission; // This will be 7 for Dec 17
+    
+    // Calculate cumulative residents
+    let cumulativeResidents = 0;
+    allPreviousReports.forEach(report => {
+      if (report.welfare_report_data) {
+        const data = report.welfare_report_data;
+        const admission = getValue(data[`section${i}_admission_count`]);
+        const discharge = getValue(data[`section${i}_discharge_count`]);
+        cumulativeResidents = cumulativeResidents + admission - discharge;
+      }
+    });
+    
+    // 当日末入所者数 = cumulative + today's admission - today's discharge
+    result[`section${i}_today_end_users`] = cumulativeResidents + todayAdmission - todayDischarge;
+    
+    // Monthly admission
+    let monthlyAdmission = todayAdmission;
+    monthlyReports.forEach(report => {
+      if (report.welfare_report_data) {
+        monthlyAdmission += getValue(report.welfare_report_data[`section${i}_admission_count`]);
+      }
+    });
+    result[`section${i}_monthly_admission`] = monthlyAdmission;
+    
+    // Monthly average
+    const daysInMonthSoFar = monthlyReports.length + 1;
+    result[`section${i}_monthly_avg`] = daysInMonthSoFar > 0 ? 
+      Math.round(monthlyAdmission / daysInMonthSoFar) : 0;
+    
+    // Utilization rate
+    const todayEndResidents = result[`section${i}_today_end_users`];
+    result[`section${i}_monthly_utilization`] = capacities[`section${i}`] > 0 ? 
+      Math.round((todayEndResidents / capacities[`section${i}`]) * 100) : 0;
+  }
   
-  // Calculate monthly average = monthly total / number of days in month so far
-  const daysInMonthSoFar = monthlyReports.length + 1; // +1 for today
-  result.section1_monthly_avg = daysInMonthSoFar > 0 ? 
-    Math.round(monthlyAdmissionSection1 / daysInMonthSoFar) : 0;
-  
-  // Calculate utilization rate based on TODAY'S end users
-  result.section1_monthly_utilization = capacities.section1 > 0 ? 
-    Math.round((s1TodayEndUsers / capacities.section1) * 100) : 0;
-  
-  // Section 2: 短期入所 Calculations
-  const s2Admission = getValue(writableData.section2_admission_count);
-  const s2Discharge = getValue(writableData.section2_discharge_count);
-  
-  // Calculate end users for section 2
-  const s2EndUsers = await calculateEndUsers(2, s2Admission, s2Discharge);
-  result.section2_end_users = s2EndUsers.yesterdayActualEndUsers; // 前日入所者数
-  const s2TodayEndUsers = s2EndUsers.todayEndUsers; // 当日末入所者数
-  result.section2_today_end_users = s2TodayEndUsers; // NEW: 当日末入所者数
-  
-  let monthlyAdmissionSection2 = s2Admission;
-  monthlyReports.forEach(report => {
-    if (report.welfare_report_data) {
-      monthlyAdmissionSection2 += getValue(report.welfare_report_data.section2_admission_count);
-    }
-  });
-  result.section2_monthly_admission = monthlyAdmissionSection2;
-  result.section2_monthly_avg = daysInMonthSoFar > 0 ? 
-    Math.round(monthlyAdmissionSection2 / daysInMonthSoFar) : 0;
-  result.section2_monthly_utilization = capacities.section2 > 0 ? 
-    Math.round((s2TodayEndUsers / capacities.section2) * 100) : 0;
-  
-  // Section 3: ケアハウス Calculations
-  const s3Admission = getValue(writableData.section3_admission_count);
-  const s3Discharge = getValue(writableData.section3_discharge_count);
-  
-  // Calculate end users for section 3
-  const s3EndUsers = await calculateEndUsers(3, s3Admission, s3Discharge);
-  result.section3_end_users = s3EndUsers.yesterdayActualEndUsers; // 前日入所者数
-  const s3TodayEndUsers = s3EndUsers.todayEndUsers; // 当日末入所者数
-  result.section3_today_end_users = s3TodayEndUsers; // NEW: 当日末入所者数
-  
-  let monthlyAdmissionSection3 = s3Admission;
-  monthlyReports.forEach(report => {
-    if (report.welfare_report_data) {
-      monthlyAdmissionSection3 += getValue(report.welfare_report_data.section3_admission_count);
-    }
-  });
-  result.section3_monthly_admission = monthlyAdmissionSection3;
-  result.section3_monthly_avg = daysInMonthSoFar > 0 ? 
-    Math.round(monthlyAdmissionSection3 / daysInMonthSoFar) : 0;
-  result.section3_monthly_utilization = capacities.section3 > 0 ? 
-    Math.round((s3TodayEndUsers / capacities.section3) * 100) : 0;
-  
-  // Sections 4-7 Calculations
+  // For Sections 4-7 (ABCD sections)
   for (let i = 4; i <= 7; i++) {
     const dailyUsers = getValue(writableData[`section${i}_daily_users`]);
-    const capacity = capacities[`section${i}`];
     
-    // For sections 4-7, "前日利用者数" should be yesterday's daily users
+    // 前日利用者数 = yesterday's daily users
+    let yesterdayDailyUsers = 0;
     if (yesterdayReport?.welfare_report_data) {
-      result[`section${i}_end_users`] = getValue(yesterdayReport.welfare_report_data[`section${i}_daily_users`]);
-      result[`section${i}_today_end_users`] = dailyUsers; // 当日末利用者数 (same as daily users for sections 4-7)
-    } else {
-      result[`section${i}_end_users`] = 0;
-      result[`section${i}_today_end_users`] = dailyUsers; // 当日末利用者数
+      yesterdayDailyUsers = getValue(yesterdayReport.welfare_report_data[`section${i}_daily_users`]);
     }
+    result[`section${i}_end_users`] = yesterdayDailyUsers; // This will be 7 for Dec 17
     
-    // Monthly users cumulative (including today)
+    // 当日末利用者数 = today's daily users
+    result[`section${i}_today_end_users`] = dailyUsers;
+    
+    // Monthly users
     let monthlyUsers = dailyUsers;
     monthlyReports.forEach(report => {
       if (report.welfare_report_data) {
@@ -279,27 +188,25 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
       }
     });
     result[`section${i}_monthly_users`] = monthlyUsers;
-    
-    // Monthly users cumulative total (当月利用者数累計)
     result[`section${i}_monthly_users_cumulative`] = monthlyUsers;
     
-    // Monthly average = monthly total / number of days in month so far
+    // Monthly average
+    const daysInMonthSoFar = monthlyReports.length + 1;
     result[`section${i}_monthly_avg`] = daysInMonthSoFar > 0 ? 
       Math.round(monthlyUsers / daysInMonthSoFar) : 0;
     
-    // Utilization rate for sections 4-7: (daily users / capacity) * 100
-    result[`section${i}_monthly_utilization`] = capacity > 0 ? 
-      Math.round((dailyUsers / capacity) * 100) : 0;
+    // Utilization rate
+    result[`section${i}_monthly_utilization`] = capacities[`section${i}`] > 0 ? 
+      Math.round((dailyUsers / capacities[`section${i}`]) * 100) : 0;
   }
   
   // Annual calculations
   for (let i = 1; i <= 7; i++) {
     const prefix = `section${i}`;
     
-    // Annual cumulative (including today)
+    // Annual total
     let annualTotal = 0;
     if (i <= 3) {
-      // Sections 1-3: Use admission count
       annualTotal = getValue(writableData[`section${i}_admission_count`]);
       annualReports.forEach(report => {
         if (report.welfare_report_data) {
@@ -307,7 +214,6 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
         }
       });
     } else {
-      // Sections 4-7: Use daily users
       annualTotal = getValue(writableData[`section${i}_daily_users`]);
       annualReports.forEach(report => {
         if (report.welfare_report_data) {
@@ -317,18 +223,18 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
     }
     result[`${prefix}_annual_users`] = annualTotal;
     
-    // Annual average = annual total / days passed in year so far
-    const startOfYear = new Date(currentYear, 0, 1);
-    const diffTime = Math.abs(currentDate - startOfYear);
-    const daysPassed = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 for today
-    result[`${prefix}_annual_avg`] = daysPassed > 0 ? Math.round(annualTotal / daysPassed) : 0;
+    // Annual average
+    const daysInYearSoFar = annualReports.length + 1;
+    result[`${prefix}_annual_avg`] = daysInYearSoFar > 0 ? 
+      Math.round(annualTotal / daysInYearSoFar) : 0;
     
     // Annual utilization
     let utilizationValue;
-    if (i === 1) utilizationValue = s1TodayEndUsers;
-    else if (i === 2) utilizationValue = s2TodayEndUsers;
-    else if (i === 3) utilizationValue = s3TodayEndUsers;
-    else utilizationValue = getValue(writableData[`section${i}_daily_users`]);
+    if (i <= 3) {
+      utilizationValue = result[`section${i}_today_end_users`] || 0;
+    } else {
+      utilizationValue = getValue(writableData[`section${i}_daily_users`]);
+    }
     
     const annualCapacity = capacities[`section${i}`];
     result[`${prefix}_annual_utilization`] = annualCapacity > 0 ? 
