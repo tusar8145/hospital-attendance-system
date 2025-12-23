@@ -46,7 +46,6 @@ async function getPreviousReports(medicalCenterId, currentDate) {
 }
 
 // Calculate derived fields based on writable fields and historical data
-// NOTE: All calculated fields are calculated at runtime, not stored in DB
 async function calculateDerivedFields(writableData, medicalCenterId, currentDate) {
   const result = {};
   
@@ -170,7 +169,7 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
       yesterdayActualEndUsers = dayBeforeEndUsers + yesterdayAdmission - yesterdayDischarge;
     }
     
-    // Calculate today's end users
+    // Calculate today's end users (当日末入所者数)
     const todayEndUsers = yesterdayActualEndUsers + getValue(todayAdmission) - getValue(todayDischarge);
     return { yesterdayActualEndUsers, todayEndUsers };
   };
@@ -192,8 +191,9 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
   
   // Calculate end users for section 1
   const s1EndUsers = await calculateEndUsers(1, s1Admission, s1Discharge);
-  result.section1_end_users = s1EndUsers.yesterdayActualEndUsers;
-  const s1TodayEndUsers = s1EndUsers.todayEndUsers;
+  result.section1_end_users = s1EndUsers.yesterdayActualEndUsers; // 前日入所者数
+  const s1TodayEndUsers = s1EndUsers.todayEndUsers; // 当日末入所者数
+  result.section1_today_end_users = s1TodayEndUsers; // NEW: 当日末入所者数
   
   // Calculate monthly admission for section 1 (including today)
   let monthlyAdmissionSection1 = s1Admission;
@@ -219,8 +219,9 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
   
   // Calculate end users for section 2
   const s2EndUsers = await calculateEndUsers(2, s2Admission, s2Discharge);
-  result.section2_end_users = s2EndUsers.yesterdayActualEndUsers;
-  const s2TodayEndUsers = s2EndUsers.todayEndUsers;
+  result.section2_end_users = s2EndUsers.yesterdayActualEndUsers; // 前日入所者数
+  const s2TodayEndUsers = s2EndUsers.todayEndUsers; // 当日末入所者数
+  result.section2_today_end_users = s2TodayEndUsers; // NEW: 当日末入所者数
   
   let monthlyAdmissionSection2 = s2Admission;
   monthlyReports.forEach(report => {
@@ -240,8 +241,9 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
   
   // Calculate end users for section 3
   const s3EndUsers = await calculateEndUsers(3, s3Admission, s3Discharge);
-  result.section3_end_users = s3EndUsers.yesterdayActualEndUsers;
-  const s3TodayEndUsers = s3EndUsers.todayEndUsers;
+  result.section3_end_users = s3EndUsers.yesterdayActualEndUsers; // 前日入所者数
+  const s3TodayEndUsers = s3EndUsers.todayEndUsers; // 当日末入所者数
+  result.section3_today_end_users = s3TodayEndUsers; // NEW: 当日末入所者数
   
   let monthlyAdmissionSection3 = s3Admission;
   monthlyReports.forEach(report => {
@@ -255,7 +257,7 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
   result.section3_monthly_utilization = capacities.section3 > 0 ? 
     Math.round((s3TodayEndUsers / capacities.section3) * 100) : 0;
   
-  // Sections 4-7 Calculations (these are daily users, not cumulative residents)
+  // Sections 4-7 Calculations
   for (let i = 4; i <= 7; i++) {
     const dailyUsers = getValue(writableData[`section${i}_daily_users`]);
     const capacity = capacities[`section${i}`];
@@ -263,8 +265,10 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
     // For sections 4-7, "前日利用者数" should be yesterday's daily users
     if (yesterdayReport?.welfare_report_data) {
       result[`section${i}_end_users`] = getValue(yesterdayReport.welfare_report_data[`section${i}_daily_users`]);
+      result[`section${i}_today_end_users`] = dailyUsers; // 当日末利用者数 (same as daily users for sections 4-7)
     } else {
       result[`section${i}_end_users`] = 0;
+      result[`section${i}_today_end_users`] = dailyUsers; // 当日末利用者数
     }
     
     // Monthly users cumulative (including today)
@@ -275,6 +279,9 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
       }
     });
     result[`section${i}_monthly_users`] = monthlyUsers;
+    
+    // Monthly users cumulative total (当月利用者数累計)
+    result[`section${i}_monthly_users_cumulative`] = monthlyUsers;
     
     // Monthly average = monthly total / number of days in month so far
     result[`section${i}_monthly_avg`] = daysInMonthSoFar > 0 ? 

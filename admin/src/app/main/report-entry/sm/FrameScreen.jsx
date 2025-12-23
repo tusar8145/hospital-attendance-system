@@ -44,7 +44,11 @@ import {
   formatJapaneseDate,
   shouldDisableDate
 } from './utils/frameScreenUtils';
- import User from '../../../auth/user/user';
+
+// Import User context/helper
+import { useAppSelector } from 'app/store/hooks';
+import { selectUser } from 'src/app/auth/user/store/userSlice';
+
 const FrameScreen = React.memo(({
   formData = null,
   departments = [],
@@ -70,7 +74,14 @@ const FrameScreen = React.memo(({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  let user = User(); 
+
+  // Get user data from Redux
+  const user = useAppSelector(selectUser);
+  const userRole = user?.role || '';
+  
+  // Check if user can edit capacities (not operator)
+  const canEditCapacities = userRole !== 'operator';
+
   // State management
   const [date, setDate] = useState(reportDate || new Date());
   
@@ -125,33 +136,40 @@ const FrameScreen = React.memo(({
   const [calculatedFields, setCalculatedFields] = useState({
     // Section 1 calculated fields
     section1_end_users: "0", // 前日入所者数
+    section1_today_end_users: "0", // 当日末入所者数
     section1_monthly_admission: "0", // 当月入所者数
     section1_monthly_avg: "0", // 当月平均入所者数
     section1_monthly_utilization: "0", // 当月稼働率
     
     // Section 2 calculated fields
-    section2_end_users: "0",
-    section2_monthly_admission: "0",
-    section2_monthly_avg: "0",
-    section2_monthly_utilization: "0",
+    section2_end_users: "0", // 前日入所者数
+    section2_today_end_users: "0", // 当日末入所者数
+    section2_monthly_admission: "0", // 当月入所者数
+    section2_monthly_avg: "0", // 当月平均入所者数
+    section2_monthly_utilization: "0", // 当月稼働率
     
     // Section 3 calculated fields
-    section3_end_users: "0",
-    section3_monthly_admission: "0",
-    section3_monthly_avg: "0",
-    section3_monthly_utilization: "0",
+    section3_end_users: "0", // 前日入所者数
+    section3_today_end_users: "0", // 当日末入所者数
+    section3_monthly_admission: "0", // 当月入所者数
+    section3_monthly_avg: "0", // 当月平均入所者数
+    section3_monthly_utilization: "0", // 当月稼働率
     
     // Sections 4-7 calculated fields
     section4_monthly_users: "0", // 当月利用者数
+    section4_monthly_users_cumulative: "0", // 当月利用者数累計
     section4_monthly_avg: "0", // 当月平均利用者数
     section4_monthly_utilization: "0", // 当月稼働率
     section5_monthly_users: "0",
+    section5_monthly_users_cumulative: "0",
     section5_monthly_avg: "0",
     section5_monthly_utilization: "0",
     section6_monthly_users: "0",
+    section6_monthly_users_cumulative: "0",
     section6_monthly_avg: "0",
     section6_monthly_utilization: "0",
     section7_monthly_users: "0",
+    section7_monthly_users_cumulative: "0",
     section7_monthly_avg: "0",
     section7_monthly_utilization: "0",
     
@@ -300,16 +318,16 @@ const FrameScreen = React.memo(({
       const calcFields = {};
       const calcFieldNames = [
         // Section 1 calculated
-        'section1_end_users', 'section1_monthly_admission', 'section1_monthly_avg', 'section1_monthly_utilization',
+        'section1_end_users', 'section1_today_end_users', 'section1_monthly_admission', 'section1_monthly_avg', 'section1_monthly_utilization',
         // Section 2 calculated
-        'section2_end_users', 'section2_monthly_admission', 'section2_monthly_avg', 'section2_monthly_utilization',
+        'section2_end_users', 'section2_today_end_users', 'section2_monthly_admission', 'section2_monthly_avg', 'section2_monthly_utilization',
         // Section 3 calculated
-        'section3_end_users', 'section3_monthly_admission', 'section3_monthly_avg', 'section3_monthly_utilization',
+        'section3_end_users', 'section3_today_end_users', 'section3_monthly_admission', 'section3_monthly_avg', 'section3_monthly_utilization',
         // Sections 4-7 calculated
-        'section4_monthly_users', 'section4_monthly_avg', 'section4_monthly_utilization',
-        'section5_monthly_users', 'section5_monthly_avg', 'section5_monthly_utilization',
-        'section6_monthly_users', 'section6_monthly_avg', 'section6_monthly_utilization',
-        'section7_monthly_users', 'section7_monthly_avg', 'section7_monthly_utilization',
+        'section4_monthly_users', 'section4_monthly_users_cumulative', 'section4_monthly_avg', 'section4_monthly_utilization',
+        'section5_monthly_users', 'section5_monthly_users_cumulative', 'section5_monthly_avg', 'section5_monthly_utilization',
+        'section6_monthly_users', 'section6_monthly_users_cumulative', 'section6_monthly_avg', 'section6_monthly_utilization',
+        'section7_monthly_users', 'section7_monthly_users_cumulative', 'section7_monthly_avg', 'section7_monthly_utilization',
         // Annual calculated
         'section1_annual_users', 'section1_annual_avg', 'section1_annual_utilization',
         'section2_annual_users', 'section2_annual_avg', 'section2_annual_utilization',
@@ -460,11 +478,13 @@ const FrameScreen = React.memo(({
       }
     });
     
-    // Validate capacities
-    for (let i = 1; i <= 7; i++) {
-      const capacity = welfareData[`section${i}_capacity`];
-      if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) < 0) {
-        errors[`section${i}_capacity`] = `セクション${i}の定員は0以上の数値を入力してください`;
+    // Validate capacities (readonly for operator)
+    if (canEditCapacities) {
+      for (let i = 1; i <= 7; i++) {
+        const capacity = welfareData[`section${i}_capacity`];
+        if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) < 0) {
+          errors[`section${i}_capacity`] = `セクション${i}の定員は0以上の数値を入力してください`;
+        }
       }
     }
     
@@ -559,8 +579,10 @@ const FrameScreen = React.memo(({
     });
   };
 
-  // Handle edit capacity
+  // Handle edit capacity (only for non-operator users)
   const handleEditCapacity = (section) => {
+    if (!canEditCapacities) return;
+    
     const sectionNumber = section.replace('section', '');
     const capacityKey = `section${sectionNumber}_capacity`;
     setEditDialog({
@@ -849,7 +871,7 @@ const FrameScreen = React.memo(({
     );
   };
 
-  // Render capacity field with edit button
+  // Render capacity field (readonly for operator, editable for others)
   const renderCapacityField = (sectionNumber) => {
     const field = `section${sectionNumber}_capacity`;
     const label = `定員`;
@@ -873,7 +895,7 @@ const FrameScreen = React.memo(({
                 *
               </Typography>
             </Typography>
-            {!readOnly && reportStatus !== 'submitted' && (
+            {canEditCapacities && !readOnly && reportStatus !== 'submitted' && (
               <Tooltip title="定員を編集">
                 <IconButton 
                   size="small" 
@@ -887,18 +909,18 @@ const FrameScreen = React.memo(({
           </Box>
           <TextField
             value={value}
-            onChange={(e) => handleWelfareDataChange(field, e.target.value)}
+            onChange={(e) => canEditCapacities && handleWelfareDataChange(field, e.target.value)}
             variant="outlined"
             fullWidth
             size="small"
             error={!!error}
             helperText={error || '定員を入力してください'}
-            disabled={readOnly || reportStatus === 'submitted'}
+            disabled={!canEditCapacities || readOnly || reportStatus === 'submitted'}
             onFocus={handleTextFieldFocus(field)}
             InputProps={{
               sx: {
                 borderRadius: "8px",
-                bgcolor: "#ffffff",
+                bgcolor: canEditCapacities ? "#ffffff" : "#f5f5f5",
                 height: textFieldHeight,
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: error ? "#df1c41" : "#bdbdbd",
@@ -908,7 +930,7 @@ const FrameScreen = React.memo(({
                   textAlign: 'right',
                   paddingRight: 2,
                   fontWeight: 500,
-                  color: "#2c3e50",
+                  color: canEditCapacities ? "#2c3e50" : "#666",
                   '&::placeholder': {
                     fontSize: fontSize.small,
                   }
@@ -1336,6 +1358,8 @@ const FrameScreen = React.memo(({
           </Box>
         )}
 
+ 
+
         {/* Welfare Report Sections */}
         {formDataLoaded && (
           <>
@@ -1384,6 +1408,7 @@ const FrameScreen = React.memo(({
               { key: 'section1_hospitalization_count', label: '入院者数', required: false, editable: true },
               { key: 'section1_discharge_treated', label: '退所扱', required: false, editable: true },
               { key: 'section1_end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'section1_today_end_users', label: '当日末入所者数', required: false, editable: false },
               { key: 'section1_monthly_admission', label: '当月入所者数', required: false, editable: false },
               { key: 'section1_monthly_avg', label: '当月平均入所者数', required: false, editable: false },
               { key: 'section1_monthly_utilization', label: '当月稼働率', required: false, editable: false }
@@ -1397,6 +1422,7 @@ const FrameScreen = React.memo(({
               { key: 'section2_hospitalization_count', label: '入院者数', required: false, editable: true },
               // Note: section2_admission_treated and section2_discharge_treated are NOT in section 2
               { key: 'section2_end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'section2_today_end_users', label: '当日末入所者数', required: false, editable: false },
               { key: 'section2_monthly_admission', label: '当月入所者数', required: false, editable: false },
               { key: 'section2_monthly_avg', label: '当月平均入所者数', required: false, editable: false },
               { key: 'section2_monthly_utilization', label: '当月稼働率', required: false, editable: false }
@@ -1409,6 +1435,7 @@ const FrameScreen = React.memo(({
               { key: 'section3_outside_hospital', label: '外泊・入院者数', required: false, editable: true },
               { key: 'section3_hospitalization_count', label: '入院者数', required: false, editable: true },
               { key: 'section3_end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'section3_today_end_users', label: '当日末入所者数', required: false, editable: false },
               { key: 'section3_monthly_admission', label: '当月入所者数', required: false, editable: false },
               { key: 'section3_monthly_avg', label: '当月平均入所者数', required: false, editable: false },
               { key: 'section3_monthly_utilization', label: '当月稼働率', required: false, editable: false }
@@ -1419,6 +1446,7 @@ const FrameScreen = React.memo(({
               renderSection(sectionNum, '', [
                 { key: `section${sectionNum}_daily_users`, label: '当日利用者数', required: true, editable: true },
                 { key: `section${sectionNum}_monthly_users`, label: '当月利用者数', required: false, editable: false },
+                { key: `section${sectionNum}_monthly_users_cumulative`, label: '当月利用者数累計', required: false, editable: false },
                 { key: `section${sectionNum}_monthly_avg`, label: '当月平均利用者数', required: false, editable: false },
                 { key: `section${sectionNum}_monthly_utilization`, label: '当月稼働率', required: false, editable: false }
               ], true)
