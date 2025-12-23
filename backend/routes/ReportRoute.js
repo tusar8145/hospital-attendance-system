@@ -59,4 +59,7 @@ router.post("/report-welfare/get-last-report-data", auth, ReportControllerSm.get
 router.post("/report-welfare/statistics", auth, ReportControllerSm.getReportStatistics);
 router.post("/report-welfare/export", auth, ReportControllerSm.exportReports);
 
+router.post("/report-welfare/capacities", auth, ReportControllerSm.getMedicalCenterCapacities);
+router.post("/report-welfare/update-capacities", auth, ReportControllerSm.updateCapacities);
+
 export { router as ReportRoute };

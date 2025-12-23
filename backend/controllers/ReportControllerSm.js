@@ -46,8 +46,7 @@ async function getPreviousReports(medicalCenterId, currentDate) {
 }
 
 // Calculate derived fields based on writable fields and historical data
-// Calculate derived fields based on writable fields and historical data
-// Calculate derived fields based on writable fields and historical data
+// NOTE: All calculated fields are calculated at runtime, not stored in DB
 async function calculateDerivedFields(writableData, medicalCenterId, currentDate) {
   const result = {};
   
@@ -58,9 +57,6 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth() + 1;
   const currentDay = currentDate.getDate();
-  
-  // Get capacity from current data, fallback to yesterday's capacity
-  const currentCapacity = getValue(writableData.capacity);
   
   // Get YESTERDAY'S date
   const yesterday = new Date(currentDate);
@@ -82,12 +78,6 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
       welfare_report_data: true
     }
   });
-  
-  // Get yesterday's capacity
-  const yesterdayCapacity = yesterdayReport?.welfare_report_data?.capacity || 0;
-  
-  // Effective capacity: use current if available, otherwise use yesterday's
-  const effectiveCapacity = currentCapacity > 0 ? currentCapacity : yesterdayCapacity;
   
   // Get all previous reports for monthly/annual calculations
   const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
@@ -137,59 +127,73 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
     }
   });
   
+  // Helper function to calculate end users for a section
+  const calculateEndUsers = async (sectionNumber, todayAdmission, todayDischarge) => {
+    // Get yesterday's actual end users for this section
+    let yesterdayActualEndUsers = 0;
+    if (yesterdayReport?.welfare_report_data) {
+      const yesterdayData = yesterdayReport.welfare_report_data;
+      
+      // Get the day before yesterday to calculate properly
+      const dayBeforeYesterday = new Date(yesterday);
+      dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 1);
+      
+      const dayBeforeReport = await prisma.report.findFirst({
+        where: {
+          medical_center_id: parseInt(medicalCenterId),
+          hospital_type: 'welfare',
+          OR: [
+            { status: 'submitted' },
+            { status: 'approved' }
+          ],
+          report_date: dayBeforeYesterday
+        },
+        include: {
+          welfare_report_data: true
+        }
+      });
+      
+      let dayBeforeEndUsers = 0;
+      if (dayBeforeReport?.welfare_report_data) {
+        const dayBeforeData = dayBeforeReport.welfare_report_data;
+        if (sectionNumber === 1) {
+          dayBeforeEndUsers = getValue(dayBeforeData.section1_admission_count) - getValue(dayBeforeData.section1_discharge_count);
+        } else if (sectionNumber === 2) {
+          dayBeforeEndUsers = getValue(dayBeforeData.section2_admission_count) - getValue(dayBeforeData.section2_discharge_count);
+        } else if (sectionNumber === 3) {
+          dayBeforeEndUsers = getValue(dayBeforeData.section3_admission_count) - getValue(dayBeforeData.section3_discharge_count);
+        }
+      }
+      
+      const yesterdayAdmission = getValue(yesterdayData[`section${sectionNumber}_admission_count`]);
+      const yesterdayDischarge = getValue(yesterdayData[`section${sectionNumber}_discharge_count`]);
+      yesterdayActualEndUsers = dayBeforeEndUsers + yesterdayAdmission - yesterdayDischarge;
+    }
+    
+    // Calculate today's end users
+    const todayEndUsers = yesterdayActualEndUsers + getValue(todayAdmission) - getValue(todayDischarge);
+    return { yesterdayActualEndUsers, todayEndUsers };
+  };
+  
+  // Get capacities from writable data
+  const capacities = {
+    section1: getValue(writableData.section1_capacity),
+    section2: getValue(writableData.section2_capacity),
+    section3: getValue(writableData.section3_capacity),
+    section4: getValue(writableData.section4_capacity),
+    section5: getValue(writableData.section5_capacity),
+    section6: getValue(writableData.section6_capacity),
+    section7: getValue(writableData.section7_capacity)
+  };
+  
   // Section 1: 入所 Calculations
   const s1Admission = getValue(writableData.section1_admission_count);
   const s1Discharge = getValue(writableData.section1_discharge_count);
   
-  // section1_end_users (前日入所者数) = Yesterday's admission count
-  if (yesterdayReport?.welfare_report_data) {
-    result.section1_end_users = getValue(yesterdayReport.welfare_report_data.section1_admission_count);
-  } else {
-    result.section1_end_users = 0;
-  }
-  
-  // Calculate today's end users = yesterday's end users + today's admission - today's discharge
-  // First, need to calculate yesterday's actual end users for today's calculation
-  let yesterdayActualEndUsersSection1 = 0;
-  if (yesterdayReport?.welfare_report_data) {
-    const yesterdayData = yesterdayReport.welfare_report_data;
-    
-    // Get the day before yesterday to calculate properly
-    const dayBeforeYesterday = new Date(yesterday);
-    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 1);
-    
-    const dayBeforeReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: parseInt(medicalCenterId),
-        hospital_type: 'welfare',
-        OR: [
-          { status: 'submitted' },
-          { status: 'approved' }
-        ],
-        report_date: dayBeforeYesterday
-      },
-      include: {
-        welfare_report_data: true
-      }
-    });
-    
-    let dayBeforeEndUsers = 0;
-    if (dayBeforeReport?.welfare_report_data?.section1_end_users !== null && 
-        dayBeforeReport?.welfare_report_data?.section1_end_users !== undefined) {
-      dayBeforeEndUsers = getValue(dayBeforeReport.welfare_report_data.section1_end_users);
-    } else if (dayBeforeReport?.welfare_report_data) {
-      // Calculate from day before's data
-      const dayBeforeAdmission = getValue(dayBeforeReport.welfare_report_data.section1_admission_count);
-      const dayBeforeDischarge = getValue(dayBeforeReport.welfare_report_data.section1_discharge_count);
-      dayBeforeEndUsers = dayBeforeAdmission - dayBeforeDischarge;
-    }
-    
-    const yesterdayAdmission = getValue(yesterdayData.section1_admission_count);
-    const yesterdayDischarge = getValue(yesterdayData.section1_discharge_count);
-    yesterdayActualEndUsersSection1 = dayBeforeEndUsers + yesterdayAdmission - yesterdayDischarge;
-  }
-  
-  const todayEndUsersSection1 = yesterdayActualEndUsersSection1 + s1Admission - s1Discharge;
+  // Calculate end users for section 1
+  const s1EndUsers = await calculateEndUsers(1, s1Admission, s1Discharge);
+  result.section1_end_users = s1EndUsers.yesterdayActualEndUsers;
+  const s1TodayEndUsers = s1EndUsers.todayEndUsers;
   
   // Calculate monthly admission for section 1 (including today)
   let monthlyAdmissionSection1 = s1Admission;
@@ -206,59 +210,17 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
     Math.round(monthlyAdmissionSection1 / daysInMonthSoFar) : 0;
   
   // Calculate utilization rate based on TODAY'S end users
-  result.section1_monthly_utilization = effectiveCapacity > 0 ? 
-    Math.round((todayEndUsersSection1 / effectiveCapacity) * 100) : 0;
+  result.section1_monthly_utilization = capacities.section1 > 0 ? 
+    Math.round((s1TodayEndUsers / capacities.section1) * 100) : 0;
   
   // Section 2: 短期入所 Calculations
   const s2Admission = getValue(writableData.section2_admission_count);
   const s2Discharge = getValue(writableData.section2_discharge_count);
   
-  // section2_end_users (前日入所者数) = Yesterday's admission count
-  if (yesterdayReport?.welfare_report_data) {
-    result.section2_end_users = getValue(yesterdayReport.welfare_report_data.section2_admission_count);
-  } else {
-    result.section2_end_users = 0;
-  }
-  
-  // Calculate yesterday's actual end users for section 2
-  let yesterdayActualEndUsersSection2 = 0;
-  if (yesterdayReport?.welfare_report_data) {
-    const yesterdayData = yesterdayReport.welfare_report_data;
-    
-    const dayBeforeYesterday = new Date(yesterday);
-    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 1);
-    
-    const dayBeforeReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: parseInt(medicalCenterId),
-        hospital_type: 'welfare',
-        OR: [
-          { status: 'submitted' },
-          { status: 'approved' }
-        ],
-        report_date: dayBeforeYesterday
-      },
-      include: {
-        welfare_report_data: true
-      }
-    });
-    
-    let dayBeforeEndUsers = 0;
-    if (dayBeforeReport?.welfare_report_data?.section2_end_users !== null && 
-        dayBeforeReport?.welfare_report_data?.section2_end_users !== undefined) {
-      dayBeforeEndUsers = getValue(dayBeforeReport.welfare_report_data.section2_end_users);
-    } else if (dayBeforeReport?.welfare_report_data) {
-      const dayBeforeAdmission = getValue(dayBeforeReport.welfare_report_data.section2_admission_count);
-      const dayBeforeDischarge = getValue(dayBeforeReport.welfare_report_data.section2_discharge_count);
-      dayBeforeEndUsers = dayBeforeAdmission - dayBeforeDischarge;
-    }
-    
-    const yesterdayAdmission = getValue(yesterdayData.section2_admission_count);
-    const yesterdayDischarge = getValue(yesterdayData.section2_discharge_count);
-    yesterdayActualEndUsersSection2 = dayBeforeEndUsers + yesterdayAdmission - yesterdayDischarge;
-  }
-  
-  const todayEndUsersSection2 = yesterdayActualEndUsersSection2 + s2Admission - s2Discharge;
+  // Calculate end users for section 2
+  const s2EndUsers = await calculateEndUsers(2, s2Admission, s2Discharge);
+  result.section2_end_users = s2EndUsers.yesterdayActualEndUsers;
+  const s2TodayEndUsers = s2EndUsers.todayEndUsers;
   
   let monthlyAdmissionSection2 = s2Admission;
   monthlyReports.forEach(report => {
@@ -269,59 +231,17 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
   result.section2_monthly_admission = monthlyAdmissionSection2;
   result.section2_monthly_avg = daysInMonthSoFar > 0 ? 
     Math.round(monthlyAdmissionSection2 / daysInMonthSoFar) : 0;
-  result.section2_monthly_utilization = effectiveCapacity > 0 ? 
-    Math.round((todayEndUsersSection2 / effectiveCapacity) * 100) : 0;
+  result.section2_monthly_utilization = capacities.section2 > 0 ? 
+    Math.round((s2TodayEndUsers / capacities.section2) * 100) : 0;
   
   // Section 3: ケアハウス Calculations
   const s3Admission = getValue(writableData.section3_admission_count);
   const s3Discharge = getValue(writableData.section3_discharge_count);
   
-  // section3_end_users (前日入所者数) = Yesterday's admission count
-  if (yesterdayReport?.welfare_report_data) {
-    result.section3_end_users = getValue(yesterdayReport.welfare_report_data.section3_admission_count);
-  } else {
-    result.section3_end_users = 0;
-  }
-  
-  // Calculate yesterday's actual end users for section 3
-  let yesterdayActualEndUsersSection3 = 0;
-  if (yesterdayReport?.welfare_report_data) {
-    const yesterdayData = yesterdayReport.welfare_report_data;
-    
-    const dayBeforeYesterday = new Date(yesterday);
-    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 1);
-    
-    const dayBeforeReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: parseInt(medicalCenterId),
-        hospital_type: 'welfare',
-        OR: [
-          { status: 'submitted' },
-          { status: 'approved' }
-        ],
-        report_date: dayBeforeYesterday
-      },
-      include: {
-        welfare_report_data: true
-      }
-    });
-    
-    let dayBeforeEndUsers = 0;
-    if (dayBeforeReport?.welfare_report_data?.section3_end_users !== null && 
-        dayBeforeReport?.welfare_report_data?.section3_end_users !== undefined) {
-      dayBeforeEndUsers = getValue(dayBeforeReport.welfare_report_data.section3_end_users);
-    } else if (dayBeforeReport?.welfare_report_data) {
-      const dayBeforeAdmission = getValue(dayBeforeReport.welfare_report_data.section3_admission_count);
-      const dayBeforeDischarge = getValue(dayBeforeReport.welfare_report_data.section3_discharge_count);
-      dayBeforeEndUsers = dayBeforeAdmission - dayBeforeDischarge;
-    }
-    
-    const yesterdayAdmission = getValue(yesterdayData.section3_admission_count);
-    const yesterdayDischarge = getValue(yesterdayData.section3_discharge_count);
-    yesterdayActualEndUsersSection3 = dayBeforeEndUsers + yesterdayAdmission - yesterdayDischarge;
-  }
-  
-  const todayEndUsersSection3 = yesterdayActualEndUsersSection3 + s3Admission - s3Discharge;
+  // Calculate end users for section 3
+  const s3EndUsers = await calculateEndUsers(3, s3Admission, s3Discharge);
+  result.section3_end_users = s3EndUsers.yesterdayActualEndUsers;
+  const s3TodayEndUsers = s3EndUsers.todayEndUsers;
   
   let monthlyAdmissionSection3 = s3Admission;
   monthlyReports.forEach(report => {
@@ -332,12 +252,13 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
   result.section3_monthly_admission = monthlyAdmissionSection3;
   result.section3_monthly_avg = daysInMonthSoFar > 0 ? 
     Math.round(monthlyAdmissionSection3 / daysInMonthSoFar) : 0;
-  result.section3_monthly_utilization = effectiveCapacity > 0 ? 
-    Math.round((todayEndUsersSection3 / effectiveCapacity) * 100) : 0;
+  result.section3_monthly_utilization = capacities.section3 > 0 ? 
+    Math.round((s3TodayEndUsers / capacities.section3) * 100) : 0;
   
   // Sections 4-7 Calculations (these are daily users, not cumulative residents)
   for (let i = 4; i <= 7; i++) {
     const dailyUsers = getValue(writableData[`section${i}_daily_users`]);
+    const capacity = capacities[`section${i}`];
     
     // For sections 4-7, "前日利用者数" should be yesterday's daily users
     if (yesterdayReport?.welfare_report_data) {
@@ -360,8 +281,8 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
       Math.round(monthlyUsers / daysInMonthSoFar) : 0;
     
     // Utilization rate for sections 4-7: (daily users / capacity) * 100
-    result[`section${i}_monthly_utilization`] = effectiveCapacity > 0 ? 
-      Math.round((dailyUsers / effectiveCapacity) * 100) : 0;
+    result[`section${i}_monthly_utilization`] = capacity > 0 ? 
+      Math.round((dailyUsers / capacity) * 100) : 0;
   }
   
   // Annual calculations
@@ -397,20 +318,71 @@ async function calculateDerivedFields(writableData, medicalCenterId, currentDate
     
     // Annual utilization
     let utilizationValue;
-    if (i === 1) utilizationValue = todayEndUsersSection1;
-    else if (i === 2) utilizationValue = todayEndUsersSection2;
-    else if (i === 3) utilizationValue = todayEndUsersSection3;
+    if (i === 1) utilizationValue = s1TodayEndUsers;
+    else if (i === 2) utilizationValue = s2TodayEndUsers;
+    else if (i === 3) utilizationValue = s3TodayEndUsers;
     else utilizationValue = getValue(writableData[`section${i}_daily_users`]);
     
-    result[`${prefix}_annual_utilization`] = effectiveCapacity > 0 ? 
-      Math.round((utilizationValue / effectiveCapacity) * 100) : 0;
+    const annualCapacity = capacities[`section${i}`];
+    result[`${prefix}_annual_utilization`] = annualCapacity > 0 ? 
+      Math.round((utilizationValue / annualCapacity) * 100) : 0;
   }
   
   return result;
 }
 
+// Get medical center capacities from medical_center table
+export async function getMedicalCenterCapacities(medicalCenterId) {
+  try {
+    const medicalCenter = await prisma.medical_center.findUnique({
+      where: { id: parseInt(medicalCenterId) },
+      select: {
+        section1_capacity: true,
+        section2_capacity: true,
+        section3_capacity: true,
+        section4_capacity: true,
+        section5_capacity: true,
+        section6_capacity: true,
+        section7_capacity: true
+      }
+    });
+    
+    if (!medicalCenter) {
+      return {
+        section1_capacity: 0,
+        section2_capacity: 0,
+        section3_capacity: 0,
+        section4_capacity: 0,
+        section5_capacity: 0,
+        section6_capacity: 0,
+        section7_capacity: 0
+      };
+    }
+    
+    return {
+      section1_capacity: medicalCenter.section1_capacity || 0,
+      section2_capacity: medicalCenter.section2_capacity || 0,
+      section3_capacity: medicalCenter.section3_capacity || 0,
+      section4_capacity: medicalCenter.section4_capacity || 0,
+      section5_capacity: medicalCenter.section5_capacity || 0,
+      section6_capacity: medicalCenter.section6_capacity || 0,
+      section7_capacity: medicalCenter.section7_capacity || 0
+    };
+  } catch (error) {
+    console.error('Error getting medical center capacities:', error);
+    return {
+      section1_capacity: 0,
+      section2_capacity: 0,
+      section3_capacity: 0,
+      section4_capacity: 0,
+      section5_capacity: 0,
+      section6_capacity: 0,
+      section7_capacity: 0
+    };
+  }
+}
+
 // Get welfare report by date
-// Get welfare report by date - FIXED VERSION
 export const getReportByDate = async (req, res, next) => {
   try {
     const { date, hospital_id } = req.body;
@@ -446,7 +418,14 @@ export const getReportByDate = async (req, res, next) => {
         section4_name: true,
         section5_name: true,
         section6_name: true,
-        section7_name: true
+        section7_name: true,
+        section1_capacity: true,
+        section2_capacity: true,
+        section3_capacity: true,
+        section4_capacity: true,
+        section5_capacity: true,
+        section6_capacity: true,
+        section7_capacity: true
       }
     });
 
@@ -454,37 +433,28 @@ export const getReportByDate = async (req, res, next) => {
       return response.error("Medical center not found", res, next);
     }
 
-    // Get yesterday's report to get yesterday's capacity
-    const yesterday = new Date(reportDate);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const yesterdayReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        hospital_type: 'welfare',
-        OR: [
-          { status: 'submitted' },
-          { status: 'approved' }
-        ],
-        report_date: yesterday
-      },
-      include: {
-        welfare_report_data: true
-      }
-    });
-    
-    const yesterdayCapacity = yesterdayReport?.welfare_report_data?.capacity || 0;
+    // Get default capacities from medical_center table
+    const defaultCapacities = {
+      section1_capacity: medicalCenter.section1_capacity || 0,
+      section2_capacity: medicalCenter.section2_capacity || 0,
+      section3_capacity: medicalCenter.section3_capacity || 0,
+      section4_capacity: medicalCenter.section4_capacity || 0,
+      section5_capacity: medicalCenter.section5_capacity || 0,
+      section6_capacity: medicalCenter.section6_capacity || 0,
+      section7_capacity: medicalCenter.section7_capacity || 0
+    };
 
     if (!existingReport) {
-      // Initialize empty welfare data structure
+      // Initialize empty welfare data structure with default capacities
       const initialWelfareData = {
-        capacity: yesterdayCapacity, // FIXED: Use yesterday's capacity instead of 0
+        // Default capacities from medical_center table
+        ...defaultCapacities,
         
         // New fields
         conference_events: "",
         special_notes_section: "",
         
-        // Section 1: 入所
+        // Section 1: 入所 - 6 writeable fields
         section1_admission_count: 0,
         section1_discharge_count: 0,
         section1_outside_hospital: 0,
@@ -492,21 +462,20 @@ export const getReportByDate = async (req, res, next) => {
         section1_hospitalization_count: 0,
         section1_discharge_treated: 0,
         
-        // Section 2: 短期入所
+        // Section 2: 短期入所 - 4 writeable fields (NOT 6)
         section2_admission_count: 0,
         section2_discharge_count: 0,
         section2_outside_hospital: 0,
-        section2_admission_treated: 0,
         section2_hospitalization_count: 0,
-        section2_discharge_treated: 0,
+        // Note: section2_admission_treated and section2_discharge_treated are NOT in section 2
         
-        // Section 3: ケアハウス
+        // Section 3: ケアハウス - 4 writeable fields
         section3_admission_count: 0,
         section3_discharge_count: 0,
         section3_outside_hospital: 0,
         section3_hospitalization_count: 0,
         
-        // Sections 4-7
+        // Sections 4-7 - 1 writeable field each
         section4_daily_users: 0,
         section5_daily_users: 0,
         section6_daily_users: 0,
@@ -536,13 +505,12 @@ export const getReportByDate = async (req, res, next) => {
         report: null,
         welfare_data: {
           ...initialWelfareData,
-          ...calculatedFields,
-          capacity: yesterdayCapacity // FIXED: Ensure capacity is included
+          ...calculatedFields
         },
         section_names: sectionNames,
         exists: false,
         hospital_type: 'welfare',
-        capacity: yesterdayCapacity // FIXED: Top-level capacity also
+        capacities: defaultCapacities
       }, res);
     }
 
@@ -572,7 +540,15 @@ export const getReportByDate = async (req, res, next) => {
         section_names: sectionNames,
         exists: true,
         hospital_type: 'welfare',
-        capacity: existingReport.welfare_report_data.capacity || 0
+        capacities: {
+          section1_capacity: existingReport.welfare_report_data.section1_capacity || 0,
+          section2_capacity: existingReport.welfare_report_data.section2_capacity || 0,
+          section3_capacity: existingReport.welfare_report_data.section3_capacity || 0,
+          section4_capacity: existingReport.welfare_report_data.section4_capacity || 0,
+          section5_capacity: existingReport.welfare_report_data.section5_capacity || 0,
+          section6_capacity: existingReport.welfare_report_data.section6_capacity || 0,
+          section7_capacity: existingReport.welfare_report_data.section7_capacity || 0
+        }
       }, res);
     }
 
@@ -590,7 +566,6 @@ export const getReportByDate = async (req, res, next) => {
 };
 
 // Get welfare report by ID
-// Get welfare report by ID - FIXED VERSION
 export const getReportById = async (req, res, next) => {
   try {
     const { report_id } = req.body;
@@ -614,7 +589,14 @@ export const getReportById = async (req, res, next) => {
             section4_name: true,
             section5_name: true,
             section6_name: true,
-            section7_name: true
+            section7_name: true,
+            section1_capacity: true,
+            section2_capacity: true,
+            section3_capacity: true,
+            section4_capacity: true,
+            section5_capacity: true,
+            section6_capacity: true,
+            section7_capacity: true
           }
         },
         created_by_admin: {
@@ -634,27 +616,6 @@ export const getReportById = async (req, res, next) => {
       return response.error("This is not a welfare report", res, next);
     }
 
-    // Get yesterday's report to get yesterday's capacity (same logic as getReportByDate)
-    const yesterday = new Date(report.report_date);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const yesterdayReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: report.medical_center_id,
-        hospital_type: 'welfare',
-        OR: [
-          { status: 'submitted' },
-          { status: 'approved' }
-        ],
-        report_date: yesterday
-      },
-      include: {
-        welfare_report_data: true
-      }
-    });
-    
-    const yesterdayCapacity = yesterdayReport?.welfare_report_data?.capacity || 0;
-
     // Calculate derived fields
     const calculatedFields = await calculateDerivedFields(
       report.welfare_report_data || {}, 
@@ -670,21 +631,35 @@ export const getReportById = async (req, res, next) => {
       section7: report.medical_center.section7_name || '〇〇〇〇4'
     };
 
-    // Determine effective capacity: use report's capacity if > 0, otherwise use yesterday's
-    const reportCapacity = report.welfare_report_data?.capacity || 0;
-    const effectiveCapacity = reportCapacity > 0 ? reportCapacity : yesterdayCapacity;
+    // Get capacities from welfare report data or default from medical center
+    const capacities = report.welfare_report_data ? {
+      section1_capacity: report.welfare_report_data.section1_capacity || 0,
+      section2_capacity: report.welfare_report_data.section2_capacity || 0,
+      section3_capacity: report.welfare_report_data.section3_capacity || 0,
+      section4_capacity: report.welfare_report_data.section4_capacity || 0,
+      section5_capacity: report.welfare_report_data.section5_capacity || 0,
+      section6_capacity: report.welfare_report_data.section6_capacity || 0,
+      section7_capacity: report.welfare_report_data.section7_capacity || 0
+    } : {
+      section1_capacity: report.medical_center.section1_capacity || 0,
+      section2_capacity: report.medical_center.section2_capacity || 0,
+      section3_capacity: report.medical_center.section3_capacity || 0,
+      section4_capacity: report.medical_center.section4_capacity || 0,
+      section5_capacity: report.medical_center.section5_capacity || 0,
+      section6_capacity: report.medical_center.section6_capacity || 0,
+      section7_capacity: report.medical_center.section7_capacity || 0
+    };
 
     return response.success({
       report,
       welfare_data: {
         ...(report.welfare_report_data || {}),
-        ...calculatedFields,
-        capacity: effectiveCapacity // Ensure capacity is included in welfare_data
+        ...calculatedFields
       },
       section_names: sectionNames,
       exists: true,
       hospital_type: 'welfare',
-      capacity: effectiveCapacity // Use effective capacity at top level too
+      capacities
     }, res);
 
   } catch (error) {
@@ -706,7 +681,7 @@ export const submitReport = async (req, res, next) => {
         // Welfare-specific data
         welfare_data,
         section_names,
-        capacity
+        capacities
       } = req.body;
 
       if (!hospital_id || !report_date) {
@@ -790,14 +765,20 @@ export const submitReport = async (req, res, next) => {
           report_id: report.id,
           medical_center_id: parseInt(hospital_id),
           
-          // Capacity field - FIXED
-          capacity: parseInt(welfare_data.capacity) || 0,
+          // Capacity fields - store in DB
+          section1_capacity: parseInt(welfare_data.section1_capacity) || 0,
+          section2_capacity: parseInt(welfare_data.section2_capacity) || 0,
+          section3_capacity: parseInt(welfare_data.section3_capacity) || 0,
+          section4_capacity: parseInt(welfare_data.section4_capacity) || 0,
+          section5_capacity: parseInt(welfare_data.section5_capacity) || 0,
+          section6_capacity: parseInt(welfare_data.section6_capacity) || 0,
+          section7_capacity: parseInt(welfare_data.section7_capacity) || 0,
           
           // New fields
           conference_events: welfare_data.conference_events || '',
           special_notes_section: welfare_data.special_notes_section || '',
           
-          // Section 1: 入所
+          // Section 1: 入所 - 6 writeable fields
           section1_admission_count: parseInt(welfare_data.section1_admission_count) || 0,
           section1_discharge_count: parseInt(welfare_data.section1_discharge_count) || 0,
           section1_outside_hospital: parseInt(welfare_data.section1_outside_hospital) || 0,
@@ -805,21 +786,20 @@ export const submitReport = async (req, res, next) => {
           section1_hospitalization_count: parseInt(welfare_data.section1_hospitalization_count) || 0,
           section1_discharge_treated: parseInt(welfare_data.section1_discharge_treated) || 0,
           
-          // Section 2: 短期入所
+          // Section 2: 短期入所 - 4 writeable fields (NOT 6)
           section2_admission_count: parseInt(welfare_data.section2_admission_count) || 0,
           section2_discharge_count: parseInt(welfare_data.section2_discharge_count) || 0,
           section2_outside_hospital: parseInt(welfare_data.section2_outside_hospital) || 0,
-          section2_admission_treated: parseInt(welfare_data.section2_admission_treated) || 0,
           section2_hospitalization_count: parseInt(welfare_data.section2_hospitalization_count) || 0,
-          section2_discharge_treated: parseInt(welfare_data.section2_discharge_treated) || 0,
+          // Note: section2_admission_treated and section2_discharge_treated are NOT in section 2
           
-          // Section 3: ケアハウス
+          // Section 3: ケアハウス - 4 writeable fields
           section3_admission_count: parseInt(welfare_data.section3_admission_count) || 0,
           section3_discharge_count: parseInt(welfare_data.section3_discharge_count) || 0,
           section3_outside_hospital: parseInt(welfare_data.section3_outside_hospital) || 0,
           section3_hospitalization_count: parseInt(welfare_data.section3_hospitalization_count) || 0,
           
-          // Sections 4-7
+          // Sections 4-7 - 1 writeable field each
           section4_daily_users: parseInt(welfare_data.section4_daily_users) || 0,
           section5_daily_users: parseInt(welfare_data.section5_daily_users) || 0,
           section6_daily_users: parseInt(welfare_data.section6_daily_users) || 0,
@@ -884,6 +864,97 @@ export const submitReport = async (req, res, next) => {
     response.success(transaction, res);
   } catch (error) {
     console.error('Error in submitReport:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Update capacities in medical_center table
+export const updateCapacities = async (req, res, next) => {
+  try {
+    const { hospital_id, capacities } = req.body;
+    const userId = req.user?.id; // adjust if needed
+
+    if (!hospital_id || !capacities || typeof capacities !== 'object') {
+      return response.error("Hospital ID and capacities are required", res, next);
+    }
+
+    // Build update object dynamically
+    const updateData = {
+      updated_by: userId,
+      updated_at: new Date()
+    };
+
+    // Map "1" -> section1_capacity, etc.
+    Object.entries(capacities).forEach(([section, value]) => {
+      const sectionNumber = parseInt(section, 10);
+
+      if (sectionNumber >= 1 && sectionNumber <= 7) {
+        updateData[`section${sectionNumber}_capacity`] = parseInt(value, 10) || 0;
+      }
+    });
+
+    // If no valid sections provided
+    if (Object.keys(updateData).length === 2) {
+      return response.error("No valid section capacities provided", res, next);
+    }
+
+    await prisma.medical_center.update({
+      where: { id: Number(hospital_id) },
+      data: updateData
+    });
+
+    response.success(
+      {
+        success: true,
+        message: "Capacities updated successfully"
+      },
+      res
+    );
+  } catch (error) {
+    console.error("Error in updateCapacities:", error);
+    response.error(error.message, res, next);
+  }
+};
+
+
+// Get capacities for a welfare hospital
+export const getCapacities = async (req, res, next) => {
+  try {
+    const { hospital_id } = req.body;
+
+    if (!hospital_id) {
+      return response.error("Hospital ID is required", res, next);
+    }
+
+    // Get capacities directly from medical_center table
+    const medicalCenter = await prisma.medical_center.findUnique({
+      where: { id: parseInt(hospital_id) },
+      select: {
+        section1_capacity: true,
+        section2_capacity: true,
+        section3_capacity: true,
+        section4_capacity: true,
+        section5_capacity: true,
+        section6_capacity: true,
+        section7_capacity: true
+      }
+    });
+
+    if (!medicalCenter) {
+      return response.error("Medical center not found", res, next);
+    }
+
+    response.success({
+      section1: medicalCenter.section1_capacity || 0,
+      section2: medicalCenter.section2_capacity || 0,
+      section3: medicalCenter.section3_capacity || 0,
+      section4: medicalCenter.section4_capacity || 0,
+      section5: medicalCenter.section5_capacity || 0,
+      section6: medicalCenter.section6_capacity || 0,
+      section7: medicalCenter.section7_capacity || 0
+    }, res);
+  } catch (error) {
+    console.error('Error in getCapacities:', error);
     response.error(error.message, res, next);
   }
 };
@@ -1140,12 +1211,18 @@ export const exportReports = async (req, res, next) => {
 
     if (format === 'csv') {
       // Generate CSV
-      let csv = 'Report No,Date,Status,Capacity,Conference Events,Special Notes,Section 1 Admissions,Section 1 Discharges,Section 2 Admissions,Section 2 Discharges,Section 3 Admissions,Section 3 Discharges,Section 4 Users,Section 5 Users,Section 6 Users,Section 7 Users,Vacant Bed Notes,Response Notes\n';
+      let csv = 'Report No,Date,Status,Section 1 Capacity,Section 2 Capacity,Section 3 Capacity,Section 4 Capacity,Section 5 Capacity,Section 6 Capacity,Section 7 Capacity,Conference Events,Special Notes,Section 1 Admissions,Section 1 Discharges,Section 2 Admissions,Section 2 Discharges,Section 3 Admissions,Section 3 Discharges,Section 4 Users,Section 5 Users,Section 6 Users,Section 7 Users,Vacant Bed Notes,Response Notes\n';
       
       reports.forEach(report => {
         const data = report.welfare_report_data || {};
         csv += `"${report.report_no}","${report.report_date.toISOString().split('T')[0]}","${report.status}",`;
-        csv += `${data.capacity || 0},`;
+        csv += `${data.section1_capacity || 0},`;
+        csv += `${data.section2_capacity || 0},`;
+        csv += `${data.section3_capacity || 0},`;
+        csv += `${data.section4_capacity || 0},`;
+        csv += `${data.section5_capacity || 0},`;
+        csv += `${data.section6_capacity || 0},`;
+        csv += `${data.section7_capacity || 0},`;
         csv += `"${data.conference_events || ''}","${data.special_notes_section || ''}",`;
         csv += `${data.section1_admission_count || 0},${data.section1_discharge_count || 0},`;
         csv += `${data.section2_admission_count || 0},${data.section2_discharge_count || 0},`;

@@ -128,6 +128,15 @@ model medical_center {
   section6_name          String?     @default("〇〇〇〇")
   section7_name          String?     @default("〇〇〇〇")
   
+  // NEW: Capacity fields for welfare facilities
+  section1_capacity      Int?        @default(0)
+  section2_capacity      Int?        @default(0)
+  section3_capacity      Int?        @default(0)
+  section4_capacity      Int?        @default(0)
+  section5_capacity      Int?        @default(0)
+  section6_capacity      Int?        @default(0)
+  section7_capacity      Int?        @default(0)
+  
   doctors      doctor[]
   departments  department[]        // New relation to departments
   
@@ -524,7 +533,7 @@ model welfare_report_data {
   conference_events       String?     @db.Text    // 会議・行事等
   special_notes_section   String?     @db.Text    // 特記事項 (section specific)
   
-  // Section 1: 入所 (Long-term care)
+  // Section 1: 入所 (Long-term care) - 6 writeable fields
   section1_admission_count        Int?        @default(0) // 当日入所者数
   section1_discharge_count        Int?        @default(0) // 当日退所者数
   section1_outside_hospital       Int?        @default(0) // 外泊・入院者数
@@ -532,30 +541,37 @@ model welfare_report_data {
   section1_hospitalization_count  Int?        @default(0) // 入院者数
   section1_discharge_treated      Int?        @default(0) // 退所扱
   
-  // Section 2: 短期入所 (Short-term care) - same fields as section 1
-  section2_admission_count        Int?        @default(0)
-  section2_discharge_count        Int?        @default(0)
-  section2_outside_hospital       Int?        @default(0)
-  section2_admission_treated      Int?        @default(0)
-  section2_hospitalization_count  Int?        @default(0)
-  section2_discharge_treated      Int?        @default(0)
+  // Section 2: 短期入所 (Short-term care) - 4 writeable fields (NOT 6)
+  section2_admission_count        Int?        @default(0) // 当日入所者数
+  section2_discharge_count        Int?        @default(0) // 当日退所者数
+  section2_outside_hospital       Int?        @default(0) // 外泊・入院者数
+  section2_hospitalization_count  Int?        @default(0) // 入院者数
+  // Note: section2_admission_treated and section2_discharge_treated are NOT in section 2
   
-  // Section 3: ケアハウス (Care house)
+  // Section 3: ケアハウス (Care house) - 4 writeable fields
   section3_admission_count        Int?        @default(0) // 当日入所者数
   section3_discharge_count        Int?        @default(0) // 当日退所者数
   section3_outside_hospital       Int?        @default(0) // 外泊・入院者数
   section3_hospitalization_count  Int?        @default(0) // 入院者数
   
-  // Sections 4-7: ABCD sections (Customizable names)
+  // Sections 4-7: ABCD sections (Customizable names) - 1 writeable field each
   section4_daily_users            Int?        @default(0) // 当日利用者数
   section5_daily_users            Int?        @default(0)
   section6_daily_users            Int?        @default(0)
   section7_daily_users            Int?        @default(0)
   
+  // Capacity fields for each section (stored in DB)
+  section1_capacity      Int?        @default(0)
+  section2_capacity      Int?        @default(0)
+  section3_capacity      Int?        @default(0)
+  section4_capacity      Int?        @default(0)
+  section5_capacity      Int?        @default(0)
+  section6_capacity      Int?        @default(0)
+  section7_capacity      Int?        @default(0)
+  
   // NEW FIELDS: Before 管理事項 section
   vacant_bed_notes        String?     @db.Text    // 空床発生自由
   response_notes          String?     @db.Text    // 対応
-  capacity                Int? 
   
   // Relations
   report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
@@ -568,5 +584,3 @@ model welfare_report_data {
   @@index([medical_center_id])
   @@index([created_at])
 }
-
- 

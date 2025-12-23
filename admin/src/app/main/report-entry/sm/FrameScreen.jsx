@@ -30,6 +30,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -43,7 +44,7 @@ import {
   formatJapaneseDate,
   shouldDisableDate
 } from './utils/frameScreenUtils';
-
+ import User from '../../../auth/user/user';
 const FrameScreen = React.memo(({
   formData = null,
   departments = [],
@@ -69,7 +70,7 @@ const FrameScreen = React.memo(({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-
+  let user = User(); 
   // State management
   const [date, setDate] = useState(reportDate || new Date());
   
@@ -79,7 +80,7 @@ const FrameScreen = React.memo(({
     conference_events: "",
     special_notes_section: "",
     
-    // Section 1: 入所 (Long-term care)
+    // Section 1: 入所 (Long-term care) - 6 writeable fields
     section1_admission_count: "0",
     section1_discharge_count: "0",
     section1_outside_hospital: "0",
@@ -87,21 +88,20 @@ const FrameScreen = React.memo(({
     section1_hospitalization_count: "0",
     section1_discharge_treated: "0",
     
-    // Section 2: 短期入所 (Short-term care)
+    // Section 2: 短期入所 (Short-term care) - 4 writeable fields (NOT 6)
     section2_admission_count: "0",
     section2_discharge_count: "0",
     section2_outside_hospital: "0",
-    section2_admission_treated: "0",
     section2_hospitalization_count: "0",
-    section2_discharge_treated: "0",
+    // Note: section2_admission_treated and section2_discharge_treated are NOT in section 2
     
-    // Section 3: ケアハウス (Care house)
+    // Section 3: ケアハウス (Care house) - 4 writeable fields
     section3_admission_count: "0",
     section3_discharge_count: "0",
     section3_outside_hospital: "0",
     section3_hospitalization_count: "0",
     
-    // Sections 4-7: ABCD sections
+    // Sections 4-7: ABCD sections - 1 writeable field each
     section4_daily_users: "0",
     section5_daily_users: "0",
     section6_daily_users: "0",
@@ -109,10 +109,19 @@ const FrameScreen = React.memo(({
     
     // New fields before 管理事項
     vacant_bed_notes: "",
-    response_notes: ""
+    response_notes: "",
+    
+    // Capacity fields (stored in DB)
+    section1_capacity: "0",
+    section2_capacity: "0",
+    section3_capacity: "0",
+    section4_capacity: "0",
+    section5_capacity: "0",
+    section6_capacity: "0",
+    section7_capacity: "0"
   });
 
-  // Calculated fields state (readonly, calculated in backend)
+  // Calculated fields state (readonly, calculated at runtime)
   const [calculatedFields, setCalculatedFields] = useState({
     // Section 1 calculated fields
     section1_end_users: "0", // 前日入所者数
@@ -178,22 +187,22 @@ const FrameScreen = React.memo(({
     section7: '〇〇〇〇4'
   });
 
-  // Capacity
-  const [capacity, setCapacity] = useState("0");
-
   // Special notes (in 管理事項 section)
   const [specialNotes, setSpecialNotes] = useState("");
 
-  // Edit section name dialog
+  // Edit dialogs
   const [editDialog, setEditDialog] = useState({
     open: false,
+    type: '', // 'sectionName' or 'capacity'
     section: null,
-    name: ''
+    name: '',
+    capacity: ''
   });
 
   // Loading states
   const [loadingSectionNames, setLoadingSectionNames] = useState(false);
-  const [savingSectionName, setSavingSectionName] = useState(false);
+  const [loadingCapacities, setLoadingCapacities] = useState(false);
+  const [savingDialog, setSavingDialog] = useState(false);
 
   const [validationErrors, setValidationErrors] = useState({});
   const [formDataLoaded, setFormDataLoaded] = useState(false);
@@ -212,10 +221,10 @@ const FrameScreen = React.memo(({
   const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;
   const textFieldHeight = isMobile ? 44 : isTablet ? 48 : 52;
   const fontSize = {
-    small: isMobile ? '0.9375rem' : isTablet ? '1rem' : '1.0625rem',  // Increased
-    medium: isMobile ? '1.0625rem' : isTablet ? '1.125rem' : '1.25rem',  // Increased
-    large: isMobile ? '1.25rem' : isTablet ? '1.375rem' : '1.5rem',  // Increased
-    xlarge: isMobile ? '1.375rem' : isTablet ? '1.5rem' : '1.625rem',  // Added for section titles
+    small: isMobile ? '0.9375rem' : isTablet ? '1rem' : '1.0625rem',
+    medium: isMobile ? '1.0625rem' : isTablet ? '1.125rem' : '1.25rem',
+    large: isMobile ? '1.25rem' : isTablet ? '1.375rem' : '1.5rem',
+    xlarge: isMobile ? '1.375rem' : isTablet ? '1.5rem' : '1.625rem',
   };
 
   // Initialize welfare data when formData changes
@@ -231,28 +240,46 @@ const FrameScreen = React.memo(({
         // Initialize all fields with defaults
         conference_events: "",
         special_notes_section: "",
+        
+        // Section 1: 入所 - 6 writeable fields
         section1_admission_count: "0",
         section1_discharge_count: "0",
         section1_outside_hospital: "0",
         section1_admission_treated: "0",
         section1_hospitalization_count: "0",
         section1_discharge_treated: "0",
+        
+        // Section 2: 短期入所 - 4 writeable fields (NOT 6)
         section2_admission_count: "0",
         section2_discharge_count: "0",
         section2_outside_hospital: "0",
-        section2_admission_treated: "0",
         section2_hospitalization_count: "0",
-        section2_discharge_treated: "0",
+        // Note: section2_admission_treated and section2_discharge_treated are NOT in section 2
+        
+        // Section 3: ケアハウス - 4 writeable fields
         section3_admission_count: "0",
         section3_discharge_count: "0",
         section3_outside_hospital: "0",
         section3_hospitalization_count: "0",
+        
+        // Sections 4-7 - 1 writeable field each
         section4_daily_users: "0",
         section5_daily_users: "0",
         section6_daily_users: "0",
         section7_daily_users: "0",
+        
+        // New fields before 管理事項
         vacant_bed_notes: "",
-        response_notes: ""
+        response_notes: "",
+        
+        // Capacity fields
+        section1_capacity: "0",
+        section2_capacity: "0",
+        section3_capacity: "0",
+        section4_capacity: "0",
+        section5_capacity: "0",
+        section6_capacity: "0",
+        section7_capacity: "0"
       };
       
       // Update with actual data from backend
@@ -310,13 +337,6 @@ const FrameScreen = React.memo(({
         loadSectionNames();
       }
       
-      // Set capacity
-      if (data.capacity) {
-        setCapacity(data.capacity.toString());
-      } else {
-        setCapacity("0"); // Default
-      }
-      
       // Set special notes from report
       if (formData.special_notes) {
         setSpecialNotes(formData.special_notes);
@@ -327,6 +347,7 @@ const FrameScreen = React.memo(({
       // Initialize empty form for new welfare report
       console.log('Initializing empty form for new report');
       loadSectionNames();
+      loadCapacities();
       setFormDataLoaded(true);
     }
   }, [formData, hospital_type, hospitalId]);
@@ -357,7 +378,38 @@ const FrameScreen = React.memo(({
     }
   }, [hospitalId]);
 
-  // Handle welfare data changes - FIXED VERSION
+  // Load capacities from API
+  const loadCapacities = useCallback(async () => {
+    if (!hospitalId) return;
+    
+    setLoadingCapacities(true);
+    try {
+      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/capacities`, {
+        hospital_id: hospitalId
+      });
+      
+      if (response.data.success !== false) {
+        const capacities = response.data.data || {};
+        setWelfareData(prev => ({
+          ...prev,
+          section1_capacity: (capacities.section1 || 0).toString(),
+          section2_capacity: (capacities.section2 || 0).toString(),
+          section3_capacity: (capacities.section3 || 0).toString(),
+          section4_capacity: (capacities.section4 || 0).toString(),
+          section5_capacity: (capacities.section5 || 0).toString(),
+          section6_capacity: (capacities.section6 || 0).toString(),
+          section7_capacity: (capacities.section7 || 0).toString()
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading capacities:', error);
+      // Keep default capacities
+    } finally {
+      setLoadingCapacities(false);
+    }
+  }, [hospitalId]);
+
+  // Handle welfare data changes
   const handleWelfareDataChange = (field, value) => {
     console.log(`Changing field ${field} to:`, value);
     setWelfareData(prev => ({
@@ -370,20 +422,6 @@ const FrameScreen = React.memo(({
       const newErrors = { ...validationErrors };
       delete newErrors[field];
       setValidationErrors(newErrors);
-    }
-  };
-
-  // Handle capacity change
-  const handleCapacityChange = (e) => {
-    const value = e.target.value;
-    if (value === '' || /^\d*$/.test(value)) {
-      setCapacity(value);
-      
-      if (validationErrors.capacity) {
-        const newErrors = { ...validationErrors };
-        delete newErrors.capacity;
-        setValidationErrors(newErrors);
-      }
     }
   };
 
@@ -400,11 +438,6 @@ const FrameScreen = React.memo(({
   // Validate form
   const validateForm = () => {
     const errors = {};
-    
-    // Validate capacity
-    if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) <= 0) {
-      errors.capacity = '定員は1以上の数値を入力してください';
-    }
     
     // Validate required numeric fields
     const requiredNumericFields = [
@@ -426,6 +459,14 @@ const FrameScreen = React.memo(({
         errors[key] = `${label}は0以上の数値を入力してください`;
       }
     });
+    
+    // Validate capacities
+    for (let i = 1; i <= 7; i++) {
+      const capacity = welfareData[`section${i}_capacity`];
+      if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) < 0) {
+        errors[`section${i}_capacity`] = `セクション${i}の定員は0以上の数値を入力してください`;
+      }
+    }
     
     setValidationErrors(errors);
     
@@ -453,10 +494,34 @@ const FrameScreen = React.memo(({
       hospital_type: 'welfare',
       welfare_data: {
         ...welfareData,
-        capacity: parseInt(capacity) || 0
+        // Convert string values to integers for numeric fields
+        section1_admission_count: parseInt(welfareData.section1_admission_count) || 0,
+        section1_discharge_count: parseInt(welfareData.section1_discharge_count) || 0,
+        section1_outside_hospital: parseInt(welfareData.section1_outside_hospital) || 0,
+        section1_admission_treated: parseInt(welfareData.section1_admission_treated) || 0,
+        section1_hospitalization_count: parseInt(welfareData.section1_hospitalization_count) || 0,
+        section1_discharge_treated: parseInt(welfareData.section1_discharge_treated) || 0,
+        section2_admission_count: parseInt(welfareData.section2_admission_count) || 0,
+        section2_discharge_count: parseInt(welfareData.section2_discharge_count) || 0,
+        section2_outside_hospital: parseInt(welfareData.section2_outside_hospital) || 0,
+        section2_hospitalization_count: parseInt(welfareData.section2_hospitalization_count) || 0,
+        section3_admission_count: parseInt(welfareData.section3_admission_count) || 0,
+        section3_discharge_count: parseInt(welfareData.section3_discharge_count) || 0,
+        section3_outside_hospital: parseInt(welfareData.section3_outside_hospital) || 0,
+        section3_hospitalization_count: parseInt(welfareData.section3_hospitalization_count) || 0,
+        section4_daily_users: parseInt(welfareData.section4_daily_users) || 0,
+        section5_daily_users: parseInt(welfareData.section5_daily_users) || 0,
+        section6_daily_users: parseInt(welfareData.section6_daily_users) || 0,
+        section7_daily_users: parseInt(welfareData.section7_daily_users) || 0,
+        section1_capacity: parseInt(welfareData.section1_capacity) || 0,
+        section2_capacity: parseInt(welfareData.section2_capacity) || 0,
+        section3_capacity: parseInt(welfareData.section3_capacity) || 0,
+        section4_capacity: parseInt(welfareData.section4_capacity) || 0,
+        section5_capacity: parseInt(welfareData.section5_capacity) || 0,
+        section6_capacity: parseInt(welfareData.section6_capacity) || 0,
+        section7_capacity: parseInt(welfareData.section7_capacity) || 0
       },
-      section_names: sectionNames,
-      capacity: parseInt(capacity) || 0
+      section_names: sectionNames
     };
     
     console.log('Prepared form data for submission:', data);
@@ -487,52 +552,104 @@ const FrameScreen = React.memo(({
   const handleEditSectionName = (section) => {
     setEditDialog({
       open: true,
+      type: 'sectionName',
       section,
-      name: sectionNames[section] || ''
+      name: sectionNames[section] || '',
+      capacity: ''
     });
   };
 
-  const handleSaveSectionName = async () => {
-    const { section, name } = editDialog;
+  // Handle edit capacity
+  const handleEditCapacity = (section) => {
+    const sectionNumber = section.replace('section', '');
+    const capacityKey = `section${sectionNumber}_capacity`;
+    setEditDialog({
+      open: true,
+      type: 'capacity',
+      section,
+      name: '',
+      capacity: welfareData[capacityKey] || '0'
+    });
+  };
+
+  const handleSaveDialog = async () => {
+    const { type, section, name, capacity } = editDialog;
     
-    if (!name.trim()) {
-      showLocalSnackbar('セクション名を入力してください', 'error');
-      return;
-    }
-    
-    if (!hospitalId) {
-      showLocalSnackbar('病院IDが見つかりません', 'error');
-      return;
-    }
-    
-    setSavingSectionName(true);
-    try {
-      // Update section name via API
-      const response = await axios.post(`${apiConfig.baseURL}/report-welfare/update-section-names`, {
-        hospital_id: hospitalId,
-        section_names: {
-          [section]: name.trim()
-        }
-      });
-      
-      if (response.data.success) {
-        // Update local state
-        setSectionNames(prev => ({
-          ...prev,
-          [section]: name.trim()
-        }));
-        
-        setEditDialog({ open: false, section: null, name: '' });
-        showLocalSnackbar('セクション名を更新しました', 'success');
-      } else {
-        showLocalSnackbar(response.data.message || 'セクション名の更新に失敗しました', 'error');
+    if (type === 'sectionName') {
+      if (!name.trim()) {
+        showLocalSnackbar('セクション名を入力してください', 'error');
+        return;
       }
-    } catch (error) {
-      console.error('Error updating section name:', error);
-      const errorMessage = error.response?.data?.message || 'セクション名の更新に失敗しました';
-      showLocalSnackbar(errorMessage, 'error');
-    } finally {
-      setSavingSectionName(false);
+      
+      if (!hospitalId) {
+        showLocalSnackbar('病院IDが見つかりません', 'error');
+        return;
+      }
+      
+      setSavingDialog(true);
+      try {
+        // Update section name via API
+        const response = await axios.post(`${apiConfig.baseURL}/report-welfare/update-section-names`, {
+          hospital_id: hospitalId,
+          section_names: {
+            [section]: name.trim()
+          }
+        });
+        
+        if (response.data.success) {
+          // Update local state
+          setSectionNames(prev => ({
+            ...prev,
+            [section]: name.trim()
+          }));
+          
+          setEditDialog({ open: false, type: '', section: null, name: '', capacity: '' });
+          showLocalSnackbar('セクション名を更新しました', 'success');
+        } else {
+          showLocalSnackbar(response.data.message || 'セクション名の更新に失敗しました', 'error');
+        }
+      } catch (error) {
+        console.error('Error updating section name:', error);
+        const errorMessage = error.response?.data?.message || 'セクション名の更新に失敗しました';
+        showLocalSnackbar(errorMessage, 'error');
+      } finally {
+        setSavingDialog(false);
+      }
+    } else if (type === 'capacity') {
+      if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) < 0) {
+        showLocalSnackbar('定員は0以上の数値を入力してください', 'error');
+        return;
+      }
+      
+      const sectionNumber = section.replace('section', '');
+      const capacityKey = `section${sectionNumber}_capacity`;
+      
+      // Update local state immediately
+      handleWelfareDataChange(capacityKey, capacity);
+      
+      // Also update in medical_center table via API
+      setSavingDialog(true);
+      try {
+        const response = await axios.post(`${apiConfig.baseURL}/report-welfare/update-capacities`, {
+          hospital_id: hospitalId,
+          capacities: {
+            [sectionNumber]: parseInt(capacity) || 0
+          }
+        });
+        
+        if (response.data.success) {
+          setEditDialog({ open: false, type: '', section: null, name: '', capacity: '' });
+          showLocalSnackbar('定員を更新しました', 'success');
+        } else {
+          showLocalSnackbar(response.data.message || '定員の更新に失敗しました', 'error');
+        }
+      } catch (error) {
+        console.error('Error updating capacity:', error);
+        const errorMessage = error.response?.data?.message || '定員の更新に失敗しました';
+        showLocalSnackbar(errorMessage, 'error');
+      } finally {
+        setSavingDialog(false);
+      }
     }
   };
 
@@ -602,7 +719,7 @@ const FrameScreen = React.memo(({
       console.log('Notifying parent of form data changes:', currentFormData);
       onFormDataChange(currentFormData);
     }
-  }, [welfareData, specialNotes, capacity, sectionNames, formDataLoaded, onFormDataChange, loading]);
+  }, [welfareData, specialNotes, sectionNames, formDataLoaded, onFormDataChange, loading]);
 
   // Create functions for header buttons
   const triggerSaveDraft = useCallback(() => {
@@ -626,10 +743,10 @@ const FrameScreen = React.memo(({
   // Render field component with auto-select on focus
   const renderField = (field, label, required = false, editable = true, isCapacity = false, isTextArea = false, rows = 1) => {
     const value = editable ? 
-      (isCapacity ? capacity : welfareData[field]) : 
+      welfareData[field] : 
       calculatedFields[field];
     
-    const error = validationErrors[field] || (isCapacity && validationErrors.capacity);
+    const error = validationErrors[field];
     const helperText = error || (editable ? `${label}を入力してください` : '自動計算されます');
     
     return (
@@ -691,13 +808,7 @@ const FrameScreen = React.memo(({
           ) : (
             <TextField
               value={value || "0"}
-              onChange={(e) => {
-                if (isCapacity) {
-                  handleCapacityChange(e);
-                } else if (editable) {
-                  handleWelfareDataChange(field, e.target.value);
-                }
-              }}
+              onChange={(e) => handleWelfareDataChange(field, e.target.value)}
               variant="outlined"
               fullWidth
               size="small"
@@ -733,6 +844,84 @@ const FrameScreen = React.memo(({
               }}
             />
           )}
+        </Stack>
+      </Grid>
+    );
+  };
+
+  // Render capacity field with edit button
+  const renderCapacityField = (sectionNumber) => {
+    const field = `section${sectionNumber}_capacity`;
+    const label = `定員`;
+    const value = welfareData[field] || "0";
+    const error = validationErrors[field];
+    
+    return (
+      <Grid item xs={12} sm={6} md={3} key={field}>
+        <Stack spacing={1}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography sx={{ 
+              fontWeight: 600, 
+              fontSize: fontSize.small,
+              color: "#36394a",
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5
+            }}>
+              {label}
+              <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
+                *
+              </Typography>
+            </Typography>
+            {!readOnly && reportStatus !== 'submitted' && (
+              <Tooltip title="定員を編集">
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleEditCapacity(`section${sectionNumber}`)}
+                  sx={{ color: '#666' }}
+                >
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+          <TextField
+            value={value}
+            onChange={(e) => handleWelfareDataChange(field, e.target.value)}
+            variant="outlined"
+            fullWidth
+            size="small"
+            error={!!error}
+            helperText={error || '定員を入力してください'}
+            disabled={readOnly || reportStatus === 'submitted'}
+            onFocus={handleTextFieldFocus(field)}
+            InputProps={{
+              sx: {
+                borderRadius: "8px",
+                bgcolor: "#ffffff",
+                height: textFieldHeight,
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: error ? "#df1c41" : "#bdbdbd",
+                },
+                "& input": {
+                  fontSize: fontSize.small,
+                  textAlign: 'right',
+                  paddingRight: 2,
+                  fontWeight: 500,
+                  color: "#2c3e50",
+                  '&::placeholder': {
+                    fontSize: fontSize.small,
+                  }
+                },
+                "&.Mui-disabled": {
+                  bgcolor: "#f5f5f5",
+                  "& input": {
+                    color: "#666",
+                  }
+                }
+              },
+            }}
+          />
         </Stack>
       </Grid>
     );
@@ -826,7 +1015,7 @@ const FrameScreen = React.memo(({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography sx={{ 
                 fontWeight: 700, 
-                fontSize: fontSize.xlarge,  // Increased font size
+                fontSize: fontSize.xlarge,
                 color: "#2c3e50",
                 display: 'flex',
                 alignItems: 'center',
@@ -860,12 +1049,10 @@ const FrameScreen = React.memo(({
             )}
           </Box>
 
-          {/* Capacity field for first section only */}
-          {sectionNumber === 1 && (
-            <Grid container spacing={isMobile ? 2 : 3}>
-              {renderField('capacity', '定員', true, true, true)}
-            </Grid>
-          )}
+          {/* Capacity field for each section */}
+          <Grid container spacing={isMobile ? 2 : 3}>
+            {renderCapacityField(sectionNumber)}
+          </Grid>
 
           {/* Fields Grid */}
           <Grid container spacing={isMobile ? 2 : 3}>
@@ -1188,7 +1375,7 @@ const FrameScreen = React.memo(({
               </Stack>
             </Paper>
 
-            {/* Section 1: 入所 */}
+            {/* Section 1: 入所 - 6 writeable fields */}
             {renderSection(1, '入所', [
               { key: 'section1_admission_count', label: '当日入所者数', required: true, editable: true },
               { key: 'section1_discharge_count', label: '当日退所者数', required: true, editable: true },
@@ -1202,21 +1389,20 @@ const FrameScreen = React.memo(({
               { key: 'section1_monthly_utilization', label: '当月稼働率', required: false, editable: false }
             ], true)}
 
-            {/* Section 2: 短期入所 */}
+            {/* Section 2: 短期入所 - 4 writeable fields (NOT 6) */}
             {renderSection(2, '短期入所', [
               { key: 'section2_admission_count', label: '当日入所者数', required: true, editable: true },
               { key: 'section2_discharge_count', label: '当日退所者数', required: true, editable: true },
               { key: 'section2_outside_hospital', label: '外泊・入院者数', required: false, editable: true },
-              { key: 'section2_admission_treated', label: '入所扱', required: false, editable: true },
               { key: 'section2_hospitalization_count', label: '入院者数', required: false, editable: true },
-              { key: 'section2_discharge_treated', label: '退所扱', required: false, editable: true },
+              // Note: section2_admission_treated and section2_discharge_treated are NOT in section 2
               { key: 'section2_end_users', label: '前日入所者数', required: false, editable: false },
               { key: 'section2_monthly_admission', label: '当月入所者数', required: false, editable: false },
               { key: 'section2_monthly_avg', label: '当月平均入所者数', required: false, editable: false },
               { key: 'section2_monthly_utilization', label: '当月稼働率', required: false, editable: false }
             ], true)}
 
-            {/* Section 3: ケアハウス */}
+            {/* Section 3: ケアハウス - 4 writeable fields */}
             {renderSection(3, 'ケアハウス', [
               { key: 'section3_admission_count', label: '当日入所者数', required: true, editable: true },
               { key: 'section3_discharge_count', label: '当日退所者数', required: true, editable: true },
@@ -1228,7 +1414,7 @@ const FrameScreen = React.memo(({
               { key: 'section3_monthly_utilization', label: '当月稼働率', required: false, editable: false }
             ], true)}
 
-            {/* Sections 4-7: ABCD Sections */}
+            {/* Sections 4-7: ABCD Sections - 1 writeable field each */}
             {[4, 5, 6, 7].map(sectionNum => (
               renderSection(sectionNum, '', [
                 { key: `section${sectionNum}_daily_users`, label: '当日利用者数', required: true, editable: true },
@@ -1452,44 +1638,66 @@ const FrameScreen = React.memo(({
           </Paper>
         )}
 
-        {/* Edit Section Name Dialog */}
+        {/* Edit Dialog for Section Name or Capacity */}
         <Dialog
           open={editDialog.open}
-          onClose={() => !savingSectionName && setEditDialog({ open: false, section: null, name: '' })}
+          onClose={() => !savingDialog && setEditDialog({ open: false, type: '', section: null, name: '', capacity: '' })}
           maxWidth="sm"
           fullWidth
         >
-          <DialogTitle>セクション名を編集</DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="セクション名"
-              fullWidth
-              value={editDialog.name}
-              onChange={(e) => setEditDialog(prev => ({ ...prev, name: e.target.value }))}
-              disabled={savingSectionName}
-              sx={{ mt: 2 }}
-              onFocus={(e) => e.target.select()}
-              inputProps={{
-                style: { fontSize: fontSize.medium }
-              }}
-            />
+          <DialogTitle>
+            {editDialog.type === 'sectionName' ? 'セクション名を編集' : '定員を編集'}
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3, pb: 2 }}>
+            {editDialog.type === 'sectionName' ? (
+              <TextField
+                autoFocus
+                margin="dense"
+                label="セクション名"
+                fullWidth
+                value={editDialog.name}
+                onChange={(e) => setEditDialog(prev => ({ ...prev, name: e.target.value }))}
+                disabled={savingDialog}
+                onFocus={(e) => e.target.select()}
+                inputProps={{
+                  style: { fontSize: fontSize.medium }
+                }}
+              />
+            ) : (
+              <TextField
+                autoFocus
+                margin="dense"
+                label="定員"
+                fullWidth
+                type="number"
+                value={editDialog.capacity}
+                onChange={(e) => setEditDialog(prev => ({ ...prev, capacity: e.target.value }))}
+                disabled={savingDialog}
+                onFocus={(e) => e.target.select()}
+                inputProps={{
+                  style: { fontSize: fontSize.medium },
+                  min: 0
+                }}
+              />
+            )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
             <Button 
-              onClick={() => setEditDialog({ open: false, section: null, name: '' })}
-              disabled={savingSectionName}
+              onClick={() => setEditDialog({ open: false, type: '', section: null, name: '', capacity: '' })}
+              disabled={savingDialog}
             >
               キャンセル
             </Button>
             <Button 
-              onClick={handleSaveSectionName} 
+              onClick={handleSaveDialog} 
               variant="contained"
-              disabled={savingSectionName || !editDialog.name.trim()}
-              startIcon={savingSectionName ? <CircularProgress size={20} /> : null}
+              disabled={savingDialog || 
+                (editDialog.type === 'sectionName' && !editDialog.name.trim()) ||
+                (editDialog.type === 'capacity' && (!editDialog.capacity || isNaN(parseInt(editDialog.capacity)) || parseInt(editDialog.capacity) < 0))
+              }
+              startIcon={savingDialog ? <CircularProgress size={20} /> : null}
             >
-              {savingSectionName ? '保存中...' : '保存'}
+              {savingDialog ? '保存中...' : '保存'}
             </Button>
           </DialogActions>
         </Dialog>
