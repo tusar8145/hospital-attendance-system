@@ -1279,31 +1279,23 @@ function ReportEntryBig({newHospital}) {
    // }
   };
 
-  // Handle back to report list or view
-  const handleBack = () => {
-    const currentData = formDataRef.current;
-    const initialData = initialFormDataRef.current;
-    const hasActualChanges = currentData && initialData ? 
-      hasFormDataChanged(currentData, initialData) : false;
+// Handle back to report list or view
+const handleBack = () => {
+  const currentData = formDataRef.current;
+  const initialData = initialFormDataRef.current;
+  const hasActualChanges = currentData && initialData ? 
+    hasFormDataChanged(currentData, initialData) : false;
 
-    if (isEditingFromView && reportIdFromUrl) {
-      // If editing from view mode and we have a report ID, go back to view
-      const params = getUrlParams();
-      const type = params.type || '1';
-      navigate(`/report-view?id=${reportIdFromUrl}&type=${type}`);
-    } else if (hasActualChanges) {
-      // Show confirmation for unsaved changes
-      setConfirmDialog({
-        open: true,
-        title: '未保存の変更があります',
-        message: '戻ると現在の変更が失われます。保存せずに戻りますか？',
-        action: () => navigate('/report-list'),
-        actionType: 'back'
-      });
-    } else {
-      navigate('/report-list');
-    }
-  };
+  if (isEditingFromView && reportIdFromUrl) {
+    // If editing from view mode and we have a report ID, go back to view
+    const params = getUrlParams();
+    const type = params.type || '1';
+    navigate(`/report-view?id=${reportIdFromUrl}&type=${type}`);
+  } else {
+    // Always go back to report list directly
+    navigate('/report-list');
+  }
+};
 
   // Load initial data - FIXED with better tracking
   useEffect(() => {

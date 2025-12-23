@@ -9,6 +9,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 
 import ReportViewBig from './ReportViewBig';
 import ReportViewMid from './ReportViewMid';
+import ReportViewSm from './ReportViewSm';
 
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -263,7 +264,14 @@ window.location.reload();
 			
 			case 'welfare':
 				return (
-					<>welfare</>
+					<ReportViewSm 
+						reportId={reportIdFromUrl}
+						hospitalType={hospital_type}
+						hospital={hospital}
+						newHospital={hospital}
+						onSuccess={(message) => setSuccessAlert(message)}
+						onError={(message) => setFailAlert(message)}
+					/>
 				);
 			
 			default:
