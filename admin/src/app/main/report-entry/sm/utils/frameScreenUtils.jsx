@@ -28,31 +28,29 @@ export const shouldDisableDate = (date) => {
   return selectedDate > today;
 };
 
-// Prepare form data for submission - SIMPLIFIED VERSION
+// Prepare form data for submission
 export const prepareFormData = (
   patientsCount,
   outpatientsCount,
   specialNotes,
   hospital_type = 'hospital'
 ) => {
-  console.log('=== Preparing Simplified Form Data ===');
-  
   return {
     admission_count: patientsCount || "0",
     discharge_count: outpatientsCount || "0",
-    external_duty: "0", // Always 0 since night consultation is removed
-    emergency_transport: "0", // PET removed
-    post_transport_admission: "0", // MR removed
-    visit_count: "0", // CT removed
+    external_duty: "0",
+    emergency_transport: "0",
+    post_transport_admission: "0",
+    visit_count: "0",
     special_notes: specialNotes.trim(),
-    report_details: [], // Empty array since component is removed
-    report_details_mid: [], // Empty array
-    external_consultation_details: null, // External consultation removed
+    report_details: [],
+    report_details_mid: [],
+    external_consultation_details: null,
     hospital_type: hospital_type,
   };
 };
 
-// Validate form data - SIMPLIFIED VERSION
+// Validate form data
 export const validateForm = (
   hospitalId,
   patientsCount,
@@ -65,7 +63,7 @@ export const validateForm = (
     errors.hospital = "病院の選択が必要です";
   }
   
-  // Validate patient counts - these are now editable
+  // Validate patient counts
   if (!patientsCount || patientsCount === "" || isNaN(parseInt(patientsCount))) {
     errors.patientsCount = "有効な午前診数が必要です";
   }

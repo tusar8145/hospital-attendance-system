@@ -51,7 +51,7 @@ async function getLastReportWelfareData(medicalCenterId, currentDate) {
 }
 
 // Calculate derived fields based on writable fields and last report data
-function calculateDerivedFields(writableData, lastReportData = null, capacity = 100) {
+function calculateDerivedFields(writableData, lastReportData = null, capacity = 0) {
   const result = {};
   
   // Helper function to get value or default
@@ -189,9 +189,18 @@ export const getReportByDate = async (req, res, next) => {
       }
     });
 
-    // Get medical center to check type
+    // Get medical center to check type and section names
     const medicalCenter = await prisma.medical_center.findUnique({
-      where: { id: parseInt(hospital_id) }
+      where: { id: parseInt(hospital_id) },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        section4_name: true,
+        section5_name: true,
+        section6_name: true,
+        section7_name: true
+      }
     });
 
     if (!medicalCenter) {
@@ -200,7 +209,7 @@ export const getReportByDate = async (req, res, next) => {
 
     // Get capacity (could be stored in medical_center or separate table)
     // For now, using a default value
-    const capacity = 100;
+    const capacity = 0;
 
     // Get last report's data for calculations
     const lastReportData = await getLastReportWelfareData(hospital_id, reportDate);
@@ -209,6 +218,10 @@ export const getReportByDate = async (req, res, next) => {
       // Initialize empty welfare data structure
       const initialWelfareData = {
         capacity: capacity,
+        
+        // New fields
+        conference_events: "",
+        special_notes_section: "",
         
         // Section 1: 入所
         section1_admission_count: 0,
@@ -236,23 +249,22 @@ export const getReportByDate = async (req, res, next) => {
         section4_daily_users: 0,
         section5_daily_users: 0,
         section6_daily_users: 0,
-        section7_daily_users: 0
+        section7_daily_users: 0,
+        
+        // New fields before 管理事項
+        vacant_bed_notes: "",
+        response_notes: ""
       };
 
       // Calculate derived fields
       const calculatedFields = calculateDerivedFields(initialWelfareData, lastReportData, capacity);
       
-      // Get section names (from last report or defaults)
-      const sectionNames = lastReportData ? {
-        section4: lastReportData.section4_name || 'ABCD1',
-        section5: lastReportData.section5_name || 'ABCD2',
-        section6: lastReportData.section6_name || 'ABCD3',
-        section7: lastReportData.section7_name || 'ABCD4'
-      } : {
-        section4: 'ABCD1',
-        section5: 'ABCD2',
-        section6: 'ABCD3',
-        section7: 'ABCD4'
+      // Get section names from medical center
+      const sectionNames = {
+        section4: medicalCenter.section4_name || '〇〇〇〇1',
+        section5: medicalCenter.section5_name || '〇〇〇〇2',
+        section6: medicalCenter.section6_name || '〇〇〇〇3',
+        section7: medicalCenter.section7_name || '〇〇〇〇4'
       };
       
       return response.success({
@@ -260,8 +272,12 @@ export const getReportByDate = async (req, res, next) => {
         welfare_data: {
           ...initialWelfareData,
           ...calculatedFields,
-          section_names: sectionNames
+          conference_events: "",
+          special_notes_section: "",
+          vacant_bed_notes: "",
+          response_notes: ""
         },
+        section_names: sectionNames,
         exists: false,
         hospital_type: 'welfare',
         capacity: capacity
@@ -277,21 +293,21 @@ export const getReportByDate = async (req, res, next) => {
         capacity
       );
       
-      // Get section names from welfare data
+      // Get section names from medical center
       const sectionNames = {
-        section4: existingReport.welfare_report_data.section4_name || 'ABCD1',
-        section5: existingReport.welfare_report_data.section5_name || 'ABCD2',
-        section6: existingReport.welfare_report_data.section6_name || 'ABCD3',
-        section7: existingReport.welfare_report_data.section7_name || 'ABCD4'
+        section4: medicalCenter.section4_name || '〇〇〇〇1',
+        section5: medicalCenter.section5_name || '〇〇〇〇2',
+        section6: medicalCenter.section6_name || '〇〇〇〇3',
+        section7: medicalCenter.section7_name || '〇〇〇〇4'
       };
 
       return response.success({
         report: existingReport,
         welfare_data: {
           ...existingReport.welfare_report_data,
-          ...calculatedFields,
-          section_names: sectionNames
+          ...calculatedFields
         },
+        section_names: sectionNames,
         exists: true,
         hospital_type: 'welfare',
         capacity: capacity
@@ -327,7 +343,17 @@ export const getReportById = async (req, res, next) => {
       },
       include: {
         welfare_report_data: true,
-        medical_center: true,
+        medical_center: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            section4_name: true,
+            section5_name: true,
+            section6_name: true,
+            section7_name: true
+          }
+        },
         created_by_admin: {
           select: { name: true }
         },
@@ -347,7 +373,7 @@ export const getReportById = async (req, res, next) => {
     }
 
     // Get capacity
-    const capacity = 100;
+    const capacity = 0;
 
     // Get last report's data for calculations
     const lastReportData = await getLastReportWelfareData(report.medical_center_id, report.report_date);
@@ -360,21 +386,21 @@ export const getReportById = async (req, res, next) => {
         capacity
       );
       
-      // Get section names
+      // Get section names from medical center
       const sectionNames = {
-        section4: report.welfare_report_data.section4_name || 'ABCD1',
-        section5: report.welfare_report_data.section5_name || 'ABCD2',
-        section6: report.welfare_report_data.section6_name || 'ABCD3',
-        section7: report.welfare_report_data.section7_name || 'ABCD4'
+        section4: report.medical_center.section4_name || '〇〇〇〇1',
+        section5: report.medical_center.section5_name || '〇〇〇〇2',
+        section6: report.medical_center.section6_name || '〇〇〇〇3',
+        section7: report.medical_center.section7_name || '〇〇〇〇4'
       };
 
       return response.success({
         report,
         welfare_data: {
           ...report.welfare_report_data,
-          ...calculatedFields,
-          section_names: sectionNames
+          ...calculatedFields
         },
+        section_names: sectionNames,
         exists: true,
         hospital_type: 'welfare',
         capacity: capacity
@@ -405,7 +431,8 @@ export const submitReport = async (req, res, next) => {
         hospital_type = 'welfare',
         // Welfare-specific data
         welfare_data,
-        section_names
+        section_names,
+        capacity
       } = req.body;
 
       if (!hospital_id || !report_date) {
@@ -488,6 +515,10 @@ export const submitReport = async (req, res, next) => {
           report_id: report.id,
           medical_center_id: parseInt(hospital_id),
           
+          // New fields
+          conference_events: welfare_data.conference_events || '',
+          special_notes_section: welfare_data.special_notes_section || '',
+          
           // Section 1: 入所
           section1_admission_count: parseInt(welfare_data.section1_admission_count) || 0,
           section1_discharge_count: parseInt(welfare_data.section1_discharge_count) || 0,
@@ -510,18 +541,15 @@ export const submitReport = async (req, res, next) => {
           section3_outside_hospital: parseInt(welfare_data.section3_outside_hospital) || 0,
           section3_hospitalization_count: parseInt(welfare_data.section3_hospitalization_count) || 0,
           
-          // Sections 4-7 with customizable names
-          section4_name: section_names?.section4 || 'ABCD1',
+          // Sections 4-7 (names are stored in medical_center table)
           section4_daily_users: parseInt(welfare_data.section4_daily_users) || 0,
-          
-          section5_name: section_names?.section5 || 'ABCD2',
           section5_daily_users: parseInt(welfare_data.section5_daily_users) || 0,
-          
-          section6_name: section_names?.section6 || 'ABCD3',
           section6_daily_users: parseInt(welfare_data.section6_daily_users) || 0,
+          section7_daily_users: parseInt(welfare_data.section7_daily_users) || 0,
           
-          section7_name: section_names?.section7 || 'ABCD4',
-          section7_daily_users: parseInt(welfare_data.section7_daily_users) || 0
+          // New fields before 管理事項
+          vacant_bed_notes: welfare_data.vacant_bed_notes || '',
+          response_notes: welfare_data.response_notes || ''
         };
 
         if (existingReport?.welfare_report_data) {
@@ -577,45 +605,34 @@ export const getSectionNames = async (req, res, next) => {
       return response.error("Hospital ID is required", res, next);
     }
 
-    // Get the most recent welfare report for this hospital to retrieve section names
-    const latestReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        hospital_type: 'welfare'
-      },
-      include: {
-        welfare_report_data: true
-      },
-      orderBy: {
-        report_date: 'desc'
+    // Get section names directly from medical_center table
+    const medicalCenter = await prisma.medical_center.findUnique({
+      where: { id: parseInt(hospital_id) },
+      select: {
+        section4_name: true,
+        section5_name: true,
+        section6_name: true,
+        section7_name: true
       }
     });
 
-    const defaultNames = {
-      section4: 'ABCD1',
-      section5: 'ABCD2',
-      section6: 'ABCD3',
-      section7: 'ABCD4'
-    };
-
-    if (latestReport?.welfare_report_data) {
-      const welfareData = latestReport.welfare_report_data;
-      response.success({
-        section4: welfareData.section4_name || 'ABCD1',
-        section5: welfareData.section5_name || 'ABCD2',
-        section6: welfareData.section6_name || 'ABCD3',
-        section7: welfareData.section7_name || 'ABCD4'
-      }, res);
-    } else {
-      response.success(defaultNames, res);
+    if (!medicalCenter) {
+      return response.error("Medical center not found", res, next);
     }
+
+    response.success({
+      section4: medicalCenter.section4_name || '〇〇〇〇1',
+      section5: medicalCenter.section5_name || '〇〇〇〇2',
+      section6: medicalCenter.section6_name || '〇〇〇〇3',
+      section7: medicalCenter.section7_name || '〇〇〇〇4'
+    }, res);
   } catch (error) {
     console.error('Error in getSectionNames:', error);
     response.error(error.message, res, next);
   }
 };
 
-// Update section names
+// Update section names in medical_center table
 export const updateSectionNames = async (req, res, next) => {
   try {
     const { hospital_id, section_names } = req.body;
@@ -625,32 +642,15 @@ export const updateSectionNames = async (req, res, next) => {
       return response.error("Hospital ID and section names are required", res, next);
     }
 
-    // Get the most recent welfare report for this hospital
-    const latestReport = await prisma.report.findFirst({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        hospital_type: 'welfare'
-      },
-      include: {
-        welfare_report_data: true
-      },
-      orderBy: {
-        report_date: 'desc'
-      }
-    });
-
-    if (!latestReport?.welfare_report_data) {
-      return response.error("No welfare report found for this hospital", res, next);
-    }
-
-    // Update section names in the latest welfare report data
-    await prisma.welfare_report_data.update({
-      where: { id: latestReport.welfare_report_data.id },
+    // Update section names in medical_center table
+    await prisma.medical_center.update({
+      where: { id: parseInt(hospital_id) },
       data: {
-        section4_name: section_names.section4 || 'ABCD1',
-        section5_name: section_names.section5 || 'ABCD2',
-        section6_name: section_names.section6 || 'ABCD3',
-        section7_name: section_names.section7 || 'ABCD4',
+        section4_name: section_names.section4 || '〇〇〇〇1',
+        section5_name: section_names.section5 || '〇〇〇〇2',
+        section6_name: section_names.section6 || '〇〇〇〇3',
+        section7_name: section_names.section7 || '〇〇〇〇4',
+        updated_by: userId,
         updated_at: new Date()
       }
     });
@@ -848,16 +848,18 @@ export const exportReports = async (req, res, next) => {
 
     if (format === 'csv') {
       // Generate CSV
-      let csv = 'Report No,Date,Status,Section 1 Admissions,Section 1 Discharges,Section 2 Admissions,Section 2 Discharges,Section 3 Admissions,Section 3 Discharges,Section 4 Users,Section 5 Users,Section 6 Users,Section 7 Users\n';
+      let csv = 'Report No,Date,Status,Conference Events,Special Notes,Section 1 Admissions,Section 1 Discharges,Section 2 Admissions,Section 2 Discharges,Section 3 Admissions,Section 3 Discharges,Section 4 Users,Section 5 Users,Section 6 Users,Section 7 Users,Vacant Bed Notes,Response Notes\n';
       
       reports.forEach(report => {
         const data = report.welfare_report_data || {};
         csv += `"${report.report_no}","${report.report_date.toISOString().split('T')[0]}","${report.status}",`;
+        csv += `"${data.conference_events || ''}","${data.special_notes_section || ''}",`;
         csv += `${data.section1_admission_count || 0},${data.section1_discharge_count || 0},`;
         csv += `${data.section2_admission_count || 0},${data.section2_discharge_count || 0},`;
         csv += `${data.section3_admission_count || 0},${data.section3_discharge_count || 0},`;
         csv += `${data.section4_daily_users || 0},${data.section5_daily_users || 0},`;
-        csv += `${data.section6_daily_users || 0},${data.section7_daily_users || 0}\n`;
+        csv += `${data.section6_daily_users || 0},${data.section7_daily_users || 0},`;
+        csv += `"${data.vacant_bed_notes || ''}","${data.response_notes || ''}"\n`;
       });
 
       res.setHeader('Content-Type', 'text/csv');

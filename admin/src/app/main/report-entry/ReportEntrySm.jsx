@@ -724,7 +724,7 @@ function ReportEntrySm({ newHospital }) {
           const emptyForm = {
             special_notes: '',
             welfare_data: welfare_data || {
-              capacity: 100,
+              capacity: 0,
               section1_admission_count: 0,
               section1_discharge_count: 0,
               section1_outside_hospital: 0,
@@ -779,7 +779,7 @@ function ReportEntrySm({ newHospital }) {
       const emptyForm = {
         special_notes: '',
         welfare_data: {
-          capacity: 100,
+          capacity: 0,
           section1_admission_count: 0,
           section1_discharge_count: 0,
           section1_outside_hospital: 0,

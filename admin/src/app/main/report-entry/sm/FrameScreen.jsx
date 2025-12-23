@@ -75,6 +75,10 @@ const FrameScreen = React.memo(({
   
   // Welfare data state - all writable fields
   const [welfareData, setWelfareData] = useState({
+    // New fields after date and before section 1
+    conference_events: "",
+    special_notes_section: "",
+    
     // Section 1: 入所 (Long-term care)
     section1_admission_count: "0",
     section1_discharge_count: "0",
@@ -101,7 +105,11 @@ const FrameScreen = React.memo(({
     section4_daily_users: "0",
     section5_daily_users: "0",
     section6_daily_users: "0",
-    section7_daily_users: "0"
+    section7_daily_users: "0",
+    
+    // New fields before 管理事項
+    vacant_bed_notes: "",
+    response_notes: ""
   });
 
   // Calculated fields state (readonly, calculated in backend)
@@ -164,16 +172,16 @@ const FrameScreen = React.memo(({
 
   // Section names state
   const [sectionNames, setSectionNames] = useState({
-    section4: 'ABCD1',
-    section5: 'ABCD2',
-    section6: 'ABCD3',
-    section7: 'ABCD4'
+    section4: '〇〇〇〇1',
+    section5: '〇〇〇〇2',
+    section6: '〇〇〇〇3',
+    section7: '〇〇〇〇4'
   });
 
   // Capacity
-  const [capacity, setCapacity] = useState("100");
+  const [capacity, setCapacity] = useState("0");
 
-  // Special notes
+  // Special notes (in 管理事項 section)
   const [specialNotes, setSpecialNotes] = useState("");
 
   // Edit section name dialog
@@ -190,9 +198,8 @@ const FrameScreen = React.memo(({
   const [validationErrors, setValidationErrors] = useState({});
   const [formDataLoaded, setFormDataLoaded] = useState(false);
 
-  // Refs
-  const isInitialMountRef = useRef(true);
-  const loadingRef = useRef(false);
+  // Refs for text fields to auto-select content
+  const textFieldRefs = useRef({});
 
   // Local snackbar
   const [localSnackbar, setLocalSnackbar] = useState({
@@ -201,41 +208,66 @@ const FrameScreen = React.memo(({
     severity: 'success'
   });
 
-  // Responsive values
+  // Responsive values with increased font sizes
   const sectionPadding = isMobile ? 2 : isTablet ? 3 : 4;
-  const textFieldHeight = isMobile ? 40 : isTablet ? 44 : 48;
+  const textFieldHeight = isMobile ? 44 : isTablet ? 48 : 52;
   const fontSize = {
-    small: isMobile ? '0.875rem' : isTablet ? '0.9375rem' : '1rem',
-    medium: isMobile ? '1rem' : isTablet ? '1.125rem' : '1.25rem',
-    large: isMobile ? '1.125rem' : isTablet ? '1.25rem' : '1.5rem',
+    small: isMobile ? '0.9375rem' : isTablet ? '1rem' : '1.0625rem',  // Increased
+    medium: isMobile ? '1.0625rem' : isTablet ? '1.125rem' : '1.25rem',  // Increased
+    large: isMobile ? '1.25rem' : isTablet ? '1.375rem' : '1.5rem',  // Increased
+    xlarge: isMobile ? '1.375rem' : isTablet ? '1.5rem' : '1.625rem',  // Added for section titles
   };
 
   // Initialize welfare data when formData changes
   useEffect(() => {
+    console.log('FormData received:', formData);
+    console.log('Welfare data from formData:', formData?.welfare_data);
+    
     if (hospital_type === 'welfare' && formData?.welfare_data) {
       const data = formData.welfare_data;
       
       // Extract writable fields
-      const writableFields = {};
-      const writableFieldNames = [
-        // Section 1
-        'section1_admission_count', 'section1_discharge_count', 'section1_outside_hospital',
-        'section1_admission_treated', 'section1_hospitalization_count', 'section1_discharge_treated',
-        // Section 2
-        'section2_admission_count', 'section2_discharge_count', 'section2_outside_hospital',
-        'section2_admission_treated', 'section2_hospitalization_count', 'section2_discharge_treated',
-        // Section 3
-        'section3_admission_count', 'section3_discharge_count', 'section3_outside_hospital',
-        'section3_hospitalization_count',
-        // Sections 4-7
-        'section4_daily_users', 'section5_daily_users', 'section6_daily_users', 'section7_daily_users'
-      ];
+      const newWelfareData = {
+        // Initialize all fields with defaults
+        conference_events: "",
+        special_notes_section: "",
+        section1_admission_count: "0",
+        section1_discharge_count: "0",
+        section1_outside_hospital: "0",
+        section1_admission_treated: "0",
+        section1_hospitalization_count: "0",
+        section1_discharge_treated: "0",
+        section2_admission_count: "0",
+        section2_discharge_count: "0",
+        section2_outside_hospital: "0",
+        section2_admission_treated: "0",
+        section2_hospitalization_count: "0",
+        section2_discharge_treated: "0",
+        section3_admission_count: "0",
+        section3_discharge_count: "0",
+        section3_outside_hospital: "0",
+        section3_hospitalization_count: "0",
+        section4_daily_users: "0",
+        section5_daily_users: "0",
+        section6_daily_users: "0",
+        section7_daily_users: "0",
+        vacant_bed_notes: "",
+        response_notes: ""
+      };
       
-      writableFieldNames.forEach(field => {
-        writableFields[field] = data[field]?.toString() || "0";
+      // Update with actual data from backend
+      Object.keys(newWelfareData).forEach(key => {
+        if (data[key] !== undefined && data[key] !== null) {
+          if (typeof data[key] === 'number') {
+            newWelfareData[key] = data[key].toString();
+          } else if (typeof data[key] === 'string') {
+            newWelfareData[key] = data[key];
+          }
+        }
       });
       
-      setWelfareData(writableFields);
+      console.log('Setting welfare data:', newWelfareData);
+      setWelfareData(newWelfareData);
       
       // Extract calculated fields
       const calcFields = {};
@@ -262,22 +294,27 @@ const FrameScreen = React.memo(({
       ];
       
       calcFieldNames.forEach(field => {
-        calcFields[field] = data[field]?.toString() || "0";
+        if (data[field] !== undefined && data[field] !== null) {
+          calcFields[field] = data[field].toString();
+        } else {
+          calcFields[field] = "0";
+        }
       });
       
       setCalculatedFields(calcFields);
       
-      // Set section names
-      if (data.section_names) {
-        setSectionNames(data.section_names);
+      // Set section names from form data or load from API
+      if (formData.section_names) {
+        setSectionNames(formData.section_names);
       } else {
-        // Load section names from API if not in form data
         loadSectionNames();
       }
       
       // Set capacity
       if (data.capacity) {
         setCapacity(data.capacity.toString());
+      } else {
+        setCapacity("0"); // Default
       }
       
       // Set special notes from report
@@ -286,8 +323,9 @@ const FrameScreen = React.memo(({
       }
       
       setFormDataLoaded(true);
-    } else if (hospital_type === 'welfare' && !formData) {
+    } else if (hospital_type === 'welfare') {
       // Initialize empty form for new welfare report
+      console.log('Initializing empty form for new report');
       loadSectionNames();
       setFormDataLoaded(true);
     }
@@ -305,10 +343,10 @@ const FrameScreen = React.memo(({
       
       if (response.data.success !== false) {
         setSectionNames(response.data.data || {
-          section4: 'ABCD1',
-          section5: 'ABCD2',
-          section6: 'ABCD3',
-          section7: 'ABCD4'
+          section4: '〇〇〇〇1',
+          section5: '〇〇〇〇2',
+          section6: '〇〇〇〇3',
+          section7: '〇〇〇〇4'
         });
       }
     } catch (error) {
@@ -319,21 +357,19 @@ const FrameScreen = React.memo(({
     }
   }, [hospitalId]);
 
-  // Handle welfare data changes
-  const handleWelfareDataChange = (section, field, value) => {
-    // Allow only numbers
-    if (value === '' || /^\d*$/.test(value)) {
-      setWelfareData(prev => ({
-        ...prev,
-        [`${section}_${field}`]: value
-      }));
-      
-      // Clear validation error if fixed
-      if (validationErrors[`${section}_${field}`]) {
-        const newErrors = { ...validationErrors };
-        delete newErrors[`${section}_${field}`];
-        setValidationErrors(newErrors);
-      }
+  // Handle welfare data changes - FIXED VERSION
+  const handleWelfareDataChange = (field, value) => {
+    console.log(`Changing field ${field} to:`, value);
+    setWelfareData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear validation error if fixed
+    if (validationErrors[field]) {
+      const newErrors = { ...validationErrors };
+      delete newErrors[field];
+      setValidationErrors(newErrors);
     }
   };
 
@@ -342,20 +378,36 @@ const FrameScreen = React.memo(({
     const value = e.target.value;
     if (value === '' || /^\d*$/.test(value)) {
       setCapacity(value);
+      
+      if (validationErrors.capacity) {
+        const newErrors = { ...validationErrors };
+        delete newErrors.capacity;
+        setValidationErrors(newErrors);
+      }
     }
   };
 
-  // Handle special notes change
+  // Handle special notes change (in 管理事項 section)
   const handleSpecialNotesChange = (e) => {
     setSpecialNotes(e.target.value);
+  };
+
+  // Auto-select text field content on focus
+  const handleTextFieldFocus = (fieldId) => (event) => {
+    event.target.select();
   };
 
   // Validate form
   const validateForm = () => {
     const errors = {};
     
-    // Validate required fields
-    const requiredFields = [
+    // Validate capacity
+    if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) <= 0) {
+      errors.capacity = '定員は1以上の数値を入力してください';
+    }
+    
+    // Validate required numeric fields
+    const requiredNumericFields = [
       { key: 'section1_admission_count', label: '入所 - 当日入所者数' },
       { key: 'section1_discharge_count', label: '入所 - 当日退所者数' },
       { key: 'section2_admission_count', label: '短期入所 - 当日入所者数' },
@@ -368,17 +420,12 @@ const FrameScreen = React.memo(({
       { key: 'section7_daily_users', label: `${sectionNames.section7} - 当日利用者数` }
     ];
     
-    requiredFields.forEach(({ key, label }) => {
+    requiredNumericFields.forEach(({ key, label }) => {
       const value = welfareData[key];
       if (!value || value === "" || isNaN(parseInt(value)) || parseInt(value) < 0) {
         errors[key] = `${label}は0以上の数値を入力してください`;
       }
     });
-    
-    // Validate capacity
-    if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) <= 0) {
-      errors.capacity = '定員は1以上の数値を入力してください';
-    }
     
     setValidationErrors(errors);
     
@@ -392,7 +439,7 @@ const FrameScreen = React.memo(({
 
   // Prepare form data for submission
   const prepareFormData = () => {
-    return {
+    const data = {
       admission_count: 0,
       discharge_count: 0,
       external_duty: 0,
@@ -404,10 +451,16 @@ const FrameScreen = React.memo(({
       report_details_mid: [],
       external_consultation_details: null,
       hospital_type: 'welfare',
-      welfare_data: welfareData,
+      welfare_data: {
+        ...welfareData,
+        capacity: parseInt(capacity) || 0
+      },
       section_names: sectionNames,
-      capacity: parseInt(capacity) || 100
+      capacity: parseInt(capacity) || 0
     };
+    
+    console.log('Prepared form data for submission:', data);
+    return data;
   };
 
   // Handle save draft
@@ -544,11 +597,12 @@ const FrameScreen = React.memo(({
 
   // Notify parent of form data changes
   useEffect(() => {
-    if (onFormDataChange && formDataLoaded && !loadingRef.current) {
+    if (onFormDataChange && formDataLoaded && !loading) {
       const currentFormData = prepareFormData();
+      console.log('Notifying parent of form data changes:', currentFormData);
       onFormDataChange(currentFormData);
     }
-  }, [welfareData, specialNotes, capacity, sectionNames, formDataLoaded, onFormDataChange]);
+  }, [welfareData, specialNotes, capacity, sectionNames, formDataLoaded, onFormDataChange, loading]);
 
   // Create functions for header buttons
   const triggerSaveDraft = useCallback(() => {
@@ -569,17 +623,127 @@ const FrameScreen = React.memo(({
     }
   }, [onHeaderSaveDraft, onHeaderSubmit, triggerSaveDraft, triggerSubmit]);
 
-  // Render field component
-  const renderField = (section, field, label, required = false, editable = true, isCapacity = false) => {
+  // Render field component with auto-select on focus
+  const renderField = (field, label, required = false, editable = true, isCapacity = false, isTextArea = false, rows = 1) => {
     const value = editable ? 
-      (isCapacity ? capacity : welfareData[`${section}_${field}`]) : 
-      calculatedFields[`${section}_${field}`];
+      (isCapacity ? capacity : welfareData[field]) : 
+      calculatedFields[field];
     
-    const error = validationErrors[`${section}_${field}`] || (isCapacity && validationErrors.capacity);
+    const error = validationErrors[field] || (isCapacity && validationErrors.capacity);
     const helperText = error || (editable ? `${label}を入力してください` : '自動計算されます');
     
     return (
-      <Grid item xs={12} sm={6} md={3} key={`${section}_${field}`}>
+      <Grid item xs={12} sm={isTextArea ? 12 : 6} md={isTextArea ? 12 : 3} key={field}>
+        <Stack spacing={1}>
+          <Typography sx={{ 
+            fontWeight: 600, 
+            fontSize: fontSize.small,
+            color: "#36394a",
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5
+          }}>
+            {label}
+            {required && (
+              <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
+                *
+              </Typography>
+            )}
+          </Typography>
+          {isTextArea ? (
+            <TextField
+              value={value || ""}
+              onChange={(e) => handleWelfareDataChange(field, e.target.value)}
+              variant="outlined"
+              fullWidth
+              multiline
+              rows={rows}
+              size="small"
+              error={!!error}
+              helperText={helperText}
+              disabled={readOnly || reportStatus === 'submitted' || !editable}
+              onFocus={handleTextFieldFocus(field)}
+              InputProps={{
+                sx: {
+                  borderRadius: "8px",
+                  bgcolor: editable ? "#ffffff" : "#f5f5f5",
+                  fontSize: fontSize.small,
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: error ? "#df1c41" : "#bdbdbd",
+                  },
+                  "& textarea": {
+                    fontSize: fontSize.small,
+                    fontWeight: editable ? 500 : 400,
+                    color: editable ? "#2c3e50" : "#666",
+                    '&::placeholder': {
+                      fontSize: fontSize.small,
+                    }
+                  },
+                  "&.Mui-disabled": {
+                    bgcolor: "#f5f5f5",
+                    "& textarea": {
+                      color: "#666",
+                    }
+                  }
+                },
+              }}
+            />
+          ) : (
+            <TextField
+              value={value || "0"}
+              onChange={(e) => {
+                if (isCapacity) {
+                  handleCapacityChange(e);
+                } else if (editable) {
+                  handleWelfareDataChange(field, e.target.value);
+                }
+              }}
+              variant="outlined"
+              fullWidth
+              size="small"
+              error={!!error}
+              helperText={helperText}
+              disabled={readOnly || reportStatus === 'submitted' || !editable}
+              onFocus={handleTextFieldFocus(field)}
+              InputProps={{
+                sx: {
+                  borderRadius: "8px",
+                  bgcolor: editable ? "#ffffff" : "#f5f5f5",
+                  height: textFieldHeight,
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: error ? "#df1c41" : "#bdbdbd",
+                  },
+                  "& input": {
+                    fontSize: fontSize.small,
+                    textAlign: 'right',
+                    paddingRight: 2,
+                    fontWeight: 500,
+                    color: editable ? "#2c3e50" : "#666",
+                    '&::placeholder': {
+                      fontSize: fontSize.small,
+                    }
+                  },
+                  "&.Mui-disabled": {
+                    bgcolor: "#f5f5f5",
+                    "& input": {
+                      color: "#666",
+                    }
+                  }
+                },
+              }}
+            />
+          )}
+        </Stack>
+      </Grid>
+    );
+  };
+
+  // Render text area component for new fields
+  const renderTextArea = (field, label, rows = 3, required = false) => {
+    const value = welfareData[field] || "";
+    
+    return (
+      <Grid item xs={12} key={field}>
         <Stack spacing={1}>
           <Typography sx={{ 
             fontWeight: 600, 
@@ -597,38 +761,34 @@ const FrameScreen = React.memo(({
             )}
           </Typography>
           <TextField
-            value={value || "0"}
-            onChange={(e) => {
-              if (isCapacity) {
-                handleCapacityChange(e);
-              } else if (editable) {
-                handleWelfareDataChange(section, field, e.target.value);
-              }
-            }}
+            value={value}
+            onChange={(e) => handleWelfareDataChange(field, e.target.value)}
             variant="outlined"
             fullWidth
+            multiline
+            rows={rows}
             size="small"
-            error={!!error}
-            helperText={helperText}
-            disabled={readOnly || reportStatus === 'submitted' || !editable}
+            disabled={readOnly || reportStatus === 'submitted'}
+            onFocus={handleTextFieldFocus(field)}
             InputProps={{
               sx: {
                 borderRadius: "8px",
-                bgcolor: editable ? "#ffffff" : "#f5f5f5",
-                height: textFieldHeight,
+                bgcolor: "#ffffff",
+                fontSize: fontSize.small,
                 "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: error ? "#df1c41" : "#bdbdbd",
+                  borderColor: "#bdbdbd",
                 },
-                "& input": {
+                "& textarea": {
                   fontSize: fontSize.small,
-                  textAlign: 'right',
-                  paddingRight: 2,
                   fontWeight: 500,
-                  color: editable ? "#2c3e50" : "#666",
+                  color: "#2c3e50",
+                  '&::placeholder': {
+                    fontSize: fontSize.small,
+                  }
                 },
                 "&.Mui-disabled": {
                   bgcolor: "#f5f5f5",
-                  "& input": {
+                  "& textarea": {
                     color: "#666",
                   }
                 }
@@ -666,7 +826,7 @@ const FrameScreen = React.memo(({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography sx={{ 
                 fontWeight: 700, 
-                fontSize: fontSize.large,
+                fontSize: fontSize.xlarge,  // Increased font size
                 color: "#2c3e50",
                 display: 'flex',
                 alignItems: 'center',
@@ -674,7 +834,7 @@ const FrameScreen = React.memo(({
               }}>
                 <Box component="span" sx={{ 
                   width: 4, 
-                  height: 20, 
+                  height: 24, 
                   backgroundColor: '#3498db',
                   borderRadius: '2px'
                 }} />
@@ -703,7 +863,7 @@ const FrameScreen = React.memo(({
           {/* Capacity field for first section only */}
           {sectionNumber === 1 && (
             <Grid container spacing={isMobile ? 2 : 3}>
-              {renderField('', 'capacity', '定員', true, true, true)}
+              {renderField('capacity', '定員', true, true, true)}
             </Grid>
           )}
 
@@ -712,11 +872,13 @@ const FrameScreen = React.memo(({
             {fields.map((field, index) => (
               <React.Fragment key={index}>
                 {renderField(
-                  `section${sectionNumber}`, 
                   field.key, 
                   field.label, 
                   field.required, 
-                  field.editable
+                  field.editable,
+                  false,
+                  field.isTextArea || false,
+                  field.rows || 1
                 )}
               </React.Fragment>
             ))}
@@ -746,9 +908,9 @@ const FrameScreen = React.memo(({
               </Typography>
               
               <Grid container spacing={isMobile ? 2 : 3}>
-                {renderField(`section${sectionNumber}`, 'annual_users', '年度延入所者数', false, false)}
-                {renderField(`section${sectionNumber}`, 'annual_avg', '年度平均入所者数', false, false)}
-                {renderField(`section${sectionNumber}`, 'annual_utilization', '年度稼働率', false, false)}
+                {renderField(`section${sectionNumber}_annual_users`, '年度延入所者数', false, false)}
+                {renderField(`section${sectionNumber}_annual_avg`, '年度平均入所者数', false, false)}
+                {renderField(`section${sectionNumber}_annual_utilization`, '年度稼働率', false, false)}
               </Grid>
             </>
           )}
@@ -777,9 +939,9 @@ const FrameScreen = React.memo(({
               </Typography>
               
               <Grid container spacing={isMobile ? 2 : 3}>
-                {renderField(`section${sectionNumber}`, 'annual_users', '年度利用者数', false, false)}
-                {renderField(`section${sectionNumber}`, 'annual_avg', '年度平均利用者数', false, false)}
-                {renderField(`section${sectionNumber}`, 'annual_utilization', '年度稼働率', false, false)}
+                {renderField(`section${sectionNumber}_annual_users`, '年度利用者数', false, false)}
+                {renderField(`section${sectionNumber}_annual_avg`, '年度平均利用者数', false, false)}
+                {renderField(`section${sectionNumber}_annual_utilization`, '年度稼働率', false, false)}
               </Grid>
             </>
           )}
@@ -990,55 +1152,127 @@ const FrameScreen = React.memo(({
         {/* Welfare Report Sections */}
         {formDataLoaded && (
           <>
+            {/* New Section: 会議・行事等 and 特記事項 */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: sectionPadding,
+                borderRadius: '12px',
+                border: '1px solid #e0e0e0',
+                backgroundColor: '#ffffff',
+                mb: 3
+              }}
+            >
+              <Stack spacing={3}>
+                <Typography sx={{ 
+                  fontWeight: 700, 
+                  fontSize: fontSize.xlarge,
+                  color: "#2c3e50",
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <Box component="span" sx={{ 
+                    width: 4, 
+                    height: 24, 
+                    backgroundColor: '#9b59b6',
+                    borderRadius: '2px'
+                  }} />
+                  会議・行事等・特記事項
+                </Typography>
+                
+                <Grid container spacing={isMobile ? 2 : 3}>
+                  {renderTextArea('conference_events', '会議・行事等', 3)}
+                  {renderTextArea('special_notes_section', '特記事項', 3)}
+                </Grid>
+              </Stack>
+            </Paper>
+
             {/* Section 1: 入所 */}
             {renderSection(1, '入所', [
-              { key: 'admission_count', label: '当日入所者数', required: true, editable: true },
-              { key: 'discharge_count', label: '当日退所者数', required: true, editable: true },
-              { key: 'outside_hospital', label: '外泊・入院者数', required: false, editable: true },
-              { key: 'admission_treated', label: '入所扱', required: false, editable: true },
-              { key: 'hospitalization_count', label: '入院者数', required: false, editable: true },
-              { key: 'discharge_treated', label: '退所扱', required: false, editable: true },
-              { key: 'end_users', label: '前日入所者数', required: false, editable: false },
-              { key: 'monthly_admission', label: '当月入所者数', required: false, editable: false },
-              { key: 'monthly_avg', label: '当月平均入所者数', required: false, editable: false },
-              { key: 'monthly_utilization', label: '当月稼働率', required: false, editable: false }
+              { key: 'section1_admission_count', label: '当日入所者数', required: true, editable: true },
+              { key: 'section1_discharge_count', label: '当日退所者数', required: true, editable: true },
+              { key: 'section1_outside_hospital', label: '外泊・入院者数', required: false, editable: true },
+              { key: 'section1_admission_treated', label: '入所扱', required: false, editable: true },
+              { key: 'section1_hospitalization_count', label: '入院者数', required: false, editable: true },
+              { key: 'section1_discharge_treated', label: '退所扱', required: false, editable: true },
+              { key: 'section1_end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'section1_monthly_admission', label: '当月入所者数', required: false, editable: false },
+              { key: 'section1_monthly_avg', label: '当月平均入所者数', required: false, editable: false },
+              { key: 'section1_monthly_utilization', label: '当月稼働率', required: false, editable: false }
             ], true)}
 
             {/* Section 2: 短期入所 */}
             {renderSection(2, '短期入所', [
-              { key: 'admission_count', label: '当日入所者数', required: true, editable: true },
-              { key: 'discharge_count', label: '当日退所者数', required: true, editable: true },
-              { key: 'outside_hospital', label: '外泊・入院者数', required: false, editable: true },
-              { key: 'admission_treated', label: '入所扱', required: false, editable: true },
-              { key: 'hospitalization_count', label: '入院者数', required: false, editable: true },
-              { key: 'discharge_treated', label: '退所扱', required: false, editable: true },
-              { key: 'end_users', label: '前日入所者数', required: false, editable: false },
-              { key: 'monthly_admission', label: '当月入所者数', required: false, editable: false },
-              { key: 'monthly_avg', label: '当月平均入所者数', required: false, editable: false },
-              { key: 'monthly_utilization', label: '当月稼働率', required: false, editable: false }
+              { key: 'section2_admission_count', label: '当日入所者数', required: true, editable: true },
+              { key: 'section2_discharge_count', label: '当日退所者数', required: true, editable: true },
+              { key: 'section2_outside_hospital', label: '外泊・入院者数', required: false, editable: true },
+              { key: 'section2_admission_treated', label: '入所扱', required: false, editable: true },
+              { key: 'section2_hospitalization_count', label: '入院者数', required: false, editable: true },
+              { key: 'section2_discharge_treated', label: '退所扱', required: false, editable: true },
+              { key: 'section2_end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'section2_monthly_admission', label: '当月入所者数', required: false, editable: false },
+              { key: 'section2_monthly_avg', label: '当月平均入所者数', required: false, editable: false },
+              { key: 'section2_monthly_utilization', label: '当月稼働率', required: false, editable: false }
             ], true)}
 
             {/* Section 3: ケアハウス */}
             {renderSection(3, 'ケアハウス', [
-              { key: 'admission_count', label: '当日入所者数', required: true, editable: true },
-              { key: 'discharge_count', label: '当日退所者数', required: true, editable: true },
-              { key: 'outside_hospital', label: '外泊・入院者数', required: false, editable: true },
-              { key: 'hospitalization_count', label: '入院者数', required: false, editable: true },
-              { key: 'end_users', label: '前日入所者数', required: false, editable: false },
-              { key: 'monthly_admission', label: '当月入所者数', required: false, editable: false },
-              { key: 'monthly_avg', label: '当月平均入所者数', required: false, editable: false },
-              { key: 'monthly_utilization', label: '当月稼働率', required: false, editable: false }
+              { key: 'section3_admission_count', label: '当日入所者数', required: true, editable: true },
+              { key: 'section3_discharge_count', label: '当日退所者数', required: true, editable: true },
+              { key: 'section3_outside_hospital', label: '外泊・入院者数', required: false, editable: true },
+              { key: 'section3_hospitalization_count', label: '入院者数', required: false, editable: true },
+              { key: 'section3_end_users', label: '前日入所者数', required: false, editable: false },
+              { key: 'section3_monthly_admission', label: '当月入所者数', required: false, editable: false },
+              { key: 'section3_monthly_avg', label: '当月平均入所者数', required: false, editable: false },
+              { key: 'section3_monthly_utilization', label: '当月稼働率', required: false, editable: false }
             ], true)}
 
             {/* Sections 4-7: ABCD Sections */}
             {[4, 5, 6, 7].map(sectionNum => (
               renderSection(sectionNum, '', [
-                { key: 'daily_users', label: '当日利用者数', required: true, editable: true },
-                { key: 'monthly_users', label: '当月利用者数', required: false, editable: false },
-                { key: 'monthly_avg', label: '当月平均利用者数', required: false, editable: false },
-                { key: 'monthly_utilization', label: '当月稼働率', required: false, editable: false }
+                { key: `section${sectionNum}_daily_users`, label: '当日利用者数', required: true, editable: true },
+                { key: `section${sectionNum}_monthly_users`, label: '当月利用者数', required: false, editable: false },
+                { key: `section${sectionNum}_monthly_avg`, label: '当月平均利用者数', required: false, editable: false },
+                { key: `section${sectionNum}_monthly_utilization`, label: '当月稼働率', required: false, editable: false }
               ], true)
             ))}
+
+            {/* New Section: コメント - 空床発生自由・対応 */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: sectionPadding,
+                borderRadius: '12px',
+                border: '1px solid #e0e0e0',
+                backgroundColor: '#ffffff',
+                mb: 3
+              }}
+            >
+              <Stack spacing={3}>
+                <Typography sx={{ 
+                  fontWeight: 700, 
+                  fontSize: fontSize.xlarge,
+                  color: "#2c3e50",
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <Box component="span" sx={{ 
+                    width: 4, 
+                    height: 24, 
+                    backgroundColor: '#e74c3c',
+                    borderRadius: '2px'
+                  }} />
+                  コメント
+                </Typography>
+                
+                <Grid container spacing={isMobile ? 2 : 3}>
+                  {renderTextArea('vacant_bed_notes', '空床発生自由', 3)}
+                  {renderTextArea('response_notes', '対応', 3)}
+                </Grid>
+              </Stack>
+            </Paper>
 
             {/* Administrative Matters Section */}
             <Paper
@@ -1059,7 +1293,7 @@ const FrameScreen = React.memo(({
                 }}>
                   <Typography sx={{ 
                     fontWeight: 700, 
-                    fontSize: fontSize.large,
+                    fontSize: fontSize.xlarge,
                     color: "#2c3e50",
                     display: 'flex',
                     alignItems: 'center',
@@ -1067,7 +1301,7 @@ const FrameScreen = React.memo(({
                   }}>
                     <Box component="span" sx={{ 
                       width: 4, 
-                      height: 20, 
+                      height: 24, 
                       backgroundColor: '#27ae60',
                       borderRadius: '2px'
                     }} />
@@ -1098,6 +1332,7 @@ const FrameScreen = React.memo(({
                     rows={4}
                     placeholder="特記事項があれば入力してください..."
                     disabled={readOnly || reportStatus === 'submitted'}
+                    onFocus={(e) => e.target.select()}
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         bgcolor: "#ffffff",
@@ -1108,6 +1343,9 @@ const FrameScreen = React.memo(({
                         "& textarea": {
                           fontSize: fontSize.medium,
                           lineHeight: 1.5,
+                          '&::placeholder': {
+                            fontSize: fontSize.medium,
+                          }
                         },
                       },
                     }}
@@ -1232,6 +1470,10 @@ const FrameScreen = React.memo(({
               onChange={(e) => setEditDialog(prev => ({ ...prev, name: e.target.value }))}
               disabled={savingSectionName}
               sx={{ mt: 2 }}
+              onFocus={(e) => e.target.select()}
+              inputProps={{
+                style: { fontSize: fontSize.medium }
+              }}
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>

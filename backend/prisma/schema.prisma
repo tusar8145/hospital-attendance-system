@@ -122,6 +122,12 @@ model medical_center {
   sub_color_1  String?
   sub_color_2  String?
   
+  // NEW: Section names for welfare facilities
+  section4_name          String?     @default("〇〇〇〇")
+  section5_name          String?     @default("〇〇〇〇")
+  section6_name          String?     @default("〇〇〇〇")
+  section7_name          String?     @default("〇〇〇〇")
+  
   doctors      doctor[]
   departments  department[]        // New relation to departments
   
@@ -514,6 +520,10 @@ model welfare_report_data {
   report_id               Int         @unique // Link to main report
   medical_center_id       Int
   
+  // NEW FIELDS: After date and before section 1
+  conference_events       String?     @db.Text    // 会議・行事等
+  special_notes_section   String?     @db.Text    // 特記事項 (section specific)
+  
   // Section 1: 入所 (Long-term care)
   section1_admission_count        Int?        @default(0) // 当日入所者数
   section1_discharge_count        Int?        @default(0) // 当日退所者数
@@ -537,17 +547,15 @@ model welfare_report_data {
   section3_hospitalization_count  Int?        @default(0) // 入院者数
   
   // Sections 4-7: ABCD sections (Customizable names)
-  section4_name                   String?     @default("ABCD1")
   section4_daily_users            Int?        @default(0) // 当日利用者数
-  
-  section5_name                   String?     @default("ABCD2")
   section5_daily_users            Int?        @default(0)
-  
-  section6_name                   String?     @default("ABCD3")
   section6_daily_users            Int?        @default(0)
-  
-  section7_name                   String?     @default("ABCD4")
   section7_daily_users            Int?        @default(0)
+  
+  // NEW FIELDS: Before 管理事項 section
+  vacant_bed_notes        String?     @db.Text    // 空床発生自由
+  response_notes          String?     @db.Text    // 対応
+  capacity                Int? 
   
   // Relations
   report                  report      @relation(fields: [report_id], references: [id], onDelete: Cascade)
@@ -560,3 +568,5 @@ model welfare_report_data {
   @@index([medical_center_id])
   @@index([created_at])
 }
+
+ 
