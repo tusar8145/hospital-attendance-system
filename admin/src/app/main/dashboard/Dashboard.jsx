@@ -390,8 +390,9 @@ function Dashboard() {
       superAdmin: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
         { label: '医療機関管理', icon: <BusinessIcon />, link: '/medical-center', color: 'secondary' },
-        { label: 'ユーザー管理', icon: <People />, link: '/users', color: 'success' },
-        { label: '統計レポート', icon: <Analytics />, link: '/statistics', color: 'info' }
+         { label: 'レポート一覧', icon: <List />, link: '/report-list', color: 'success' },
+      //  { label: 'ユーザー管理', icon: <People />, link: '/users', color: 'success' },
+        //{ label: '統計レポート', icon: <Analytics />, link: '/statistics', color: 'info' }
       ],
       admin: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
@@ -403,13 +404,13 @@ function Dashboard() {
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
         { label: '担当医療機関', icon: <BusinessIcon />, link: '/medical-center', color: 'secondary' },
         { label: '医師管理', icon: <Person />, link: '/doctor', color: 'success' },
-        { label: '診療科管理', icon: <MedicalServices />, link: '/departments', color: 'info' }
+        { label: '診療科管理', icon: <MedicalServices />, link: '/department', color: 'info' }
       ],
       staff: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
         { label: '下書きレポート', icon: <Drafts />, link: '/report-list?status=draft', color: 'secondary' },
         { label: '提出済みレポート', icon: <Send />, link: '/report-list?status=submitted', color: 'success' },
-        { label: '統計を見る', icon: <Analytics />, link: '/statistics', color: 'info' }
+        //{ label: '統計を見る', icon: <Analytics />, link: '/statistics', color: 'info' }
       ],
       operator: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
