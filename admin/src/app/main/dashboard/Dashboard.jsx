@@ -55,7 +55,7 @@ import FusePageSimple from '@fuse/core/FusePageSimple';
 import apiConfig from '../../configs/apiConfig';
 import BusinessIcon from '@mui/icons-material/Business';
 
-// Styled components
+// Styled components with fixed CSS
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
     backgroundColor: theme.palette.background.paper,
@@ -63,7 +63,18 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
     borderStyle: 'solid',
     borderColor: theme.palette.divider
   },
-  '& .FusePageSimple-content': {},
+  '& .FusePageSimple-content': {
+    display: 'block !important', // Force block display instead of flex
+    minHeight: 0,
+    overflowY: 'auto',
+    height: '100%',
+    width: '100%'
+  },
+  '& .FusePageSimple-wrapper': {
+    height: '100vh', // Ensure wrapper takes full viewport height
+    display: 'flex',
+    flexDirection: 'column'
+  },
   '& .FusePageSimple-sidebarHeader': {},
   '& .FusePageSimple-sidebarContent': {}
 }));
@@ -615,7 +626,11 @@ function Dashboard() {
         />
       }
       content={
-        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Box sx={{ 
+          p: { xs: 2, sm: 3, md: 4 },
+          minHeight: '100%',
+          width: '100%'
+        }}>
           {/* Alerts */}
           {successAlert && (
             <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessAlert(null)}>
