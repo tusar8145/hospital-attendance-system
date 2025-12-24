@@ -7,7 +7,20 @@ import FusePageSimple from '@fuse/core/FusePageSimple';
 import axios from 'axios';
 import apiConfig from '../../../configs/apiConfig';
 import Alert from '@mui/material/Alert';
-import { Box, Stack, Typography, Paper, CircularProgress, TextField, IconButton } from '@mui/material';
+import { 
+  Box, 
+  Stack, 
+  Typography, 
+  Paper, 
+  CircularProgress, 
+  TextField, 
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
+} from '@mui/material';
 import HeaderSection from '../HeaderSection';
 import StatusConfirmationSection from '../StatusConfirmationSection';
 import ManagementComments from '../ManagementComments';
@@ -17,7 +30,7 @@ import SendIcon from '@mui/icons-material/Send';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 import { useAppSelector } from 'app/store/hooks';
 import { useNavigate } from 'react-router-dom';
-import {  Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
@@ -140,15 +153,6 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
     { key: 'afternoon', label: '午後診' },
     { key: 'night', label: '夜診' }
   ];
-
-
-
-             {/*<tr>
-                <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan="5">
-                  <div className="text-md">診療時間</div>
-                </th>
-              </tr>*/}
-
 
   return (
     <div className="detailed-duty-table w-full h-full">
@@ -1289,6 +1293,15 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
   const [newComment, setNewComment] = useState('');
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
+  
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: '',
+    message: '',
+    action: null,
+    actionType: '' // 'approval' or 'draft'
+  });
 
   const [reportData, setReportData] = useState(() => {
     if (initialData) {
@@ -1656,6 +1669,106 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
     }
   }, [reportData.report_comments, reportData.comments, reportData.report?.special_notes, user]);
 
+  // Handle approval
+  const handleApproval = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${apiConfig.baseURL}/report/approve`, {
+        report_id: reportId
+      });
+      
+      if (response.data.success) {
+        setSuccessAlert('レポートを承認しました');
+        setTimeout(() => setSuccessAlert(null), 3000);
+        
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFailAlert(response.data.message || '承認に失敗しました');
+        setTimeout(() => setFailAlert(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error approving report:', error);
+      setFailAlert(error.response?.data?.message || '承認に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMakeDraft = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${apiConfig.baseURL}/report/draft`, {
+        report_id: reportId
+      });
+      
+      if (response.data.success) {
+        setSuccessAlert('レポートを下書き保存しました');
+        setTimeout(() => setSuccessAlert(null), 3000);
+        
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFailAlert(response.data.message || '下書き保存に失敗しました');
+        setTimeout(() => setFailAlert(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error saving as draft:', error);
+      setFailAlert(error.response?.data?.message || '下書き保存に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle primary button click with confirmation
+  const handlePrimaryButtonClick = () => {
+    if (reportData.report?.status === 'approved') return;
+    
+    setConfirmDialog({
+      open: true,
+      title: '管理日誌レポートを承認しますか？',
+      message: reportData.exists 
+        ? '既存のレポートを承認します。この操作は取り消せません。'
+        : '新しいレポートを承認します。この操作は取り消せません。',
+      action: handleApproval,
+      actionType: 'approval'
+    });
+  };
+
+  // Handle make draft click with confirmation
+  const handleMakeDraftClick = () => {
+    setConfirmDialog({
+      open: true,
+      title: '管理日誌レポートを下書き保存しますか？',
+      message: reportData.exists 
+        ? '既存のレポートを下書きとして保存します。'
+        : '新しいレポートを下書きとして保存します。',
+      action: handleMakeDraft,
+      actionType: 'draft'
+    });
+  };
+
+  // Handle confirmation dialog close
+  const handleConfirmDialogClose = () => {
+    setConfirmDialog({
+      ...confirmDialog,
+      open: false
+    });
+  };
+
+  // Handle confirmation dialog action
+  const handleConfirmDialogAction = () => {
+    if (confirmDialog.action) {
+      confirmDialog.action();
+    }
+    handleConfirmDialogClose();
+  };
+
+  // Get report status text
   const getReportStatusText = () => {
     const status = reportData.report?.status;
     switch (status) {
@@ -1806,33 +1919,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
     }
   };
 
-  const handleApproval = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.post(`${apiConfig.baseURL}/report/approve`, {
-        report_id: reportId
-      });
-      
-      if (response.data.success) {
-        setSuccessAlert('レポートを承認しました');
-        setTimeout(() => setSuccessAlert(null), 3000);
-        
-        if (onRefresh) {
-          onRefresh();
-        }
-      } else {
-        setFailAlert(response.data.message || '承認に失敗しました');
-        setTimeout(() => setFailAlert(null), 3000);
-      }
-    } catch (error) {
-      console.error('Error approving report:', error);
-      setFailAlert(error.response?.data?.message || '承認に失敗しました');
-      setTimeout(() => setFailAlert(null), 3000);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Get report Japanese date
   const getReportJapaneseDate = () => {
     if (reportData.report?.report_date) {
       try {
@@ -1924,13 +2011,17 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         showSecondaryButton={true}
         primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
         secondaryButtonColor="warning"
-        onPrimaryButtonClick={reportData.report?.status === 'approved' ? null : handleApproval}
+        onPrimaryButtonClick={handlePrimaryButtonClick}
         onSecondaryButtonClick={handleEdit}
+        onMakeDraft={handleMakeDraftClick}
         showDate={true}
         customDate={reportDate}
         variant="gradient"
         loading={loading}
         reportNo={reportData.report?.report_no}
+        status={reportData.report?.status}
+        userRole={user?.role}
+        reportExists={reportData.exists}
       >
         <div className="mt-2">
           <StatusBadge status={reportData.report?.status} />
@@ -2140,6 +2231,37 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
           </div>
         </Box>
       </div>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={handleConfirmDialogClose}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">
+          {confirmDialog.title}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            {confirmDialog.message}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmDialogClose} color="primary" disabled={loading}>
+            キャンセル
+          </Button>
+          <Button 
+            onClick={handleConfirmDialogAction} 
+            color={confirmDialog.actionType === 'approval' ? 'success' : 'primary'}
+            variant="contained"
+            disabled={loading}
+            autoFocus
+          >
+            {loading ? '処理中...' : '確認'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Loading overlay */}
       {loading && (

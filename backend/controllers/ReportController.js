@@ -1898,7 +1898,58 @@ export const approveReport = async (req, res, next) => {
     response.error(error.message, res, next);
   }
 };
+export const draftReport = async (req, res, next) => {
+  try {
+    const { report_id, comments, approval_status = 'draft' } = req.body;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    if (!report_id) {
+      return response.error("Report ID is required", res, next);
+    }
 
+ 
+
+    // Get the report
+    const report = await prisma.report.findUnique({
+      where: { id: parseInt(report_id) },
+      select: {
+        id: true,
+        status: true,
+        hospital_type: true // Added hospital_type
+      }
+    });
+
+    if (!report) {
+      return response.error("Report not found", res, next);
+    }
+
+    // Update report status if superAdmin or admin approves
+    let reportUpdated = false;
+ 
+      await prisma.report.update({
+        where: { id: parseInt(report_id) },
+        data: {
+          status: 'draft',
+          approved_at: new Date(),
+          approved_by: userId,
+          updated_at: new Date(),
+          updated_by: userId
+        }
+      });
+      reportUpdated = true;
+ 
+
+    response.success({
+      success: true,
+      message: "Report draft successfully",
+        }, res);
+
+  } catch (error) {
+    console.error('Error approving report:', error);
+    response.error(error.message, res, next);
+  }
+};
 // Update the getReadOnlyStats function in ReportController.js
 export const getReadOnlyStats = async (req, res, next) => {
   try {

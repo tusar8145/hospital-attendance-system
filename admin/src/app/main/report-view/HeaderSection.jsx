@@ -1,8 +1,19 @@
 // HeaderSection.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { Paper, Typography, Button, Stack, Box } from '@mui/material';
+import { 
+  Paper, 
+  Typography, 
+  Button, 
+  Stack, 
+  Box, 
+  IconButton, 
+  Menu, 
+  MenuItem,
+  Tooltip
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -54,7 +65,16 @@ const HeaderSection = ({
   variant = 'gradient', // 'gradient', 'solid', 'outlined'
   children,
   loading = false,
+  status,
+  userRole,
+  reportNo,
+  // New props for draft functionality
+  onMakeDraft,
+  reportExists = false
 }) => {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
   const getCurrentJapaneseDate = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -86,14 +106,83 @@ const HeaderSection = ({
     }
   };
 
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMakeDraftClick = () => {
+    handleMenuClose();
+    if (onMakeDraft) {
+      onMakeDraft();
+    }
+  };
+
+  // Check if primary button (approval) should be enabled
+  const isPrimaryButtonEnabled = status === 'submitted' && onPrimaryButtonClick && !loading;
+  
+  // Check if draft button should be enabled
+  const isDraftButtonEnabled = status === 'submitted' && onMakeDraft && !loading;
+  
+  // Check if draft button should be visible (not for operators)
+  const showMakeDraftOption = userRole !== 'operator' && onMakeDraft;
+  
+  // Check if primary button should show as disabled/approved
+  const isPrimaryButtonDisabled = loading || !isPrimaryButtonEnabled || status === 'approved';
+  
+  // Get primary button text based on status
+  const getPrimaryButtonText = () => {
+    if (loading) return '処理中...';
+    if (status === 'approved') return '承認済み';
+    if (status === 'draft') return '提出して承認';
+    return primaryButtonText;
+  };
+  
+  // Get primary button color based on status
+  const getPrimaryButtonColor = () => {
+    if (status === 'approved') return 'secondary';
+    if (status === 'draft') return 'success';
+    return primaryButtonColor;
+  };
+  
+  // Get draft button tooltip message
+  const getDraftButtonTooltip = () => {
+    if (userRole === 'operator') return 'オペレーターは下書き保存できません';
+    if (status !== 'submitted') return `下書き保存は「提出済み」ステータスのみ可能です (現在: ${getStatusText(status)})`;
+    return '';
+  };
+  
+  // Get approval button tooltip message
+  const getApprovalButtonTooltip = () => {
+    if (status === 'approved') return '既に承認済みです';
+    if (status !== 'submitted') return `承認は「提出済み」ステータスのみ可能です (現在: ${getStatusText(status)})`;
+    return '';
+  };
+  
+  // Helper function to get status text
+  const getStatusText = (status) => {
+    switch(status) {
+      case 'draft': return '下書き';
+      case 'submitted': return '提出済み';
+      case 'approved': return '承認済み';
+      case 'rejected': return '却下済み';
+      default: return status || '不明';
+    }
+  };
+
   return (
     <StyledPaper elevation={2} sx={getPaperStyle()}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
         <Box sx={{ flex: 1 }}>
           <Stack spacing={1}>
-            <StyledTitle variant="h4">
-              {title}
-            </StyledTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <StyledTitle variant="h4">
+                {title}
+              </StyledTitle>
+            </Box>
             {subtitle && (
               <StyledSubtitle variant="body1">
                 {subtitle}
@@ -112,7 +201,7 @@ const HeaderSection = ({
           </Stack>
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
           {showSecondaryButton && (
             <ActionButton
               variant="contained"
@@ -132,29 +221,77 @@ const HeaderSection = ({
             </ActionButton>
           )}
           
-          <ActionButton
-            variant="contained"
-            color={primaryButtonColor}
-            onClick={onPrimaryButtonClick}
-            disabled={loading || !onPrimaryButtonClick}
+          <Tooltip title={getApprovalButtonTooltip()} arrow>
+            <span>
+              <ActionButton
+                variant="contained"
+                color={getPrimaryButtonColor()}
+                onClick={onPrimaryButtonClick}
+                disabled={isPrimaryButtonDisabled}
+                sx={{ 
+                  bgcolor: getPrimaryButtonColor() === 'success' ? '#4CAF50' : 
+                          getPrimaryButtonColor() === 'secondary' ? '#9E9E9E' : undefined,
+                  '&:hover': {
+                    bgcolor: getPrimaryButtonColor() === 'success' ? '#388E3C' : 
+                            getPrimaryButtonColor() === 'secondary' ? '#757575' : undefined,
+                  }
+                }}
+              >
+                {getPrimaryButtonText()}
+              </ActionButton>
+            </span>
+          </Tooltip>
+
+          {/* Three-dot menu */}
+          <IconButton
+            aria-label="more"
+            aria-controls={open ? 'long-menu' : undefined}
+            aria-expanded={open ? 'true' : undefined}
+            aria-haspopup="true"
+            onClick={handleMenuClick}
+            disabled={loading}
             sx={{ 
-              bgcolor: primaryButtonColor === 'success' ? '#4CAF50' : 
-                      primaryButtonColor === 'secondary' ? '#9E9E9E' : undefined,
+              border: '1px solid #e0e0e0',
               '&:hover': {
-                bgcolor: primaryButtonColor === 'success' ? '#388E3C' : 
-                        primaryButtonColor === 'secondary' ? '#757575' : undefined,
+                bgcolor: 'rgba(0, 0, 0, 0.04)'
               }
             }}
           >
-            {loading ? '処理中...' : primaryButtonText}
-          </ActionButton>
+            <MoreVertIcon />
+          </IconButton>
+          
+          <Menu
+            id="long-menu"
+            anchorEl={anchorEl}
+            open={open}
+            onClose={handleMenuClose}
+            PaperProps={{
+              style: {
+                width: '200px',
+              },
+            }}
+          >
+            {showMakeDraftOption && (
+              <Tooltip title={getDraftButtonTooltip()} arrow placement="left">
+                <span>
+                  <MenuItem 
+                    onClick={handleMakeDraftClick}
+                    disabled={!isDraftButtonEnabled || userRole === 'operator'}
+                  >
+                    下書き保存
+                  </MenuItem>
+                </span>
+              </Tooltip>
+            )}
+            {/* Add more menu items here if needed */}
+          </Menu>
         </Box>
       </Box>
     </StyledPaper>
   );
 };
 
-// Prop Types for better documentation
+// Update Prop Types
 HeaderSection.propTypes = {
   title: PropTypes.string.isRequired,
   subtitle: PropTypes.string,
@@ -165,11 +302,16 @@ HeaderSection.propTypes = {
   secondaryButtonColor: PropTypes.oneOf(['primary', 'secondary', 'success', 'error', 'warning', 'info']),
   onPrimaryButtonClick: PropTypes.func,
   onSecondaryButtonClick: PropTypes.func,
+  onMakeDraft: PropTypes.func, // New prop for draft functionality
   showDate: PropTypes.bool,
   customDate: PropTypes.string,
   variant: PropTypes.oneOf(['gradient', 'solid', 'outlined']),
   children: PropTypes.node,
   loading: PropTypes.bool,
+  status: PropTypes.string,
+  userRole: PropTypes.string,
+  reportNo: PropTypes.string,
+  reportExists: PropTypes.bool,
 };
 
 export default HeaderSection;

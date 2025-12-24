@@ -4,6 +4,7 @@ import { auth } from "../middleware/Auth.js";
 import * as ReportController from "../controllers/ReportController.js";
 import * as ReportControllerMid from "../controllers/ReportControllerMid.js";
 import * as ReportControllerSm from "../controllers/ReportControllerSm.js";
+import * as DashboardController from "../controllers/DashboardController.js";
 
 const router = express.Router();
 
@@ -17,6 +18,7 @@ router.post("/report/update-status", auth, ReportController.updateReportStatus);
 
 //common// New routes for approval and comments
 router.post("/report/approve", auth, ReportController.approveReport);
+router.post("/report/draft", auth, ReportController.draftReport);
 router.post("/report/comment", auth, ReportController.addComment);
 router.put("/report/comment/:id", auth, ReportController.editComment);
 router.delete("/report/comment/:id", auth, ReportController.deleteComment);
@@ -61,5 +63,14 @@ router.post("/report-welfare/export", auth, ReportControllerSm.exportReports);
 
 router.post("/report-welfare/capacities", auth, ReportControllerSm.getMedicalCenterCapacities);
 router.post("/report-welfare/update-capacities", auth, ReportControllerSm.updateCapacities);
+
+
+// Dashboard statistics
+router.post("/dashboard/stats", auth, DashboardController.getDashboardStats);
+router.post("/dashboard/recent-reports", auth, DashboardController.getRecentReports);
+router.post("/dashboard/approval-stats", auth, DashboardController.getApprovalStats);
+router.post("/dashboard/monthly-summary", auth, DashboardController.getMonthlySummary);
+router.post("/dashboard/user-dashboard", auth, DashboardController.getUserDashboard);
+
 
 export { router as ReportRoute };

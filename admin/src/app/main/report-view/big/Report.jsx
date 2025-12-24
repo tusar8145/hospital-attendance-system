@@ -7,7 +7,20 @@ import FusePageSimple from '@fuse/core/FusePageSimple';
 import axios from 'axios';
 import apiConfig from '../../../configs/apiConfig';
 import Alert from '@mui/material/Alert';
-import { Box, Stack, Typography, Paper, CircularProgress, TextField, IconButton } from '@mui/material';
+import { 
+  Box, 
+  Stack, 
+  Typography, 
+  Paper, 
+  CircularProgress, 
+  TextField, 
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
+} from '@mui/material';
 import HospitalDataTable from './components/HospitalDataTable';
 import SimpleDutyTable from './components/SimpleDutyTable';
 import MedicalManagementTable from './components/MedicalManagementTable';
@@ -50,6 +63,15 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
   const [newComment, setNewComment] = useState('');
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
+  
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: '',
+    message: '',
+    action: null,
+    actionType: '' // 'approval' or 'draft'
+  });
 
   // Report data state
   const [reportData, setReportData] = useState(() => {
@@ -344,159 +366,235 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
   // Format comments for ManagementComments component
   const [managementComments, setManagementComments] = useState([]);
 
-useEffect(() => {
-  console.log('Raw reportData.report_comments:', reportData.report_comments);
-  console.log('Raw reportData.comments:', reportData.comments);
-  console.log('Raw reportData.report?.special_notes:', reportData.report?.special_notes);
-  
-  // FIXED: Combine both report_comments and comments arrays
-  // Use report_comments from API response if available
-  const reportCommentsData = reportData.report_comments || [];
-  // Use comments from API response if available
-  const commentsData = reportData.comments || [];
-  
-  console.log('Report comments data:', reportCommentsData);
-  console.log('Comments data:', commentsData);
-  
-  // Combine both arrays, starting with report_comments
-  let allComments = [...reportCommentsData, ...commentsData];
-  
-  console.log('Combined comments before deduplication:', allComments);
-  
-  // Remove duplicates by comment ID
-  const uniqueComments = [];
-  const seenIds = new Set();
-  
-  allComments.forEach(comment => {
-    if (!seenIds.has(comment.id)) {
-      seenIds.add(comment.id);
-      uniqueComments.push(comment);
-    }
-  });
-  
-  allComments = uniqueComments;
-  
-  console.log('Unique comments after deduplication:', allComments);
-  
-  // If report has special_notes and it's not already in comments, add it as first comment
-  if (reportData.report?.special_notes) {
-    console.log('Report has special notes:', reportData.report.special_notes);
+  useEffect(() => {
+    // FIXED: Combine both report_comments and comments arrays
+    // Use report_comments from API response if available
+    const reportCommentsData = reportData.report_comments || [];
+    // Use comments from API response if available
+    const commentsData = reportData.comments || [];
     
-    // Check if special notes is already in comments (should be with is_special_notes flag)
-    const specialNotesExists = allComments.some(comment => 
-      comment.is_special_notes === true || 
-      comment.comment === reportData.report.special_notes ||
-      comment.text === reportData.report.special_notes
-    );
+    // Combine both arrays, starting with report_comments
+    let allComments = [...reportCommentsData, ...commentsData];
     
-    console.log('Special notes exists in comments:', specialNotesExists);
+    // Remove duplicates by comment ID
+    const uniqueComments = [];
+    const seenIds = new Set();
     
-    if (!specialNotesExists) {
-      console.log('Adding special notes as comment');
-      const specialNotesComment = {
-        id: -1, // Special ID for special notes
-        text: reportData.report.special_notes,
-        comment: reportData.report.special_notes,
-        time: reportData.report.created_at ? 
-          new Date(reportData.report.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : 
-          '00:00',
-        author: reportData.report.created_by_admin?.name || 'システム',
-        date: reportData.report.created_at ? 
-          new Date(reportData.report.created_at).toISOString().split('T')[0] : 
-          new Date().toISOString().split('T')[0],
-        created_at: reportData.report.created_at,
-        admin_id: reportData.report.created_by,
-        can_edit: false,
-        is_special_notes: true
-      };
-      
-      // Add special notes as first comment
-      allComments.unshift(specialNotesComment);
-    }
-  }
-
-  console.log('All comments after processing:', allComments);
-  console.log('All comments count:', allComments.length);
-
-  if (allComments.length > 0) {
-    const formattedComments = allComments.map((comment, index) => {
-      console.log(`Processing comment ${index}:`, comment);
-      
-      // Safely format time
-      const formatTime = (date) => {
-        if (!date) return '00:00';
-        try {
-          const dateObj = new Date(date);
-          if (!isNaN(dateObj.getTime())) {
-            return dateObj.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-          }
-        } catch (error) {
-          console.error('Error formatting time:', error);
-        }
-        return '00:00';
-      };
-
-      // Safely format date
-      const formatDate = (date) => {
-        if (!date) return new Date().toISOString().split('T')[0];
-        try {
-          const dateObj = new Date(date);
-          if (!isNaN(dateObj.getTime())) {
-            return dateObj.toISOString().split('T')[0];
-          }
-        } catch (error) {
-          console.error('Error formatting date:', error);
-        }
-        return new Date().toISOString().split('T')[0];
-      };
-
-      // Check if comment can be edited
-      const checkCanEdit = () => {
-        if (comment.is_special_notes) return false; // Special notes cannot be edited
-        if (comment.id === -1) return false; // Special notes comment cannot be edited
-        if (!comment.can_edit) return false;
-        if (comment.admin_id !== user?.id) return false;
-        if (!comment.created_at) return false;
-        
-        const createdDate = new Date(comment.created_at);
-        const now = new Date();
-        const sixHoursAgo = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-        
-        return createdDate >= sixHoursAgo;
-      };
-
-      // Get author name
-      const getAuthorName = () => {
-        if (comment.is_special_notes && comment.id === -1) {
-          return reportData.report?.created_by_admin?.name || 'システム';
-        }
-        return comment.admin?.name || comment.author || 'Unknown';
-      };
-
-      // Format the comment object
-      const formattedComment = {
-        id: comment.id || Date.now() + Math.random(),
-        text: comment.text || comment.comment || '',
-        time: formatTime(comment.created_at),
-        author: getAuthorName(),
-        date: formatDate(comment.created_at),
-        created_at: comment.created_at,
-        admin_id: comment.admin_id,
-        can_edit: checkCanEdit(),
-        is_special_notes: comment.is_special_notes || false
-      };
-      
-      console.log(`Formatted comment ${index}:`, formattedComment);
-      return formattedComment;
+    allComments.forEach(comment => {
+      if (!seenIds.has(comment.id)) {
+        seenIds.add(comment.id);
+        uniqueComments.push(comment);
+      }
     });
     
-    console.log('Setting managementComments:', formattedComments);
-    setManagementComments(formattedComments);
-  } else {
-    console.log('No comments found, setting empty array');
-    setManagementComments([]);
-  }
-}, [reportData.report_comments, reportData.comments, reportData.report?.special_notes, user]);
+    allComments = uniqueComments;
+    
+    // If report has special_notes and it's not already in comments, add it as first comment
+    if (reportData.report?.special_notes) {
+      // Check if special notes is already in comments (should be with is_special_notes flag)
+      const specialNotesExists = allComments.some(comment => 
+        comment.is_special_notes === true || 
+        comment.comment === reportData.report.special_notes ||
+        comment.text === reportData.report.special_notes
+      );
+      
+      if (!specialNotesExists) {
+        const specialNotesComment = {
+          id: -1, // Special ID for special notes
+          text: reportData.report.special_notes,
+          comment: reportData.report.special_notes,
+          time: reportData.report.created_at ? 
+            new Date(reportData.report.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : 
+            '00:00',
+          author: reportData.report.created_by_admin?.name || 'システム',
+          date: reportData.report.created_at ? 
+            new Date(reportData.report.created_at).toISOString().split('T')[0] : 
+            new Date().toISOString().split('T')[0],
+          created_at: reportData.report.created_at,
+          admin_id: reportData.report.created_by,
+          can_edit: false,
+          is_special_notes: true
+        };
+        
+        // Add special notes as first comment
+        allComments.unshift(specialNotesComment);
+      }
+    }
+
+    if (allComments.length > 0) {
+      const formattedComments = allComments.map((comment, index) => {
+        // Safely format time
+        const formatTime = (date) => {
+          if (!date) return '00:00';
+          try {
+            const dateObj = new Date(date);
+            if (!isNaN(dateObj.getTime())) {
+              return dateObj.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            }
+          } catch (error) {
+            console.error('Error formatting time:', error);
+          }
+          return '00:00';
+        };
+
+        // Safely format date
+        const formatDate = (date) => {
+          if (!date) return new Date().toISOString().split('T')[0];
+          try {
+            const dateObj = new Date(date);
+            if (!isNaN(dateObj.getTime())) {
+              return dateObj.toISOString().split('T')[0];
+            }
+          } catch (error) {
+            console.error('Error formatting date:', error);
+          }
+          return new Date().toISOString().split('T')[0];
+        };
+
+        // Check if comment can be edited
+        const checkCanEdit = () => {
+          if (comment.is_special_notes) return false; // Special notes cannot be edited
+          if (comment.id === -1) return false; // Special notes comment cannot be edited
+          if (!comment.can_edit) return false;
+          if (comment.admin_id !== user?.id) return false;
+          if (!comment.created_at) return false;
+          
+          const createdDate = new Date(comment.created_at);
+          const now = new Date();
+          const sixHoursAgo = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+          
+          return createdDate >= sixHoursAgo;
+        };
+
+        // Get author name
+        const getAuthorName = () => {
+          if (comment.is_special_notes && comment.id === -1) {
+            return reportData.report?.created_by_admin?.name || 'システム';
+          }
+          return comment.admin?.name || comment.author || 'Unknown';
+        };
+
+        // Format the comment object
+        const formattedComment = {
+          id: comment.id || Date.now() + Math.random(),
+          text: comment.text || comment.comment || '',
+          time: formatTime(comment.created_at),
+          author: getAuthorName(),
+          date: formatDate(comment.created_at),
+          created_at: comment.created_at,
+          admin_id: comment.admin_id,
+          can_edit: checkCanEdit(),
+          is_special_notes: comment.is_special_notes || false
+        };
+        
+        return formattedComment;
+      });
+      
+      setManagementComments(formattedComments);
+    } else {
+      setManagementComments([]);
+    }
+  }, [reportData.report_comments, reportData.comments, reportData.report?.special_notes, user]);
+
+  // Handle approval
+  const handleApproval = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${apiConfig.baseURL}/report/approve`, {
+        report_id: reportId
+      });
+      
+      if (response.data.success) {
+        setSuccessAlert('レポートを承認しました');
+        setTimeout(() => setSuccessAlert(null), 3000);
+        
+        // Refresh report data
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFailAlert(response.data.message || '承認に失敗しました');
+        setTimeout(() => setFailAlert(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error approving report:', error);
+      setFailAlert(error.response?.data?.message || '承認に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMakeDraft = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${apiConfig.baseURL}/report/draft`, {
+        report_id: reportId
+      });
+      
+      if (response.data.success) {
+        setSuccessAlert('レポートを下書き保存しました');
+        setTimeout(() => setSuccessAlert(null), 3000);
+        
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFailAlert(response.data.message || '下書き保存に失敗しました');
+        setTimeout(() => setFailAlert(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error saving as draft:', error);
+      setFailAlert(error.response?.data?.message || '下書き保存に失敗しました');
+      setTimeout(() => setFailAlert(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle primary button click with confirmation
+  const handlePrimaryButtonClick = () => {
+    if (reportData.report?.status === 'approved') return;
+    
+    setConfirmDialog({
+      open: true,
+      title: '管理日誌レポートを承認しますか？',
+      message: reportData.report?.status === 'submitted'
+        ? '提出済みのレポートを承認します。この操作は取り消せません。'
+        : 'レポートを承認します。この操作は取り消せません。',
+      action: handleApproval,
+      actionType: 'approval'
+    });
+  };
+
+  // Handle make draft click with confirmation
+  const handleMakeDraftClick = () => {
+    setConfirmDialog({
+      open: true,
+      title: '管理日誌レポートを下書き保存しますか？',
+      message: reportData.report?.status === 'submitted'
+        ? '提出済みのレポートを下書きとして保存します。'
+        : 'レポートを下書きとして保存します。',
+      action: handleMakeDraft,
+      actionType: 'draft'
+    });
+  };
+
+  // Handle confirmation dialog close
+  const handleConfirmDialogClose = () => {
+    setConfirmDialog({
+      ...confirmDialog,
+      open: false
+    });
+  };
+
+  // Handle confirmation dialog action
+  const handleConfirmDialogAction = () => {
+    if (confirmDialog.action) {
+      confirmDialog.action();
+    }
+    handleConfirmDialogClose();
+  };
 
   // Get report status display text
   const getReportStatusText = () => {
@@ -510,15 +608,15 @@ useEffect(() => {
     }
   };
 
-  // Get report status color class
+  // Get report status color class for badge
   const getReportStatusColor = () => {
     const status = reportData.report?.status;
     switch (status) {
-      case 'approved': return 'success';
-      case 'submitted': return 'primary';
-      case 'draft': return 'warning';
-      case 'rejected': return 'error';
-      default: return 'default';
+      case 'approved': return 'bg-green-100 text-green-800 border-green-300';
+      case 'submitted': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'draft': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'rejected': return 'bg-red-100 text-red-800 border-red-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
@@ -663,35 +761,6 @@ useEffect(() => {
     }
   };
 
-  // Handle approval
-  const handleApproval = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.post(`${apiConfig.baseURL}/report/approve`, {
-        report_id: reportId
-      });
-      
-      if (response.data.success) {
-        setSuccessAlert('レポートを承認しました');
-        setTimeout(() => setSuccessAlert(null), 3000);
-        
-        // Refresh report data
-        if (onRefresh) {
-          onRefresh();
-        }
-      } else {
-        setFailAlert(response.data.message || '承認に失敗しました');
-        setTimeout(() => setFailAlert(null), 3000);
-      }
-    } catch (error) {
-      console.error('Error approving report:', error);
-      setFailAlert(error.response?.data?.message || '承認に失敗しました');
-      setTimeout(() => setFailAlert(null), 3000);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Get report date in Japanese format
   const getReportJapaneseDate = () => {
     if (reportData.report?.report_date) {
@@ -727,18 +796,8 @@ useEffect(() => {
 
   // Create status badge component
   const StatusBadge = ({ status }) => {
-    const getStatusColorClass = (status) => {
-      switch (status) {
-        case 'approved': return 'bg-green-100 text-green-800 border-green-300';
-        case 'submitted': return 'bg-blue-100 text-blue-800 border-blue-300';
-        case 'draft': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-        case 'rejected': return 'bg-red-100 text-red-800 border-red-300';
-        default: return 'bg-gray-100 text-gray-800 border-gray-300';
-      }
-    };
-
     const statusText = getReportStatusText();
-    const colorClass = getStatusColorClass(reportData.report?.status);
+    const colorClass = getReportStatusColor();
     
     return (
       <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${colorClass}`}>
@@ -796,13 +855,17 @@ useEffect(() => {
         showSecondaryButton={true}
         primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
         secondaryButtonColor="warning"
-        onPrimaryButtonClick={reportData.report?.status === 'approved' ? null : handleApproval}
+        onPrimaryButtonClick={handlePrimaryButtonClick}
         onSecondaryButtonClick={handleEdit}
+        onMakeDraft={handleMakeDraftClick}
         showDate={true}
         customDate={reportDate}
         variant="gradient"
         loading={loading}
         reportNo={reportData.report?.report_no}
+        status={reportData.report?.status}
+        userRole={user?.role}
+        reportExists={reportData.report !== null}
       >
         {/* Status Badge displayed inside HeaderSection */}
         <div className="mt-2">
@@ -1071,6 +1134,37 @@ useEffect(() => {
           </div>
         </div>
       </Paper>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={handleConfirmDialogClose}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">
+          {confirmDialog.title}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            {confirmDialog.message}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmDialogClose} color="primary" disabled={loading}>
+            キャンセル
+          </Button>
+          <Button 
+            onClick={handleConfirmDialogAction} 
+            color={confirmDialog.actionType === 'approval' ? 'success' : 'primary'}
+            variant="contained"
+            disabled={loading}
+            autoFocus
+          >
+            {loading ? '処理中...' : '確認'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Loading overlay */}
       {loading && (
