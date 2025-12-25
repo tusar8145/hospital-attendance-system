@@ -16,3 +16,22 @@ Example: controller,
 5.	Each controller folder can contain multiple controller files from the corresponding route
 6.	Each .js file name will be Capitalized to each world
 7.	Author and version before each function
+
+
+
+#Roles:
+    superAdmin= System
+    admin= 
+    hospitalAssistant
+    staff
+    operator
+
+
+
+
+    chief administrator (1 hospital have 1 CA)
+    manager (Hospital have multiple manager)
+    Data Entry Person    (Hospital level data entry)
+
+
+#hospital assistant does create manager?

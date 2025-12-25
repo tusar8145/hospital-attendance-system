@@ -866,6 +866,9 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         status={reportData.report?.status}
         userRole={user?.role}
         reportExists={reportData.report !== null}
+        approval ={ reportData.approvals?.some(
+          (a) => a.admin_id === user?.uid
+        ) ?? false}  
       >
         {/* Status Badge displayed inside HeaderSection */}
         <div className="mt-2">

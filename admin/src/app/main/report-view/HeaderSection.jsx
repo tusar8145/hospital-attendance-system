@@ -68,6 +68,7 @@ const HeaderSection = ({
   status,
   userRole,
   reportNo,
+  approval,
   // New props for draft functionality
   onMakeDraft,
   reportExists = false
@@ -174,7 +175,7 @@ const HeaderSection = ({
   };
 
   return (
-    <StyledPaper elevation={2} sx={getPaperStyle()}>
+    <StyledPaper elevation={2} sx={getPaperStyle()}> 
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
         <Box sx={{ flex: 1 }}>
           <Stack spacing={1}>
@@ -227,7 +228,7 @@ const HeaderSection = ({
                 variant="contained"
                 color={getPrimaryButtonColor()}
                 onClick={onPrimaryButtonClick}
-                disabled={isPrimaryButtonDisabled}
+                disabled={isPrimaryButtonDisabled || approval}
                 sx={{ 
                   bgcolor: getPrimaryButtonColor() === 'success' ? '#4CAF50' : 
                           getPrimaryButtonColor() === 'secondary' ? '#9E9E9E' : undefined,

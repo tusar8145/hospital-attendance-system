@@ -760,6 +760,7 @@ const DoctorTable = (props) => {
 };
 
 // Create Doctor Modal Component
+// Create Doctor Modal Component
 const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, departments, hospital }) => {
   const { t } = useTranslation('shared-components');
   const [doctors, setDoctors] = useState([{ name: '', license_no: '', medical_center_id: '', department_ids: [] }]);
@@ -767,6 +768,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
   const [apiError, setApiError] = useState('');
   const [lastSelectedHospital, setLastSelectedHospital] = useState('');
   const [filteredDepartments, setFilteredDepartments] = useState([]);
+  const [hospitalSelectionError, setHospitalSelectionError] = useState('');
 
   // Filter departments based on selected medical center
   const filterDepartmentsByMedicalCenter = (medicalCenterId) => {
@@ -780,19 +782,33 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
 
   useEffect(() => {
     if (open) {
-      // Auto-select hospital if hospital exists
-      const initialMedicalCenterId = hospital?.id || '';
+      // Check if hospital is selected in global state
+      if (!hospital?.id) {
+        setHospitalSelectionError(t('Please select a hospital/facility from the global dropdown first'));
+        // Reset form if no hospital selected
+        setDoctors([{ 
+          name: '', 
+          license_no: '', 
+          medical_center_id: '', 
+          department_ids: [] 
+        }]);
+      } else {
+        // Auto-select hospital from global state
+        const initialMedicalCenterId = hospital.id;
+        
+        setDoctors([{ 
+          name: '', 
+          license_no: '', 
+          medical_center_id: initialMedicalCenterId, 
+          department_ids: [] 
+        }]);
+        setHospitalSelectionError('');
+      }
       
-      setDoctors([{ 
-        name: '', 
-        license_no: '', 
-        medical_center_id: initialMedicalCenterId, 
-        department_ids: [] 
-      }]);
       setErrors([]);
       setApiError('');
-      setLastSelectedHospital(initialMedicalCenterId);
-      filterDepartmentsByMedicalCenter(initialMedicalCenterId);
+      setLastSelectedHospital(hospital?.id || '');
+      filterDepartmentsByMedicalCenter(hospital?.id);
     }
   }, [open, hospital, departments]);
 
@@ -813,6 +829,12 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
   }, [mutationError, t]);
 
   const validateForm = () => {
+    // First check if hospital is selected
+    if (!hospital?.id) {
+      setHospitalSelectionError(t('Please select a hospital/facility from the global dropdown first'));
+      return false;
+    }
+
     const newErrors = doctors.map((doctor, index) => {
       const fieldErrors = {};
       if (!doctor.name.trim()) {
@@ -825,9 +847,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       } else if (doctor.license_no.trim().length < 1) {
         fieldErrors.license_no = t('Last name must be at least 1 characters');
       }
-      if (!doctor.medical_center_id) {
-        fieldErrors.medical_center_id = t('This field is Required');
-      }
+      // Note: medical_center_id is auto-selected, so we don't need to validate it here
       return fieldErrors;
     });
 
@@ -837,15 +857,24 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
 
   const handleSubmit = () => {
     setApiError('');
+    setHospitalSelectionError('');
+
+    // Check if hospital is selected before validating form
+    if (!hospital?.id) {
+      setHospitalSelectionError(t('Please select a hospital/facility from the global dropdown first'));
+      return;
+    }
 
     if (!validateForm()) {
       return;
     }
 
-    const validDoctors = doctors.filter(doctor => 
+    const validDoctors = doctors.map(doctor => ({
+      ...doctor,
+      medical_center_id: hospital.id // Force the hospital ID from global state
+    })).filter(doctor => 
       doctor.name.trim() !== '' && 
-      doctor.license_no.trim() !== '' && 
-      doctor.medical_center_id !== ''
+      doctor.license_no.trim() !== ''
     );
     
     if (validDoctors.length === 0) {
@@ -859,7 +888,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     const newDoctor = { 
       name: '', 
       license_no: '', 
-      medical_center_id: lastSelectedHospital || '', 
+      medical_center_id: hospital?.id || '', // Use hospital from global state
       department_ids: [] 
     };
     setDoctors([...doctors, newDoctor]);
@@ -912,6 +941,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     setDoctors([{ name: '', license_no: '', medical_center_id: '', department_ids: [] }]);
     setErrors([]);
     setApiError('');
+    setHospitalSelectionError('');
     setLastSelectedHospital('');
     setFilteredDepartments([]);
     onClose();
@@ -919,6 +949,13 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
 
   const dialogContent = (
     <div className="flex flex-col gap-8">
+      {/* Hospital Selection Error Alert */}
+      {hospitalSelectionError && (
+        <Alert severity="warning" sx={{ px: 0 }}>
+          {hospitalSelectionError}
+        </Alert>
+      )}
+
       {doctors.map((doctor, index) => (
         <div
           key={index}
@@ -959,7 +996,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
               </div>
             </Grid>
           </Grid>
-<br></br>
+          <br></br>
           {/* Hospital/Facility and Clinical Department in same row */}
           <Grid container spacing={2}>
             <Grid item xs={6}>
@@ -968,24 +1005,41 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                   {t('Hospital/Facility')} *
                 </Typography>
                 <FormControl fullWidth error={!!errors[index]?.medical_center_id}>
-                  <Select
-                    value={doctor.medical_center_id}
-                    onChange={(e) => updateDoctor(index, 'medical_center_id', e.target.value)}
-                    displayEmpty
-                    disabled={isLoading}
-                  >
-                    <MenuItem value="">
-                      <em>{t('Select hospital/facility')}</em>
-                    </MenuItem>
-                    {medicalCenters.map((center) => (
-                      <MenuItem key={center.id} value={center.id}>
-                        {center.name}
+                  {hospital?.id ? (
+                    <TextField
+                      value={medicalCenters.find(mc => mc.id === hospital.id)?.name || hospital.id}
+                      fullWidth
+                      disabled
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                      helperText={t('Selected from global hospital selection')}
+                    />
+                  ) : (
+                    <Select
+                      value={doctor.medical_center_id}
+                      onChange={(e) => updateDoctor(index, 'medical_center_id', e.target.value)}
+                      displayEmpty
+                      disabled={isLoading}
+                    >
+                      <MenuItem value="">
+                        <em>{t('Select hospital/facility')}</em>
                       </MenuItem>
-                    ))}
-                  </Select>
+                      {medicalCenters.map((center) => (
+                        <MenuItem key={center.id} value={center.id}>
+                          {center.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  )}
                   {errors[index]?.medical_center_id && (
                     <Typography variant="caption" color="error">
                       {errors[index]?.medical_center_id}
+                    </Typography>
+                  )}
+                  {hospital?.id && (
+                    <Typography variant="caption" color="text.secondary">
+                      {t('Hospital/facility is automatically selected from global selection')}
                     </Typography>
                   )}
                 </FormControl>
@@ -1011,9 +1065,11 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                       placeholder={
                         doctor.medical_center_id 
                           ? t('Select clinical departments') 
-                          : t('Select hospital/facility first')
+                          : hospital?.id 
+                            ? t('Select clinical departments for the selected hospital')
+                            : t('Please select a hospital/facility first')
                       }
-                      disabled={!doctor.medical_center_id || isLoading}
+                      disabled={(!doctor.medical_center_id && !hospital?.id) || isLoading}
                     />
                   )}
                   renderTags={(value, getTagProps) =>
@@ -1025,11 +1081,16 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                       />
                     ))
                   }
-                  disabled={!doctor.medical_center_id || isLoading}
+                  disabled={(!doctor.medical_center_id && !hospital?.id) || isLoading}
                 />
-                {!doctor.medical_center_id && (
+                {!doctor.medical_center_id && !hospital?.id && (
                   <Typography variant="caption" color="text.secondary">
                     {t('Please select a hospital/facility first')}
+                  </Typography>
+                )}
+                {hospital?.id && (
+                  <Typography variant="caption" color="text.secondary">
+                    {t('Departments are filtered for the selected hospital')}
                   </Typography>
                 )}
               </div>
@@ -1061,7 +1122,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
           startIcon={<AddIcon />}
           onClick={addDoctor}
           variant="outlined"
-          disabled={isLoading}
+          disabled={isLoading || !hospital?.id}
         >
           {t('Add Another Doctor')}
         </Button>
@@ -1079,7 +1140,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
         onClick={handleSubmit} 
         variant="contained"
         size="large"
-        disabled={isLoading}
+        disabled={isLoading || !hospital?.id}
       >
         {isLoading ? t('Creating...') : `${t('Create Doctor')}${doctors.length > 1 ? 's' : ''}`}
       </Button>

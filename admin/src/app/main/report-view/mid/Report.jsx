@@ -2022,6 +2022,9 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         status={reportData.report?.status}
         userRole={user?.role}
         reportExists={reportData.exists}
+                approval ={ reportData.approvals?.some(
+          (a) => a.admin_id === user?.uid
+        ) ?? false}  
       >
         <div className="mt-2">
           <StatusBadge status={reportData.report?.status} />

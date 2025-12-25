@@ -622,6 +622,7 @@ export const manage_update = async (req, res, next) => {
     let email = req.body.email
     let phone = req.body.phone
     let medical_center_ids = req.body.medical_center_ids // Array of medical center IDs
+    let role = req.body.role 
 
     let password = null
     if (req.body.password) {
@@ -637,6 +638,7 @@ export const manage_update = async (req, res, next) => {
         name: name,
         email: email,
         phone: phone,
+        role:role,
         ...password ? { password: md5(password) } : {},
       },
     });
