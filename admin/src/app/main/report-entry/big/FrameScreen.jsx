@@ -143,7 +143,17 @@ const FrameScreen = React.memo(({
       previousFormDataRef.current = formData;
       setFormDataLoaded(true);
       externalDoctorsInitializedRef.current = true;
-    } else if ((formData === null || Object.keys(formData).length === 0) && formDataLoaded) {
+    } 
+    
+    else if(formData && reportDate){
+      console.log('vvvvvvvvvvvvvvvv','11111111111111');
+      loadFormData(formData);
+      previousFormDataRef.current = formData;
+      setFormDataLoaded(true);
+
+    }
+    
+    else if ((formData === null || Object.keys(formData).length === 0) && formDataLoaded) {
       console.log('No form data, resetting form');
       resetForm();
       setFormDataLoaded(false);
@@ -155,7 +165,7 @@ const FrameScreen = React.memo(({
       setFormDataLoaded(false);
       externalDoctorsInitializedRef.current = false;
     }
-  }, [formData, loading]);
+  }, [formData, loading, reportDate]);
 
   // Load form data from existing report
   const loadFormData = async (data) => {

@@ -530,6 +530,32 @@ export const getReportById = async (req, res, next) => {
       discharge_count: 0 
     });
 
+    // Calculate cumulative statistics UP TO THE REPORT DATE
+    const cumulativeReports = await prisma.report.findMany({
+      where: {
+        medical_center_id: report.medical_center_id,
+        report_date: {
+          lte: report.report_date // Only reports up to this date
+        }
+      },
+      select: {
+        admission_count: true,
+        discharge_count: true
+      }
+    });
+
+    const cumulativeStats = cumulativeReports.reduce((acc, cumulativeReport) => {
+      acc.admission_count += cumulativeReport.admission_count || 0;
+      acc.discharge_count += cumulativeReport.discharge_count || 0;
+      return acc;
+    }, { 
+      admission_count: 0,
+      discharge_count: 0
+    });
+
+    // Calculate total admitted patients UP TO THE REPORT DATE
+    const total_admitted_patient = Math.max(0, cumulativeStats.admission_count - cumulativeStats.discharge_count);
+
     // Organize data for frontend tables
     const organizedData = {
 
@@ -558,7 +584,13 @@ export const getReportById = async (req, res, next) => {
         }
       },
       visitCount: report.visit_count || 0,
-      hospitalType: report.hospital_type || null // Added hospital_type
+      hospitalType: report.hospital_type || null,
+      total_admitted_patient: total_admitted_patient,
+      cumulativeStats: { // Added cumulative statistics up to report date
+        admission_count: cumulativeStats.admission_count,
+        discharge_count: cumulativeStats.discharge_count,
+        total_admitted_patient: total_admitted_patient
+      }
     };
 
     // Get departments and doctors
@@ -590,7 +622,11 @@ export const getReportById = async (req, res, next) => {
       doctors,
       exists: true,
       tableData: organizedData,
-      monthlyStats,
+      monthlyStats: {
+        ...monthlyStats,
+        total_admitted_patient: Math.max(0, monthlyStats.admission_count - monthlyStats.discharge_count) // Monthly total
+      },
+      cumulativeStats: organizedData.cumulativeStats, // Include cumulative stats in main response
       approvals: report.approvals,
       comments: report.report_comments
     }, res);

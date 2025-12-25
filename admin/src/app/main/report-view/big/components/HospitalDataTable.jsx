@@ -1,6 +1,6 @@
 import React from 'react';
 
-const HospitalDataTable = ({ data = {}, outpatient = [] }) => {
+const HospitalDataTable = ({ data = {}, outpatient = [], total_admitted_patient }) => {
   // Calculate outpatient totals from the outpatient array
   const calculateOutpatientTotals = () => {
     let morningTotal = 0;
@@ -56,7 +56,7 @@ const HospitalDataTable = ({ data = {}, outpatient = [] }) => {
   };
 
   return (
-    <div className="hospital-data-table w-full h-full">
+    <div className="hospital-data-table w-full h-full">{}
       <div className="overflow-hidden rounded-md mb-10 mt-10 h-full">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed  bg-white border border-gray-300">
@@ -130,7 +130,7 @@ const HospitalDataTable = ({ data = {}, outpatient = [] }) => {
                 </td>
                 <td className="border border-gray-300 p-2 text-center w-1/7">
                   <div className="text-sm font-medium text-gray-800">
-                    {hospitalData.inpatient.current}
+                    {total_admitted_patient}
                   </div>
                 </td>
                 

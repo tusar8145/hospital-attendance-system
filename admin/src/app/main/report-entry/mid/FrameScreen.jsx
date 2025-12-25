@@ -195,13 +195,24 @@ const FrameScreen = React.memo(({
     // Check if formData has actually changed
     const formDataChanged = previousFormDataRef.current !== formData && 
       JSON.stringify(previousFormDataRef.current) !== JSON.stringify(formData);
+
+
     
     if (formData && formDataChanged && !loadingRef.current) {
       console.log('Loading form data into FrameScreen');
       loadFormData(formData);
       previousFormDataRef.current = formData;
       setFormDataLoaded(true);
-    } else if ((formData === null || Object.keys(formData).length === 0) && formDataLoaded) {
+    } 
+    else if(formData && reportDate){
+      console.log('vvvvvvvvvvvvvvvv','11111111111111');
+      loadFormData(formData);
+      previousFormDataRef.current = formData;
+      setFormDataLoaded(true);
+
+    }
+    
+    else if ((formData === null || Object.keys(formData).length === 0) && formDataLoaded) {
       console.log('No form data, resetting form');
       resetForm();
       setFormDataLoaded(false);
@@ -211,7 +222,12 @@ const FrameScreen = React.memo(({
     if (!formData && formDataLoaded) {
       setFormDataLoaded(false);
     }
-  }, [formData, loading]);
+  }, [formData, loading, reportDate]);
+
+
+
+
+
 
   // Load form data from existing report
   const loadFormData = async (data) => {

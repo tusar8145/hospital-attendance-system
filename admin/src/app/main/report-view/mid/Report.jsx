@@ -128,7 +128,7 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
       if (detail.doctor1?.name) names.push(detail.doctor1.name);
       if (detail.doctor2?.name) names.push(detail.doctor2.name);
       if (detail.doctor3?.name) names.push(detail.doctor3.name);
-      return names.join(' / ');
+      return names.join(' <br>');
     };
     
     const doctorNames = getDoctorNames();
@@ -224,16 +224,16 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
       {floors.map((floorData, colIndex) => (
         <td
           key={`cell-morning-${colIndex}`}
-          className="border border-gray-200 p-3 text-center align-middle"
+          className="border border-gray-200 p-3 text-left align-middle"
         >
-          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-center gap-1">
+          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
             {floorData['morning'] && floorData['morning'].length > 0 ? (
               floorData['morning'].map((item, idx) => (
                 <span 
                   key={idx}
-                  className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium shadow-sm hover:bg-blue-200 transition-colors"
+                  className="inline-flex items-left justify-center px-3 py-1 rounded-full   text-purple-800 text-sm font-medium shadow-sm  transition-colors"
                 >
-                  {item}
+                 <div dangerouslySetInnerHTML={{ __html: item }} /> 
                 </span>
               ))
             ) : (
@@ -257,16 +257,16 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
       {floors.map((floorData, colIndex) => (
         <td
           key={`cell-afternoon-${colIndex}`}
-          className="border border-gray-200 p-3 text-center align-middle"
+          className="border border-gray-200 p-3 text-left align-middle"
         >
-          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-center gap-1">
+          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
             {floorData['afternoon'] && floorData['afternoon'].length > 0 ? (
               floorData['afternoon'].map((item, idx) => (
                 <span 
                   key={idx}
-                  className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium shadow-sm hover:bg-green-200 transition-colors"
+                  className="inline-flex items-left justify-center px-3 py-1 rounded-full   text-purple-800 text-sm font-medium shadow-sm   transition-colors"
                 >
-                  {item}
+                  <div dangerouslySetInnerHTML={{ __html: item }} /> 
                 </span>
               ))
             ) : (
@@ -290,16 +290,16 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
       {floors.map((floorData, colIndex) => (
         <td
           key={`cell-night-${colIndex}`}
-          className="border border-gray-200 p-3 text-center align-middle"
+          className="border border-gray-200 p-3 text-left align-middle"
         >
-          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-center gap-1">
+          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
             {floorData['night'] && floorData['night'].length > 0 ? (
               floorData['night'].map((item, idx) => (
                 <span 
                   key={idx}
-                  className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-sm font-medium shadow-sm hover:bg-purple-200 transition-colors"
+                  className="inline-flex items-left justify-center px-3 py-1 rounded-full   text-purple-800 text-sm font-medium shadow-sm   transition-colors"
                 >
-                  {item}
+                  <div dangerouslySetInnerHTML={{ __html: item }} /> 
                 </span>
               ))
             ) : (
@@ -1387,7 +1387,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       return [
         { 
           id: 1, 
-          title: '理事長', 
+          title: 'システム管理者', 
           role: 'superAdmin', 
           checked: false, 
           status: '未確認', 
@@ -1400,7 +1400,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         },
         { 
           id: 2, 
-          title: '専務', 
+          title: '責任管理者', 
           role: 'admin', 
           checked: false, 
           status: '未確認', 
@@ -1413,7 +1413,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         },
         { 
           id: 3, 
-          title: '医師長', 
+          title: '主任管理者', 
           role: 'hospitalAssistant', 
           checked: false, 
           status: '未確認', 
@@ -1426,7 +1426,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         },
         { 
           id: 4, 
-          title: '看護部', 
+          title: 'マネージャー', 
           role: 'staff', 
           checked: false, 
           status: '未確認', 
@@ -1439,7 +1439,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         },
         { 
           id: 5, 
-          title: '事務部', 
+          title: 'データ入力者', 
           role: 'operator', 
           checked: false, 
           status: '未確認', 

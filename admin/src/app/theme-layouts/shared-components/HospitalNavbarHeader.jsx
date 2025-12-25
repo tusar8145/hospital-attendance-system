@@ -28,6 +28,9 @@ const Root = styled('div')(({ theme }) => ({
 	}
 }));
 
+// Constants
+const STORAGE_KEY = 'selected_hospital_id';
+
 function HospitalNavbarHeader() {
 	const { t } = useTranslation('shared-components');
 	const { 
@@ -89,6 +92,26 @@ function HospitalNavbarHeader() {
 		);
 	}, [searchTerm, hospitals]);
 
+	// Save selected hospital to localStorage
+	const saveHospitalToStorage = (hospitalId) => {
+		if (hospitalId === '*' || hospitalId === null) {
+			// Remove from storage when selecting "ALL Hospital"
+			localStorage.removeItem(STORAGE_KEY);
+		} else {
+			// Save the hospital ID to localStorage
+			localStorage.setItem(STORAGE_KEY, String(hospitalId));
+		}
+	};
+
+	// Get saved hospital from localStorage
+	const getHospitalFromStorage = () => {
+		const savedHospitalId = localStorage.getItem(STORAGE_KEY);
+		if (savedHospitalId) {
+			return parseInt(savedHospitalId, 10);
+		}
+		return null;
+	};
+
 	// Handle refresh from ThemeContext
 	useEffect(() => {
 		if (refreshHospitalList) {
@@ -97,13 +120,31 @@ function HospitalNavbarHeader() {
 		}
 	}, [refreshHospitalList, toggleRefreshHospitalList, queryClient]);
 
-	// Handle hospital selection from user profile
+	// Handle hospital selection from user profile and localStorage
 	useEffect(() => {
-		if (this_user.hospital != null && hospitals.length > 0) {
-			selectHospital(this_user.hospital.id);
-		}
-		if (this_user.hospital == null && hospitals.length > 0) {
-			selectHospital(null);
+		if (hospitals.length > 0) {
+			// First priority: Check if user has a hospital assigned
+			if (this_user.hospital != null) {
+				selectHospital(this_user.hospital.id);
+			} 
+			// Second priority: Check localStorage for saved preference
+			else {
+				const savedHospitalId = getHospitalFromStorage();
+				if (savedHospitalId) {
+					// Check if saved hospital exists in the current list
+					const hospitalExists = hospitals.some(h => h.id === savedHospitalId);
+					if (hospitalExists) {
+						selectHospital(savedHospitalId);
+					} else {
+						// Saved hospital no longer exists, clear from storage
+						localStorage.removeItem(STORAGE_KEY);
+						selectHospital(null);
+					}
+				} else {
+					// No saved preference, default to ALL
+					selectHospital(null);
+				}
+			}
 		}
 	}, [this_user.hospital, hospitals]);
 
@@ -126,6 +167,10 @@ function HospitalNavbarHeader() {
 			toggleHospital(null);
 			setHos('*');
 		}
+		
+		// Save to localStorage
+		saveHospitalToStorage(hospitalId);
+		
 		handleMenuClose();
 	};
 
@@ -142,9 +187,15 @@ function HospitalNavbarHeader() {
 			let filter = filterItemsEqual(hospitals, 'id', id);
 			toggleHospital(filter[0]);
 			setHos(id);
+			
+			// Save to localStorage
+			saveHospitalToStorage(id);
 		} else {
 			toggleHospital(null);
 			setHos('*');
+			
+			// Remove from localStorage
+			saveHospitalToStorage('*');
 		}
 	}
 

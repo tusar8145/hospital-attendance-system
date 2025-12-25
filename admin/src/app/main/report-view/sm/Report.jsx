@@ -799,7 +799,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       return [
         { 
           id: 1, 
-          title: '理事長', 
+          title: 'システム管理者', 
           role: 'superAdmin', 
           checked: false, 
           status: '未確認', 
@@ -812,7 +812,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         },
         { 
           id: 2, 
-          title: '専務', 
+          title: '責任管理者', 
           role: 'admin', 
           checked: false, 
           status: '未確認', 
@@ -825,7 +825,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         },
         { 
           id: 3, 
-          title: '医師長', 
+          title: '主任管理者', 
           role: 'hospitalAssistant', 
           checked: false, 
           status: '未確認', 
@@ -838,7 +838,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         },
         { 
           id: 4, 
-          title: '看護部', 
+          title: 'マネージャー', 
           role: 'staff', 
           checked: false, 
           status: '未確認', 
@@ -851,7 +851,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         },
         { 
           id: 5, 
-          title: '事務部', 
+          title: 'データ入力者', 
           role: 'operator', 
           checked: false, 
           status: '未確認', 
