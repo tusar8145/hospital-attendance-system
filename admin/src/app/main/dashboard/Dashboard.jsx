@@ -46,6 +46,9 @@ import {
   Analytics,
   PersonAdd,
   MedicalServices,
+  ReportProblem,
+  Done,
+  CheckCircleOutline 
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAppSelector } from 'app/store/hooks';
@@ -400,33 +403,35 @@ function Dashboard() {
     const actions = {
       superAdmin: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
+        { label: 'レポート一覧', icon: <List />, link: '/report-list', color: 'success' },
         { label: '医療機関管理', icon: <BusinessIcon />, link: '/medical-center', color: 'secondary' },
-         { label: 'レポート一覧', icon: <List />, link: '/report-list', color: 'success' },
-      //  { label: 'ユーザー管理', icon: <People />, link: '/users', color: 'success' },
-        //{ label: '統計レポート', icon: <Analytics />, link: '/statistics', color: 'info' }
+        { label: '医師管理', icon: <Person />, link: '/doctor', color: 'warning' },
       ],
       admin: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
-        { label: '医療機関管理', icon: <BusinessIcon />, link: '/medical-center', color: 'secondary' },
         { label: 'レポート一覧', icon: <List />, link: '/report-list', color: 'success' },
-        { label: '承認待ち', icon: <Pending />, link: '/report-list?status=submitted', color: 'warning' }
+        { label: '医療機関管理', icon: <BusinessIcon />, link: '/medical-center', color: 'secondary' },
+        { label: '医師管理', icon: <Person />, link: '/doctor', color: 'warning' },
       ],
       hospitalAssistant: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
-        { label: '担当医療機関', icon: <BusinessIcon />, link: '/medical-center', color: 'secondary' },
-        { label: '医師管理', icon: <Person />, link: '/doctor', color: 'success' },
-        { label: '診療科管理', icon: <MedicalServices />, link: '/department', color: 'info' }
+        { label: 'レポート一覧', icon: <List />, link: '/report-list', color: 'success' },
+        { label: '診療科管理', icon: <MedicalServices />, link: '/department', color: 'info' },
+        { label: '医師管理', icon: <Person />, link: '/doctor', color: 'warning' },
+       
       ],
       staff: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
         { label: '下書きレポート', icon: <Drafts />, link: '/report-list?status=draft', color: 'secondary' },
-        { label: '提出済みレポート', icon: <Send />, link: '/report-list?status=submitted', color: 'success' },
+        { label: '提出済みレポート', icon: <CheckCircleOutline />, link: '/report-list?status=submitted', color: 'success' },
+         { label: '未確認 レポート', icon: <ReportProblem  />, link: '/report-list?status=pending', color: 'warning' },
         //{ label: '統計を見る', icon: <Analytics />, link: '/statistics', color: 'info' }
       ],
-      operator: [
+      operator: [ 
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
         { label: '下書きレポート', icon: <Drafts />, link: '/report-list?status=draft', color: 'secondary' },
-        { label: '提出済みレポート', icon: <Send />, link: '/report-list?status=submitted', color: 'success' }
+        { label: '提出済みレポート', icon: <CheckCircleOutline />, link: '/report-list?status=submitted', color: 'success' },
+         { label: '未確認 レポート', icon: <ReportProblem  />, link: '/report-list?status=pending', color: 'warning' },
       ]
     };
     return actions[userRole] || [];

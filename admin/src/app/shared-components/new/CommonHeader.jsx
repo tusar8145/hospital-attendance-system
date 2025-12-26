@@ -30,7 +30,7 @@ export const CommonHeader = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   return (
-    <div className="p-24">
+    <div className="pl-24">
       <div className="flex justify-between items-center">
         <Typography variant="h5" className="font-bold">
           {t(title)}

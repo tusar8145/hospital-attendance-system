@@ -1829,7 +1829,7 @@ const checkApprovalHierarchy = async (reportId, currentUserRole, currentUserId, 
   if (bypassingHigherApproval) {
     return { 
       canApprove: false, 
-      reason: `A ${bypassingHigherApproval.admin.role} has already approved and bypassed lower roles` 
+      reason: `${bypassingHigherApproval.admin.role} すでに下位の役割を承認し、回避している` 
     };
   }
 

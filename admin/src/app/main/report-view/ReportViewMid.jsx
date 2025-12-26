@@ -198,7 +198,8 @@ function ReportView() {
 
 	return (
 		<Root
-			header={
+			content={
+				<div className="flex flex-col p-16 sm:p-24 container">				
 				<CommonHeader
 					title={`レポート詳細 - ${reportData?.report?.report_no || '不明なレポート'}`}
 					onBack={handleBack}
@@ -232,9 +233,6 @@ function ReportView() {
 						</Stack>
 					}
 				/>
-			}
-			content={
-				<div className="flex flex-col p-16 sm:p-24 container">
 					{successAlert != null && (
 						<Alert severity="success" className="text-sm mb-4" onClose={() => setSuccessAlert(null)}>
 							{t(successAlert)}

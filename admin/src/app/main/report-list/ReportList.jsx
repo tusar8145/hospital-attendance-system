@@ -21,7 +21,7 @@ import { styled } from '@mui/material/styles';
 import FusePageSimple from '@fuse/core/FusePageSimple';
 import axios from 'axios';
 import apiConfig from '../../configs/apiConfig';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
 
 // Import components
@@ -49,6 +49,8 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
 
 function ReportList() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation('shared-components');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -115,6 +117,38 @@ function ReportList() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
+  // Get status from URL parameter
+  const getStatusFromURL = () => {
+    const statusParam = searchParams.get('status');
+    const validStatuses = ['draft', 'submitted', 'approved', 'pending', 'rejected'];
+    
+    if (statusParam && validStatuses.includes(statusParam)) {
+      return statusParam;
+    }
+    return 'all';
+  };
+
+  // Update URL with status parameter
+  const updateURLStatus = (status) => {
+    if (status === 'all') {
+      // Remove status parameter if it's 'all'
+      searchParams.delete('status');
+      setSearchParams(searchParams);
+    } else {
+      // Update or add status parameter
+      searchParams.set('status', status);
+      setSearchParams(searchParams);
+    }
+  };
+
+  // Initialize filters from URL
+  useEffect(() => {
+    const urlStatus = getStatusFromURL();
+    if (urlStatus !== 'all') {
+      setFilters(prev => ({ ...prev, status: urlStatus }));
+    }
+  }, []);
+
   // Fetch reports with pagination
   const fetchReports = useCallback(async (page = 1) => {
     setLoading(true);
@@ -176,7 +210,7 @@ function ReportList() {
     } finally {
       setLoadingStats(false);
     }
-  }, [filters,filters.month, filters.year, hospital?.id]);
+  }, [filters.month, filters.year, hospital?.id]);
 
   // Initial load
   useEffect(() => {
@@ -195,13 +229,18 @@ function ReportList() {
   // Fetch data when filters change
   useEffect(() => {
     fetchReports();
-	fetchStatistics();
+    fetchStatistics();
     // Only fetch statistics when month/year changes, not when status changes
   }, [filters.month, filters.year, filters.status]);
 
   // Handle filter changes
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
+    
+    // Update URL if status is changing
+    if (newFilters.status !== undefined) {
+      updateURLStatus(newFilters.status);
+    }
   };
 
   // Handle page change

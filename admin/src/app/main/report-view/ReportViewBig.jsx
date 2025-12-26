@@ -198,7 +198,45 @@ function ReportView() {
 
 	return (
 		<Root
-			header={
+			/*header={
+				<CommonHeader
+					title={`レポート詳細 - ${reportData?.report?.report_no || '不明なレポート'}`}
+					onBack={handleBack}
+					backButtonText="一覧に戻る"
+					showCreate={false}
+					// Add custom actions to header
+					customActions={
+						<Stack direction="row" spacing={2}>
+							{/* Only show Edit button for draft reports * /}
+							{reportData?.report?.status === 'draft' && (
+								<Button
+									variant="outlined"
+									color="primary"
+									onClick={handleEdit}
+								>
+									編集
+								</Button>
+							)}
+							
+							{/* Show Approve button for all users if not already approved * /}
+							{reportData?.report?.status !== 'approved' && (
+								<Button
+									variant="contained"
+									color="success"
+									onClick={handleApprove}
+									disabled={loading}
+								>
+									{loading ? '処理中...' : '承認'}
+								</Button>
+							)}
+						</Stack>
+					}
+				/>
+			}*/
+			content={
+				<div className="flex flex-col p-16 sm:p-24 container">
+
+
 				<CommonHeader
 					title={`レポート詳細 - ${reportData?.report?.report_no || '不明なレポート'}`}
 					onBack={handleBack}
@@ -232,9 +270,8 @@ function ReportView() {
 						</Stack>
 					}
 				/>
-			}
-			content={
-				<div className="flex flex-col p-16 sm:p-24 container">
+
+
 					{successAlert != null && (
 						<Alert severity="success" className="text-sm mb-4" onClose={() => setSuccessAlert(null)}>
 							{t(successAlert)}

@@ -250,7 +250,7 @@ const HeaderSection = ({
             aria-expanded={open ? 'true' : undefined}
             aria-haspopup="true"
             onClick={handleMenuClick}
-            disabled={loading}
+            disabled={loading || !showMakeDraftOption}
             sx={{ 
               border: '1px solid #e0e0e0',
               '&:hover': {
