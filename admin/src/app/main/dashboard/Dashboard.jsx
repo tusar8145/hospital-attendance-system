@@ -618,17 +618,7 @@ function Dashboard() {
   return (
     <Root
       header={
-        <CommonHeader
-          title={`ダッシュボード - ${getCurrentJapaneseDate()}`}
-          subtitle={getWelcomeMessage()}
-          onCreate={handleCreateReport}
-          createButtonText="新規レポート作成"
-          showFilter={false}
-          showSearch={true}
-          searchPlaceholder="医療機関名またはレポート番号で検索..."
-          searchValue={searchQuery}
-          onSearchChange={(e) => setSearchQuery(e.target.value)}
-        />
+    <></>
       }
       content={
         <Box sx={{ 
