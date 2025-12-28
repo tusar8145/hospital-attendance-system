@@ -223,7 +223,7 @@ case 'approved':
           <Typography variant="h6" fontWeight={600}>
             レポート一覧 ({filters.year}年{filters.month}月)
           </Typography>
-          {filters.status !== 'all' && (
+          {filters.status !== 'all' && filters.status !== 'pendingApproval' && (
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.5 }}>
               <Typography variant="body2" color="text.secondary">
                 フィルター:

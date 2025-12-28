@@ -331,6 +331,7 @@ model report {
   // Foreign keys
   medical_center          medical_center @relation(fields: [medical_center_id], references: [id])
   
+  next_role               String?     @default("operator")
   // Creator info
   created_by              Int
   created_by_admin        admins?     @relation("ReportCreatedBy", fields: [created_by], references: [id])
@@ -349,6 +350,8 @@ model report {
 
   external_consultation_details Json?   @db.Json
 
+
+
   // Relations
   report_details          report_detail[]  // Child records
   report_comments         report_comment[] // Comments
@@ -362,6 +365,7 @@ model report {
   @@index([report_date])
   @@index([status])
   @@index([report_no])
+  @@index([next_role])
 
   @@unique([medical_center_id, report_date])
   @@index([medical_center_id, report_date])

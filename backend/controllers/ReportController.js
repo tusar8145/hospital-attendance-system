@@ -927,7 +927,9 @@ export const getReportList = async (req, res, next) => {
 
     // Get user from request for medical center filtering
     const user = req.user;
-    
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
     // Build where conditions
     const where = {};
 
@@ -987,7 +989,16 @@ export const getReportList = async (req, res, next) => {
     if (status && status !== 'all') {
       if (status === 'pending') {
         where.status = { in: ['draft', 'submitted'] };
-      } else {
+      } else if(status== 'pendingApproval'){
+        where.next_role = userRole;
+            if( user.role == 'superAdmin'){
+              where.next_role = 'admin'
+            }else if( user.role == 'staff'){
+              where.next_role = { in: ['staff', 'operator'] };
+            }
+        where.status = { in: ['submitted'] }; // can not where.status = 'approved'
+      }
+      else {
         where.status = status;
       }
     }
@@ -1040,6 +1051,7 @@ export const getReportList = async (req, res, next) => {
     
     const statsWhere = { ...where };
     delete statsWhere.status;
+    //delete statsWhere.next_role; // Remove next_role from stats calculation
 
     const allReportsInMonth = await prisma.report.findMany({
       where: statsWhere,
@@ -1101,7 +1113,8 @@ export const getReportList = async (req, res, next) => {
         submitted_at: report.submitted_at,
         approved_at: report.approved_at,
         special_notes: report.special_notes,
-        hospital_type: report.hospital_type || null, // Added hospital_type
+        hospital_type: report.hospital_type || null,
+        next_role: report.next_role || 'operator', // Added next_role to response
       };
     });
 
@@ -1858,6 +1871,12 @@ export const approveReport = async (req, res, next) => {
     const { report_id, comments, approval_status = 'approved' } = req.body;
     const userId = req.user.id;
     const userRole = req.user.role;
+
+    let next_role=null
+    if(userRole=='operator'){next_role='staff'}
+    else if(userRole=='staff'){next_role='hospitalAssistant'}
+    else if(userRole=='hospitalAssistant'){next_role='admin'}
+    else {next_role=null}
     
     if (!report_id) {
       return response.error("Report ID is required", res, next);
@@ -1903,6 +1922,16 @@ export const approveReport = async (req, res, next) => {
         }
       }
     });
+
+      await prisma.report.update({
+        where: { id: parseInt(report_id) },
+        data: {
+          next_role: next_role,
+          updated_at: new Date(),
+          updated_by: userId
+        }
+      });
+     
 
     // Update report status if superAdmin or admin approves
     let reportUpdated = false;

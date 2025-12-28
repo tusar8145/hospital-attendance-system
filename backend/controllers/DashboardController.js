@@ -64,10 +64,11 @@ async function getAssignedMedicalCenterIds(user) {
 }
 
 // Get dashboard statistics
+// Get dashboard statistics
 export const getDashboardStats = async (req, res, next) => {
   try {
     const user = req.user;
-    const { month, year } = req.body;
+    const { month, year, hospital_id } = req.body;
     
     // Default to current month if not specified
     const now = new Date();
@@ -83,9 +84,52 @@ export const getDashboardStats = async (req, res, next) => {
     
     // Build where conditions for report filtering
     const reportWhere = {};
-    
-    // Filter reports by assigned medical centers for non-admin users
-    if (assignedMedicalCenterIds !== null) {
+
+    /////////////////////////////////////////////////////////
+    // Get my pending approval reports count
+    const myPendingWhere = {};
+    let myreport = 0;
+    let myreportError = 0;
+
+    // Apply hospital_id filter if provided
+    if (hospital_id) {
+      myPendingWhere.medical_center_id = parseInt(hospital_id);
+    } else {
+      // Otherwise, get medical center filter based on user role
+      const medicalCenterFilter = await getMedicalCenterFilter(user);
+      if (medicalCenterFilter) {
+        if (medicalCenterFilter === -1) {
+          myreportError = 1;
+        } else {
+          myPendingWhere.medical_center_id = medicalCenterFilter;
+        }
+      }
+    }
+
+    // Filter by next_role matching user's role for pending approvals
+    if (!myreportError) {
+      if (user.role === 'superAdmin') {
+        myPendingWhere.next_role = 'admin';
+      } else if (user.role === 'staff') {
+        myPendingWhere.next_role = { in: ['staff', 'operator'] };
+      } else {
+        myPendingWhere.next_role = user.role;
+      }
+
+      // Only show submitted reports that need approval
+      myPendingWhere.status = { in: ['submitted'] };
+
+      // Get count for user's pending approval reports
+      myreport = await prisma.report.count({ where: myPendingWhere });
+    }
+    /////////////////////////////////////////////////////////
+
+    // Apply hospital_id filter to main report statistics if provided
+    if (hospital_id) {
+      reportWhere.medical_center_id = parseInt(hospital_id);
+    } 
+    // Otherwise, filter reports by assigned medical centers for non-admin users
+    else if (assignedMedicalCenterIds !== null) {
       if (assignedMedicalCenterIds.length === 0) {
         // No medical centers assigned, return empty statistics
         return response.success({
@@ -115,13 +159,14 @@ export const getDashboardStats = async (req, res, next) => {
           },
           currentMonth: selectedMonth,
           currentYear: selectedYear,
-          userRole: user.role
+          userRole: user.role,
+          myreport: myreport
         }, res);
       }
       reportWhere.medical_center_id = { in: assignedMedicalCenterIds };
     }
 
-    // Add date filter
+    // Add date filter for the selected month
     reportWhere.report_date = {
       gte: startOfMonth,
       lte: endOfMonth
@@ -155,7 +200,13 @@ export const getDashboardStats = async (req, res, next) => {
 
     // 2. Get medical center statistics
     let medicalCenterWhere = {};
-    if (assignedMedicalCenterIds !== null && assignedMedicalCenterIds.length > 0) {
+    
+    // Apply hospital_id filter if provided
+    if (hospital_id) {
+      medicalCenterWhere.id = parseInt(hospital_id);
+    } 
+    // Otherwise, filter by assigned medical centers for non-admin users
+    else if (assignedMedicalCenterIds !== null && assignedMedicalCenterIds.length > 0) {
       medicalCenterWhere.id = { in: assignedMedicalCenterIds };
     }
 
@@ -213,7 +264,13 @@ export const getDashboardStats = async (req, res, next) => {
 
     // 3. Get department statistics
     let departmentWhere = { status: 1 };
-    if (assignedMedicalCenterIds !== null && assignedMedicalCenterIds.length > 0) {
+    
+    // Apply hospital_id filter if provided
+    if (hospital_id) {
+      departmentWhere.medical_center_id = parseInt(hospital_id);
+    } 
+    // Otherwise, filter by assigned medical centers for non-admin users
+    else if (assignedMedicalCenterIds !== null && assignedMedicalCenterIds.length > 0) {
       departmentWhere.medical_center_id = { in: assignedMedicalCenterIds };
     }
 
@@ -254,7 +311,13 @@ export const getDashboardStats = async (req, res, next) => {
 
     // 4. Get doctor statistics
     let doctorWhere = { status: 1 };
-    if (assignedMedicalCenterIds !== null && assignedMedicalCenterIds.length > 0) {
+    
+    // Apply hospital_id filter if provided
+    if (hospital_id) {
+      doctorWhere.medical_center_id = parseInt(hospital_id);
+    } 
+    // Otherwise, filter by assigned medical centers for non-admin users
+    else if (assignedMedicalCenterIds !== null && assignedMedicalCenterIds.length > 0) {
       doctorWhere.medical_center_id = { in: assignedMedicalCenterIds };
     }
 
@@ -303,7 +366,8 @@ export const getDashboardStats = async (req, res, next) => {
       doctorStats,
       currentMonth: selectedMonth,
       currentYear: selectedYear,
-      userRole: user.role
+      userRole: user.role,
+      myreport: myreport
     }, res);
 
   } catch (error) {

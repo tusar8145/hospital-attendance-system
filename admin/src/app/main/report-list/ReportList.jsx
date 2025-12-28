@@ -120,7 +120,7 @@ function ReportList() {
   // Get status from URL parameter
   const getStatusFromURL = () => {
     const statusParam = searchParams.get('status');
-    const validStatuses = ['draft', 'submitted', 'approved', 'pending', 'rejected'];
+    const validStatuses = ['draft', 'submitted', 'approved', 'pending', 'rejected', 'pendingApproval'];
     
     if (statusParam && validStatuses.includes(statusParam)) {
       return statusParam;
@@ -150,41 +150,48 @@ function ReportList() {
   }, []);
 
   // Fetch reports with pagination
-  const fetchReports = useCallback(async (page = 1) => {
+const fetchReports = useCallback(
+  async (page = 1, signal) => {
     setLoading(true);
     try {
       const payload = {
-        page: page,
+        page,
         limit: pagination.itemsPerPage,
         month: filters.month,
         year: filters.year,
-        search: filters.search || undefined
+        search: filters.search || undefined,
+        hospital_id: hospital?.id,
       };
 
-      // Only add status if not 'all'
-      if (filters.status !== 'all') {
+      if (filters.status === 'pendingApproval') {
+        payload.status = 'pendingApproval';
+        payload.requires_approval = true;
+      } else if (filters.status !== 'all') {
         payload.status = filters.status;
       }
 
-      // Only add hospital_id if it exists
-      if (hospital?.id) {
-        payload.hospital_id = hospital.id;
-      }
-
-      const response = await axios.post(apiConfig.reportList, payload);
+      const response = await axios.post(
+        apiConfig.reportList,
+        payload,
+        { signal }
+      );
 
       if (response.data.success) {
-        const { reports: reportsData, pagination: paginationData } = response.data.data;
-        setReports(reportsData);
-        setPagination(paginationData);
+        setReports(response.data.data.reports);
+        setPagination(response.data.data.pagination);
       }
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-      showSnackbar('レポート一覧の取得に失敗しました', 'error');
+    } catch (err) {
+      if (err.name !== 'CanceledError') {
+        console.error(err);
+        showSnackbar('レポート一覧の取得に失敗しました', 'error');
+      }
     } finally {
       setLoading(false);
     }
-  }, [filters, pagination.itemsPerPage, hospital?.id]);
+  },
+  [filters, pagination.itemsPerPage, hospital?.id]
+);
+
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {
@@ -212,26 +219,24 @@ function ReportList() {
     }
   }, [filters.month, filters.year, hospital?.id]);
 
-  // Initial load
-  useEffect(() => {
-    fetchReports();
-    fetchStatistics();
-  }, []);
+ 
 
-  // Fetch data when hospital changes
-  useEffect(() => {
-    if (hospital !== undefined) { // Check if hospital is defined (could be null)
-      fetchReports();
-      fetchStatistics();
-    }
-  }, [hospital?.id]); // Only run when hospital.id changes
+useEffect(() => {
+  const controller = new AbortController();
 
-  // Fetch data when filters change
-  useEffect(() => {
-    fetchReports();
-    fetchStatistics();
-    // Only fetch statistics when month/year changes, not when status changes
-  }, [filters.month, filters.year, filters.status]);
+  fetchReports(1, controller.signal);
+  fetchStatistics();
+
+  return () => {
+    controller.abort(); // ⛔ cancel previous request
+  };
+}, [
+  filters.month,
+  filters.year,
+  filters.status,
+  hospital?.id
+]);
+
 
   // Handle filter changes
   const handleFilterChange = (newFilters) => {
@@ -244,9 +249,10 @@ function ReportList() {
   };
 
   // Handle page change
-  const handlePageChange = (page) => {
-    fetchReports(page);
-  };
+const handlePageChange = (page) => {
+  const controller = new AbortController();
+  fetchReports(page, controller.signal);
+};
 
   // Handle status filter
   const handleStatusFilter = (status) => {
@@ -277,6 +283,12 @@ function ReportList() {
         year: filters.year,
         search: filters.search || undefined
       };
+
+      // Handle pendingApproval for export
+      if (filters.status === 'pendingApproval') {
+        payload.status = 'pendingApproval';
+        payload.requires_approval = true;
+      }
 
       // Only add hospital_id if it exists
       if (hospital?.id) {
@@ -318,20 +330,10 @@ function ReportList() {
     if (!hospital?.id) {
       // Show message to select hospital first
       showSnackbar('レポートを作成するには、まず病院・施設を選択してください', 'warning');
-      
-      // Alternatively, you could show a dialog
-      // setHospitalDialog({
-      //   open: true,
-      //   message: 'レポートを作成するには、まず病院・施設を選択してください。サイドバーまたは上部のメニューから選択してください。'
-      // });
-      
       return; // Don't navigate
     }
     
     // Hospital is selected, proceed with navigation
-    // Encrypt the hospital ID for URL
-
-    // Pass both hospital type and encrypted hospital ID
     const typeValue = hospitalTypeMap[hospital.type] || 2;
     navigate(`/report-entry`);
   };
@@ -358,6 +360,7 @@ function ReportList() {
       case 'approved': return '確認済み';
       case 'rejected': return '拒否済み';
       case 'pending': return '未確認';
+      case 'pendingApproval': return '保留承認';
       default: return 'すべて';
     }
   };
@@ -400,9 +403,21 @@ function ReportList() {
       icon: "Alert01",
       label: "未確認 レポート",
       value: statistics.pending.toString(),
-      onClick: () => handleStatusFilter('pending') // draft + submitted
+      onClick: () => handleStatusFilter('pending')
     },
   ];
+
+  // Add pendingApproval card if needed (you can add it conditionally)
+  // For example, if user has permission to see pending approvals:
+  // if (userRole === 'superAdmin' || userRole === 'admin') {
+  //   overviewCards.push({
+  //     bgColor: "#ff4081",
+  //     icon: "PendingActions",
+  //     label: "保留承認レポート",
+  //     value: pendingApprovalCount.toString(),
+  //     onClick: () => handleStatusFilter('pendingApproval')
+  //   });
+  // }
 
   // Get current date for header
   const getCurrentJapaneseDate = () => {
@@ -411,6 +426,19 @@ function ReportList() {
     const month = now.getMonth() + 1;
     const date = now.getDate();
     return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日`;
+  };
+
+  // Get page title based on status
+  const getPageTitle = () => {
+    const status = filters.status;
+    const baseTitle = `レポート一覧 - ${getCurrentJapaneseDate()}`;
+    
+    if (status === 'pendingApproval') {
+      return `保留承認レポート - ${getCurrentJapaneseDate()}`;
+    } else if (status !== 'all') {
+      return `${getStatusLabel(status)}レポート - ${getCurrentJapaneseDate()}`;
+    }
+    return baseTitle;
   };
 
   // Get hospital display info
@@ -431,7 +459,7 @@ function ReportList() {
     <Root
       header={
         <CommonHeader
-          title={`レポート一覧 - ${getCurrentJapaneseDate()}`}
+          title={getPageTitle()}
           onCreate={handleAddReport}
           createButtonText="レポート追加"
           showFilter={false}
@@ -516,7 +544,7 @@ function ReportList() {
                   label={`ステータス: ${getStatusLabel(filters.status)}`}
                   onDelete={clearStatusFilter}
                   deleteIcon={<CloseIcon />}
-                  color="primary"
+                  color={filters.status === 'pendingApproval' ? "secondary" : "primary"}
                   variant="outlined"
                 />
               )}
@@ -559,27 +587,6 @@ function ReportList() {
               {snackbar.message}
             </Alert>
           </Snackbar>
-
-          {/* Hospital Selection Dialog (Optional) */}
-          {/* Uncomment if you want to show a dialog instead of snackbar */}
-          {/*
-          <Dialog
-            open={hospitalDialog.open}
-            onClose={handleHospitalDialogClose}
-            maxWidth="sm"
-            fullWidth
-          >
-            <DialogTitle>病院・施設の選択が必要</DialogTitle>
-            <DialogContent>
-              <Typography>{hospitalDialog.message}</Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleHospitalDialogClose} variant="contained">
-                閉じる
-              </Button>
-            </DialogActions>
-          </Dialog>
-          */}
         </Container>
       }
     />

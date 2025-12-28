@@ -22,7 +22,8 @@ import {
   Chip,
   LinearProgress,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Button
 } from '@mui/material';
 import {
   TrendingUp,
@@ -48,7 +49,8 @@ import {
   MedicalServices,
   ReportProblem,
   Done,
-  CheckCircleOutline 
+  CheckCircleOutline,
+  ArrowForward
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAppSelector } from 'app/store/hooks';
@@ -57,6 +59,7 @@ import { CommonHeader } from '../../shared-components/new/CommonHeader';
 import FusePageSimple from '@fuse/core/FusePageSimple';
 import apiConfig from '../../configs/apiConfig';
 import BusinessIcon from '@mui/icons-material/Business';
+import { useTheme as useAppTheme } from '../../context/ThemeContext';
 
 // Styled components with fixed CSS
 const Root = styled(FusePageSimple)(({ theme }) => ({
@@ -90,6 +93,22 @@ const StyledCard = styled(Card)(({ theme }) => ({
   '&:hover': {
     transform: 'translateY(-4px)',
     boxShadow: theme.shadows[8]
+  }
+}));
+
+const PendingApprovalCard = styled(Card)(({ theme }) => ({
+  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  color: 'white',
+  borderRadius: theme.spacing(2),
+  overflow: 'hidden',
+  position: 'relative',
+  transition: 'transform 0.3s, box-shadow 0.3s',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: theme.shadows[8],
+    '& .arrow-icon': {
+      transform: 'translateX(4px)'
+    }
   }
 }));
 
@@ -348,6 +367,8 @@ function Dashboard() {
   const user = useAppSelector(selectUser);
   const userRole = user?.role || 'operator';
   
+  const { hospital } = useAppTheme();
+
   // Dashboard data states
   const [dashboardData, setDashboardData] = useState({
     reportStats: {
@@ -377,7 +398,8 @@ function Dashboard() {
     recentReports: [],
     currentMonth: new Date().getMonth() + 1,
     currentYear: new Date().getFullYear(),
-    userRole: userRole
+    userRole: userRole,
+    myreport: 0 // Added myreport field
   });
 
   // Filter states
@@ -403,35 +425,33 @@ function Dashboard() {
     const actions = {
       superAdmin: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
-        { label: 'レポート一覧', icon: <List />, link: '/report-list', color: 'success' },
+        { label: 'レポート一覧', icon: <List />, link: '/report-list?status=all', color: 'success' },
         { label: '医療機関管理', icon: <BusinessIcon />, link: '/medical-center', color: 'secondary' },
         { label: '医師管理', icon: <Person />, link: '/doctor', color: 'warning' },
       ],
       admin: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
-        { label: 'レポート一覧', icon: <List />, link: '/report-list', color: 'success' },
+        { label: 'レポート一覧', icon: <List />, link: '/report-list?status=all', color: 'success' },
         { label: '医療機関管理', icon: <BusinessIcon />, link: '/medical-center', color: 'secondary' },
         { label: '医師管理', icon: <Person />, link: '/doctor', color: 'warning' },
       ],
       hospitalAssistant: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
-        { label: 'レポート一覧', icon: <List />, link: '/report-list', color: 'success' },
+        { label: 'レポート一覧', icon: <List />, link: '/report-list?status=all', color: 'success' },
         { label: '診療科管理', icon: <MedicalServices />, link: '/department', color: 'info' },
         { label: '医師管理', icon: <Person />, link: '/doctor', color: 'warning' },
-       
       ],
       staff: [
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
         { label: '下書きレポート', icon: <Drafts />, link: '/report-list?status=draft', color: 'secondary' },
         { label: '提出済みレポート', icon: <CheckCircleOutline />, link: '/report-list?status=submitted', color: 'success' },
-         { label: '未確認 レポート', icon: <ReportProblem  />, link: '/report-list?status=pending', color: 'warning' },
-        //{ label: '統計を見る', icon: <Analytics />, link: '/statistics', color: 'info' }
+        { label: '未確認 レポート', icon: <ReportProblem />, link: '/report-list?status=pending', color: 'warning' },
       ],
       operator: [ 
         { label: '新規レポート作成', icon: <Add />, link: '/report-entry', color: 'primary' },
         { label: '下書きレポート', icon: <Drafts />, link: '/report-list?status=draft', color: 'secondary' },
         { label: '提出済みレポート', icon: <CheckCircleOutline />, link: '/report-list?status=submitted', color: 'success' },
-         { label: '未確認 レポート', icon: <ReportProblem  />, link: '/report-list?status=pending', color: 'warning' },
+        { label: '未確認 レポート', icon: <ReportProblem />, link: '/report-list?status=pending', color: 'warning' },
       ]
     };
     return actions[userRole] || [];
@@ -443,7 +463,8 @@ function Dashboard() {
       setStatsLoading(true);
       const response = await axios.post(`${apiConfig.baseURL}/dashboard/stats`, {
         month: monthFilter,
-        year: yearFilter
+        year: yearFilter,
+        hospital_id:hospital?.id || null
       });
 
       if (response.data.success) {
@@ -455,7 +476,8 @@ function Dashboard() {
           doctorStats: response.data.data.doctorStats,
           currentMonth: response.data.data.currentMonth,
           currentYear: response.data.data.currentYear,
-          userRole: response.data.data.userRole
+          userRole: response.data.data.userRole,
+          myreport: response.data.data.myreport || 0 // Add myreport from response
         }));
       } else {
         setFailAlert('ダッシュボードデータの取得に失敗しました');
@@ -495,7 +517,7 @@ function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
     fetchRecentReports();
-  }, [monthFilter, yearFilter]);
+  }, [monthFilter, yearFilter, hospital?.id]);
 
   // Handle view report
   const handleViewReport = (report) => {
@@ -575,6 +597,11 @@ function Dashboard() {
     }
   };
 
+  // Handle My Pending Approval click
+  const handlePendingApprovalClick = () => {
+    navigate('/report-list?status=pendingApproval');
+  };
+
   // Get current Japanese date
   const getCurrentJapaneseDate = () => {
     const now = new Date();
@@ -617,9 +644,7 @@ function Dashboard() {
 
   return (
     <Root
-      header={
-    <></>
-      }
+      header={<></>}
       content={
         <Box sx={{ 
           p: { xs: 2, sm: 3, md: 4 },
@@ -637,6 +662,83 @@ function Dashboard() {
               {failAlert}
             </Alert>
           )}
+
+          {/* My Pending Approval Card - Only shown for specific roles with pending reports */}
+     
+            <Box sx={{ mb: 4 }}>
+              <PendingApprovalCard>
+                <CardContent sx={{ p: 3 }}>
+                  <Grid container alignItems="center" spacing={2}>
+                    <Grid item xs={12} sm={8}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                          borderRadius: '50%',
+                          width: 60,
+                          height: 60,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <CheckCircle sx={{ fontSize: 32, color: 'white' }} />
+                        </Box>
+                        <Box>
+                          <Typography variant="h5" fontWeight={600} gutterBottom>
+                            マイ保留承認レポート
+                          </Typography>
+                          <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                            あなたの承認が必要なレポートがあります
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-start', sm: 'flex-end' }, gap: 2 }}>
+                        <Box sx={{
+                          backgroundColor: '#f44336',
+                          color: 'white',
+                          borderRadius: '50%',
+                          width: 64,
+                          height: 64,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)'
+                        }}>
+                          <Typography variant="h4" fontWeight={700}>
+                            {dashboardData.myreport}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '0.7rem', opacity: 0.9 }}>
+                            件保留中
+                          </Typography>
+                        </Box>
+                        <Button
+                          variant="contained"
+                          onClick={handlePendingApprovalClick}
+                          sx={{
+                            backgroundColor: 'white',
+                            color: '#667eea',
+                            fontWeight: 600,
+                            px: 3,
+                            py: 1.2,
+                            borderRadius: 2,
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                              transform: 'translateY(-2px)'
+                            }
+                          }}
+                          endIcon={<ArrowForward className="arrow-icon" sx={{ transition: 'transform 0.2s' }} />}
+                        >
+                          ビュー
+                        </Button>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </PendingApprovalCard>
+            </Box>
+  
 
           {/* Quick Actions */}
           <Box sx={{ mb: 4 }}>
