@@ -69,21 +69,18 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
     borderStyle: 'solid',
     borderColor: theme.palette.divider
   },
+
   '& .FusePageSimple-content': {
-    display: 'block !important', // Force block display instead of flex
-    minHeight: 0,
-    overflowY: 'auto',
-    height: '100%',
-    width: '100%'
+
+   overflow: 'auto',
+   height: '100%',
   },
+
   '& .FusePageSimple-wrapper': {
-    height: '100vh', // Ensure wrapper takes full viewport height
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  '& .FusePageSimple-sidebarHeader': {},
-  '& .FusePageSimple-sidebarContent': {}
+  height: '100%',
+  }
 }));
+
 
 const StyledCard = styled(Card)(({ theme }) => ({
   height: '100%',
@@ -648,7 +645,7 @@ function Dashboard() {
       content={
         <Box sx={{ 
           p: { xs: 2, sm: 3, md: 4 },
-          minHeight: '100%',
+      //    minHeight: '100%',
           width: '100%'
         }}>
           {/* Alerts */}
