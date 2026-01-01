@@ -199,7 +199,9 @@ export const getDashboardStats = async (req, res, next) => {
     });
 
     // 2. Get medical center statistics
-    let medicalCenterWhere = {};
+    let medicalCenterWhere = {
+      status: 1 // ADDED: Filter by active medical centers
+    };
     
     // Apply hospital_id filter if provided
     if (hospital_id) {
@@ -217,6 +219,7 @@ export const getDashboardStats = async (req, res, next) => {
         name: true,
         type: true,
         logo: true,
+        status: true, // ADDED: Include status in selection
         created_at: true,
         _count: {
           select: {
@@ -245,6 +248,7 @@ export const getDashboardStats = async (req, res, next) => {
         id: mc.id,
         name: mc.name,
         type: mc.type,
+        status: mc.status, // ADDED: Include status in response
         typeText: mc.type === 'large_hospital' ? '病院：大' : 
                  mc.type === 'hospital' ? '病院' : '福祉',
         logo: mc.logo || 'No logo',
@@ -280,7 +284,8 @@ export const getDashboardStats = async (req, res, next) => {
         medical_center: {
           select: {
             id: true,
-            name: true
+            name: true,
+            status: true // ADDED: Include medical center status
           }
         },
         _count: {
@@ -301,7 +306,9 @@ export const getDashboardStats = async (req, res, next) => {
       byHospital: departments.map(dept => ({
         id: dept.id,
         name: dept.name,
+        status: dept.status, // ADDED: Include department status
         hospitalName: dept.medical_center.name,
+        hospitalStatus: dept.medical_center.status, // ADDED: Include hospital status
         floor: dept.floor || '-',
         doctorCount: dept._count.doctor_links,
         createdDate: formatJapaneseDate(dept.created_at),
@@ -327,7 +334,8 @@ export const getDashboardStats = async (req, res, next) => {
         medical_center: {
           select: {
             id: true,
-            name: true
+            name: true,
+            status: true // ADDED: Include medical center status
           }
         },
         dept_links: {
@@ -335,7 +343,8 @@ export const getDashboardStats = async (req, res, next) => {
           include: {
             department: {
               select: {
-                name: true
+                name: true,
+                status: true // ADDED: Include department status
               }
             }
           }
@@ -351,9 +360,14 @@ export const getDashboardStats = async (req, res, next) => {
       byHospital: doctors.map(doc => ({
         id: doc.id,
         name: doc.name,
+        status: doc.status, // ADDED: Include doctor status
         licenseNo: doc.license_no || '',
         hospitalName: doc.medical_center.name,
-        departments: doc.dept_links.map(link => link.department.name).join(', '),
+        hospitalStatus: doc.medical_center.status, // ADDED: Include hospital status
+        departments: doc.dept_links
+          .filter(link => link.department.status === 1) // ADDED: Filter active departments
+          .map(link => link.department.name)
+          .join(', '),
         createdDate: formatJapaneseDate(doc.created_at),
         createdBy: 'CEO' // You might want to fetch actual creator name
       }))
@@ -377,29 +391,51 @@ export const getDashboardStats = async (req, res, next) => {
 };
 
 // Get recent reports for dashboard - Updated to filter by assigned medical centers
+// Get recent reports for dashboard - Updated to filter by assigned medical centers and current month only
 export const getRecentReports = async (req, res, next) => {
   try {
     const user = req.user;
     const { limit = 10 } = req.body;
     
+    // Get current Japanese time
+    const now = new Date();
+    const japanTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+    
+    const currentYear = japanTime.getFullYear();
+    const currentMonth = japanTime.getMonth(); // 0-based (0=January, 11=December)
+    
+    // Calculate first and last day of current month in Japan timezone
+    const firstDayOfMonth = new Date(Date.UTC(currentYear, currentMonth, 1));
+    const lastDayOfMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+    
     // Get assigned medical center IDs for non-admin users
     const assignedMedicalCenterIds = await getAssignedMedicalCenterIds(user);
     
     // Build where conditions
-    const where = {};
+    const where = {
+      // Filter by current month in Japan timezone
+      report_date: {
+        gte: firstDayOfMonth,
+        lte: lastDayOfMonth
+      }
+    };
     
     if (assignedMedicalCenterIds !== null) {
       if (assignedMedicalCenterIds.length === 0) {
         // No medical centers assigned, return empty array
         return response.success({
           reports: [],
-          total: 0
+          total: 0,
+          currentMonth: currentMonth + 1, // 1-based month for display
+          currentYear: currentYear,
+          japanTime: japanTime.toISOString(),
+          localTime: now.toISOString()
         }, res);
       }
       where.medical_center_id = { in: assignedMedicalCenterIds };
     }
 
-    // Get recent reports
+    // Get recent reports from current month
     const reports = await prisma.report.findMany({
       where,
       include: {
@@ -421,9 +457,14 @@ export const getRecentReports = async (req, res, next) => {
           }
         }
       },
-      orderBy: {
-        report_date: 'desc'
-      },
+      orderBy: [
+        {
+          report_date: 'desc'
+        },
+        {
+          created_at: 'desc'
+        }
+      ],
       take: parseInt(limit)
     });
 
@@ -488,7 +529,15 @@ export const getRecentReports = async (req, res, next) => {
 
     response.success({
       reports: formattedReports,
-      total: formattedReports.length
+      total: formattedReports.length,
+      currentMonth: currentMonth + 1, // 1-based month for display
+      currentYear: currentYear,
+      japanTime: japanTime.toISOString(),
+      japaneseDate: formatJapaneseDate(japanTime),
+      monthRange: {
+        start: formatJapaneseDate(firstDayOfMonth),
+        end: formatJapaneseDate(lastDayOfMonth)
+      }
     }, res);
 
   } catch (error) {

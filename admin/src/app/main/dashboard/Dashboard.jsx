@@ -824,7 +824,7 @@ function Dashboard() {
           </Box>
 
           {/* Filter Section */}
-          <Paper sx={{ p: 2, mb: 4 }}>
+         {/*  <Paper sx={{ p: 2, mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Typography variant="subtitle1" fontWeight={600}>
                 表示フィルター:
@@ -865,8 +865,8 @@ function Dashboard() {
                 />
               </Box>
             </Box>
-          </Paper>
-
+          </Paper>*/}
+<br></br>
           {/* View Mode Tabs */}
           <Box sx={{ mb: 3 }}>
             <Paper sx={{ display: 'inline-flex', p: 0.5, borderRadius: 2 }}>
