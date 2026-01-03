@@ -30,9 +30,6 @@ import Overview from './components/Overview';
 import ContentScreen from './components/ContentScreen';
 import { CommonHeader } from '../../shared-components/new/CommonHeader';
 
-// Add these imports if you need encryption utilities
-// import CryptoJS from 'crypto-js';
-
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
     backgroundColor: theme.palette.background.paper,
@@ -71,7 +68,7 @@ function ReportList() {
     draft: 0,
     approved: 0,
     rejected: 0,
-    pending: 0, // draft + submitted
+    pending: 0,
     total: 0
   });
   const [filters, setFilters] = useState({
@@ -85,12 +82,8 @@ function ReportList() {
     message: '',
     severity: 'success'
   });
-  const [hospitalDialog, setHospitalDialog] = useState({
-    open: false,
-    message: ''
-  });
 
-  // Hospital type mapping to numeric values
+  // Hospital type mapping
   const hospitalTypeMap = {
     'large_hospital': 1,
     'hospital': 2,
@@ -117,81 +110,98 @@ function ReportList() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
-  // Get status from URL parameter
-  const getStatusFromURL = () => {
-    const statusParam = searchParams.get('status');
-    const validStatuses = ['draft', 'submitted', 'approved', 'pending', 'rejected', 'pendingApproval'];
-    
-    if (statusParam && validStatuses.includes(statusParam)) {
-      return statusParam;
-    }
-    return 'all';
-  };
-
-  // Update URL with status parameter
-  const updateURLStatus = (status) => {
-    if (status === 'all') {
-      // Remove status parameter if it's 'all'
-      searchParams.delete('status');
-      setSearchParams(searchParams);
-    } else {
-      // Update or add status parameter
-      searchParams.set('status', status);
-      setSearchParams(searchParams);
-    }
-  };
-
   // Initialize filters from URL
   useEffect(() => {
-    const urlStatus = getStatusFromURL();
-    if (urlStatus !== 'all') {
-      setFilters(prev => ({ ...prev, status: urlStatus }));
-    }
+    const params = Object.fromEntries(searchParams.entries());
+    
+    const newFilters = {
+      ...filters,
+      status: params.status || 'all',
+      month: params.month ? parseInt(params.month) : new Date().getMonth() + 1,
+      year: params.year ? parseInt(params.year) : new Date().getFullYear(),
+      search: params.search || ''
+    };
+    
+    setFilters(newFilters);
   }, []);
 
-  // Fetch reports with pagination
-const fetchReports = useCallback(
-  async (page = 1, signal) => {
-    setLoading(true);
-    try {
-      const payload = {
-        page,
-        limit: pagination.itemsPerPage,
-        month: filters.month,
-        year: filters.year,
-        search: filters.search || undefined,
-        hospital_id: hospital?.id,
-      };
-
-      if (filters.status === 'pendingApproval') {
-        payload.status = 'pendingApproval';
-        payload.requires_approval = true;
-      } else if (filters.status !== 'all') {
-        payload.status = filters.status;
-      }
-
-      const response = await axios.post(
-        apiConfig.reportList,
-        payload,
-        { signal }
-      );
-
-      if (response.data.success) {
-        setReports(response.data.data.reports);
-        setPagination(response.data.data.pagination);
-      }
-    } catch (err) {
-      if (err.name !== 'CanceledError') {
-        console.error(err);
-        showSnackbar('レポート一覧の取得に失敗しました', 'error');
-      }
-    } finally {
-      setLoading(false);
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    // Update or remove status parameter
+    if (filters.status && filters.status !== 'all') {
+      params.set('status', filters.status);
+    } else {
+      params.delete('status');
     }
-  },
-  [filters, pagination.itemsPerPage, hospital?.id]
-);
+    
+    // Update month and year parameters
+    if (filters.month) {
+      params.set('month', filters.month.toString());
+    } else {
+      params.delete('month');
+    }
+    
+    if (filters.year) {
+      params.set('year', filters.year.toString());
+    } else {
+      params.delete('year');
+    }
+    
+    // Update search parameter
+    if (filters.search) {
+      params.set('search', filters.search);
+    } else {
+      params.delete('search');
+    }
+    
+    // Update URL without triggering navigation
+    setSearchParams(params, { replace: true });
+  }, [filters.status, filters.month, filters.year, filters.search]);
 
+  // Fetch reports with pagination
+  const fetchReports = useCallback(
+    async (page = 1, signal) => {
+      setLoading(true);
+      try {
+        const payload = {
+          page,
+          limit: pagination.itemsPerPage,
+          month: filters.month,
+          year: filters.year,
+          search: filters.search || undefined,
+          hospital_id: hospital?.id,
+        };
+
+        if (filters.status === 'pendingApproval') {
+          payload.status = 'pendingApproval';
+          payload.requires_approval = true;
+        } else if (filters.status !== 'all') {
+          payload.status = filters.status;
+        }
+
+        const response = await axios.post(
+          apiConfig.reportList,
+          payload,
+          { signal }
+        );
+
+        if (response.data.success) {
+          setReports(response.data.data.reports);
+          setPagination(response.data.data.pagination);
+        }
+      } catch (err) {
+        if (err.name !== 'CanceledError') {
+          console.error(err);
+          showSnackbar('レポート一覧の取得に失敗しました', 'error');
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters, pagination.itemsPerPage, hospital?.id]
+  );
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {
@@ -202,7 +212,6 @@ const fetchReports = useCallback(
         year: filters.year
       };
 
-      // Only add hospital_id if it exists
       if (hospital?.id) {
         payload.hospital_id = hospital.id;
       }
@@ -219,40 +228,33 @@ const fetchReports = useCallback(
     }
   }, [filters.month, filters.year, hospital?.id]);
 
- 
+  // Fetch data when filters change
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchReports(1, controller.signal);
+    fetchStatistics();
 
-useEffect(() => {
-  const controller = new AbortController();
-
-  fetchReports(1, controller.signal);
-  fetchStatistics();
-
-  return () => {
-    controller.abort(); // ⛔ cancel previous request
-  };
-}, [
-  filters.month,
-  filters.year,
-  filters.status,
-  hospital?.id
-]);
-
+    return () => {
+      controller.abort();
+    };
+  }, [
+    filters.month,
+    filters.year,
+    filters.status,
+    filters.search,
+    hospital?.id
+  ]);
 
   // Handle filter changes
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
-    
-    // Update URL if status is changing
-    if (newFilters.status !== undefined) {
-      updateURLStatus(newFilters.status);
-    }
   };
 
   // Handle page change
-const handlePageChange = (page) => {
-  const controller = new AbortController();
-  fetchReports(page, controller.signal);
-};
+  const handlePageChange = (page) => {
+    const controller = new AbortController();
+    fetchReports(page, controller.signal);
+  };
 
   // Handle status filter
   const handleStatusFilter = (status) => {
@@ -284,13 +286,11 @@ const handlePageChange = (page) => {
         search: filters.search || undefined
       };
 
-      // Handle pendingApproval for export
       if (filters.status === 'pendingApproval') {
         payload.status = 'pendingApproval';
         payload.requires_approval = true;
       }
 
-      // Only add hospital_id if it exists
       if (hospital?.id) {
         payload.hospital_id = hospital.id;
       }
@@ -299,7 +299,6 @@ const handlePageChange = (page) => {
         responseType: 'blob'
       });
 
-      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -315,32 +314,24 @@ const handlePageChange = (page) => {
     }
   };
 
-  // Handle report action (view)
+  // Handle report action - now navigates normally
   const handleReportAction = (report) => {
-    // Get hospital type from report data or current hospital context
     const reportHospitalType = report.medical_center_type || (hospital?.type || 'hospital');
-    const typeValue = hospitalTypeMap[reportHospitalType] || 2; // Default to 2 (hospital)
+    const typeValue = hospitalTypeMap[reportHospitalType] || 2;
     
+    // Navigate to report view
     navigate(`/report-view?id=${report.id}&type=${typeValue}`);
   };
 
   // Handle add new report
   const handleAddReport = () => {
-    // Check if hospital is selected
     if (!hospital?.id) {
-      // Show message to select hospital first
       showSnackbar('レポートを作成するには、まず病院・施設を選択してください', 'warning');
-      return; // Don't navigate
+      return;
     }
     
-    // Hospital is selected, proceed with navigation
     const typeValue = hospitalTypeMap[hospital.type] || 2;
     navigate(`/report-entry`);
-  };
-
-  // Handle hospital selection dialog close
-  const handleHospitalDialogClose = () => {
-    setHospitalDialog({ ...hospitalDialog, open: false });
   };
 
   // Snackbar helper
@@ -406,18 +397,6 @@ const handlePageChange = (page) => {
       onClick: () => handleStatusFilter('pending')
     },
   ];
-
-  // Add pendingApproval card if needed (you can add it conditionally)
-  // For example, if user has permission to see pending approvals:
-  // if (userRole === 'superAdmin' || userRole === 'admin') {
-  //   overviewCards.push({
-  //     bgColor: "#ff4081",
-  //     icon: "PendingActions",
-  //     label: "保留承認レポート",
-  //     value: pendingApprovalCount.toString(),
-  //     onClick: () => handleStatusFilter('pendingApproval')
-  //   });
-  // }
 
   // Get current date for header
   const getCurrentJapaneseDate = () => {

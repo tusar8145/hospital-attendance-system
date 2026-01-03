@@ -3,6 +3,7 @@ import CheckCircle from "@mui/icons-material/CheckCircle";
 import ChevronLeft from "@mui/icons-material/ChevronLeft";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   Box,
   Button,
@@ -19,7 +20,9 @@ import {
   TableRow,
   Typography,
   Tooltip,
+  IconButton,
 } from "@mui/material";
+import { Link as RouterLink } from 'react-router-dom';
 
 export const MainContentSection = ({ 
   reports, 
@@ -63,80 +66,77 @@ export const MainContentSection = ({
             }}
           />
         );
-case 'approved':
-  return (
-    <Box sx={{ position: 'relative' }}>
-      <Stack 
-        direction="row" 
-        spacing={1} 
-        alignItems="center"
-        sx={{
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-
-                  <Chip
-            label="確認済み"
-            size="small"
-            sx={{
-              bgcolor: "#0bb53014",
-              color: "#0bb530ff",
-              border: 1,
-              borderColor: "#0bb530ff",
-              fontWeight: 500,
-              fontSize: "0.75rem",
-            }}
-          />
-
- 
-        <Box
-          sx={{
-            width: 18,
-            height: 18,
-            bgcolor: "primary.main",
-            borderRadius: "4px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: 'relative',
-            overflow: 'visible',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderRadius: '4px',
-              border: '2px solid',
-              borderColor: 'primary.main',
-              animation: 'ripple 2s infinite',
-              zIndex: -1,
-            },
-            '@keyframes ripple': {
-              '0%': {
-                transform: 'scale(1)',
-                opacity: 1,
-              },
-              '100%': {
-                transform: 'scale(1.8)',
-                opacity: 0,
-              },
-            },
-          }}
-        >
-          <CheckCircle
-            sx={{
-              width: "75%",
-              height: "75%",
-              color: "white",
-            }}
-          />
-        </Box>
-      </Stack>
-    </Box>
-  );
+      case 'approved':
+        return (
+          <Box sx={{ position: 'relative' }}>
+            <Stack 
+              direction="row" 
+              spacing={1} 
+              alignItems="center"
+              sx={{
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              <Chip
+                label="確認済み"
+                size="small"
+                sx={{
+                  bgcolor: "#0bb53014",
+                  color: "#0bb530ff",
+                  border: 1,
+                  borderColor: "#0bb530ff",
+                  fontWeight: 500,
+                  fontSize: "0.75rem",
+                }}
+              />
+              <Box
+                sx={{
+                  width: 18,
+                  height: 18,
+                  bgcolor: "primary.main",
+                  borderRadius: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: 'relative',
+                  overflow: 'visible',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    borderRadius: '4px',
+                    border: '2px solid',
+                    borderColor: 'primary.main',
+                    animation: 'ripple 2s infinite',
+                    zIndex: -1,
+                  },
+                  '@keyframes ripple': {
+                    '0%': {
+                      transform: 'scale(1)',
+                      opacity: 1,
+                    },
+                    '100%': {
+                      transform: 'scale(1.8)',
+                      opacity: 0,
+                    },
+                  },
+                }}
+              >
+                <CheckCircle
+                  sx={{
+                    width: "75%",
+                    height: "75%",
+                    color: "white",
+                  }}
+                />
+              </Box>
+            </Stack>
+          </Box>
+        );
       case 'rejected':
         return (
           <Chip
@@ -190,8 +190,27 @@ case 'approved':
       case 'large_hospital': return 1;
       case 'hospital': return 2;
       case 'welfare': return 3;
-      default: return 2; // Default to hospital
+      default: return 2;
     }
+  };
+
+  // Function to get the report URL
+  const getReportUrl = (report) => {
+    const typeValue = getHospitalTypeValue(report.medical_center_type);
+    return `/report-view?id=${report.id}&type=${typeValue}`;
+  };
+
+  // Function to handle middle-click or ctrl+click for new tab
+  const handleLinkClick = (report, event) => {
+    // Allow middle-click, ctrl+click, or cmd+click to open in new tab
+    if (event.metaKey || event.ctrlKey || event.button === 1) {
+      // These will be handled by the browser's default behavior for anchor tags
+      return;
+    }
+    
+    // For normal left-click, prevent default and navigate programmatically
+    event.preventDefault();
+    onReportAction(report);
   };
 
   return (
@@ -476,6 +495,8 @@ case 'approved':
             {reports.length > 0 ? (
               reports.map((row, index) => {
                 const hospitalType = getHospitalTypeLabel(row.medical_center_type);
+                const reportUrl = getReportUrl(row);
+                const fullUrl = `${window.location.origin}${reportUrl}`;
                 
                 return (
                   <TableRow key={row.id || index} hover>
@@ -654,20 +675,26 @@ case 'approved':
                         textAlign: "center",
                       }}
                     >
-                      <Link
-                        component="button"
-                        onClick={() => onReportAction(row)} // Changed: pass full row object
-                        underline="always"
-                        sx={{
-                          color: "#0A6AE3",
-                          fontWeight: 600,
-                          fontSize: "0.875rem",
-                          cursor: "pointer",
-                        }}
-                      >
-                        表示
-                      </Link>
-                    </TableCell>
+ 
+  <Link
+    component={RouterLink}
+    to={reportUrl}
+    onClick={(e) => handleLinkClick(row, e)}
+    underline="none"  // Removed underline
+    sx={{
+      color: "#0A6AE3",
+      fontWeight: 600,
+      fontSize: "0.875rem",
+      cursor: "pointer",
+      '&:hover': {
+        color: "#0847A3",
+        textDecoration: 'none', // Ensure no underline on hover too
+      },
+    }}
+  >
+    表示
+  </Link>
+                     </TableCell>
                   </TableRow>
                 );
               })
