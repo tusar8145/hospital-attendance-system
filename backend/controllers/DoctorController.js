@@ -236,7 +236,41 @@ export const doctor_create = async (req, res, next) => {
 
 export const doctor_update = async (req, res, next) => {
   try {
-    const { id, name, license_no, medical_center_id } = req.body;
+    const { id, name, license_no, medical_center_id, department_ids} = req.body;
+    let doctor_id = id
+
+    // Remove existing department links
+    await prisma.doctor_department.deleteMany({
+      where: { 
+        doctor_id: parseInt(doctor_id) 
+      }
+    });
+
+    // Create new department links
+    if (department_ids && department_ids.length > 0) {
+      const departmentLinks = department_ids.map(deptId => ({
+        doctor_id: parseInt(doctor_id),
+        department_id: parseInt(deptId),
+        created_by: user_id
+      }));
+
+      await prisma.doctor_department.createMany({
+        data: departmentLinks
+      });
+    }
+
+    const doctorWithDepartments = await prisma.doctor.findUnique({
+      where: { id: parseInt(doctor_id) },
+      include: {
+        dept_links: {
+          include: {
+            department: true
+          }
+        }
+      }
+    });
+
+
 
     const updatedDoctor = await prisma.doctor.update({
       where: { id: parseInt(id) },

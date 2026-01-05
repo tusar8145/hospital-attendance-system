@@ -208,7 +208,8 @@ model doctor {
   status             Int        @default(1)
   dept_links         doctor_department[]
 
-  @@unique([name, medical_center_id])
+  // OR if you want to handle uniqueness with optional license_no differently
+  @@unique([name, medical_center_id, license_no], name: "doctor_identity")
 
   created_by   Int
   created_at   DateTime?           @default(now())

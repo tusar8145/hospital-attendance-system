@@ -1142,7 +1142,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
         size="large"
         disabled={isLoading || !hospital?.id}
       >
-        {isLoading ? t('Creating...') : `${t('Create Doctor')}${doctors.length > 1 ? 's' : ''}`}
+        {isLoading ? t('Creating...') : `${t('Create Doctor')}${doctors.length > 1 ? '' : ''}`}
       </Button>
     </>
   );
@@ -1151,7 +1151,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     <CommonDialog
       open={open}
       onClose={handleClose}
-      title={`Create Doctor${doctors.length > 1 ? 's' : ''}`}
+      title={`Create Doctor${doctors.length > 1 ? '' : ''}`}
       actions={dialogActions}
       disabled={isLoading}
       maxWidth="lg"

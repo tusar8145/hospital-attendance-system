@@ -1061,7 +1061,7 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
         size="large"
         disabled={isLoading}
       >
-        {isLoading ? t('Creating...') : `${t('Create Department')}${departments.length > 1 ? 's' : ''}`}
+        {isLoading ? t('Creating...') : `${t('Create Department')}`}
       </Button>
     </>
   );
@@ -1070,7 +1070,7 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
     <CommonDialog
       open={open}
       onClose={handleClose}
-      title={`Create Department${departments.length > 1 ? 's' : ''}`}
+      title={`Create Department${departments.length > 1 ? '' : ''}`}
       actions={dialogActions}
       disabled={isLoading}
       maxWidth='md'
