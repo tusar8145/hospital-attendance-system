@@ -221,7 +221,7 @@ const ConsolidatedContentComponent = ({
     const doctor = findDoctorById(doctorId);
     if (!doctor) return '';
     
-    return doctor.license_no ? `${doctor.name} (${doctor.license_no})` : doctor.name;
+    return doctor.license_no ? `${doctor.license_no} ${doctor.name}` : doctor.name;
   };
 
   // Handler functions
@@ -1075,15 +1075,15 @@ const ConsolidatedContentComponent = ({
                                   backgroundColor: '#0A6AE3'
                                 }} />
                                 <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
+                                  {doctor?.license_no}
                                 </Typography>
-                                {doctor.license_no && (
+                                {doctor.name && (
                                   <Typography sx={{ 
                                     fontSize: fontSize.small, 
                                     color: '#666',
                                     ml: 'auto'
                                   }}>
-                                    {doctor.license_no}
+                                    {doctor.name}
                                   </Typography>
                                 )}
                               </Box>
@@ -1144,15 +1144,15 @@ const ConsolidatedContentComponent = ({
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
+                                  {doctor?.license_no}
                                 </Typography>
-                                {doctor.license_no && (
+                                {doctor.name && (
                                   <Typography sx={{ 
                                     fontSize: fontSize.small, 
                                     color: '#666',
                                     ml: 'auto'
                                   }}>
-                                    ({doctor.license_no})
+                                    {doctor.name}
                                   </Typography>
                                 )}
                               </Box>
@@ -1213,15 +1213,15 @@ const ConsolidatedContentComponent = ({
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor.name}
+                                  {doctor?.license_no}
                                 </Typography>
-                                {doctor.license_no && (
+                                {doctor.name && (
                                   <Typography sx={{ 
                                     fontSize: fontSize.small, 
                                     color: '#666',
                                     ml: 'auto'
                                   }}>
-                                    ({doctor.license_no})
+                                    {doctor.name}
                                   </Typography>
                                 )}
                               </Box>

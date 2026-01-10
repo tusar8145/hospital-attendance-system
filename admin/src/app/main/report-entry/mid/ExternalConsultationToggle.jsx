@@ -43,6 +43,14 @@ const SectionHeader = styled(Box)(({ color = "#0A6AE3" }) => ({
   marginBottom: 16,
 }));
 
+// Helper function to convert full-width numbers to half-width
+const normalizeNumberInput = (value) => {
+  if (typeof value !== 'string') return value;
+  return value.replace(/[０-９]/g, (char) => 
+    String.fromCharCode(char.charCodeAt(0) - 0xFEE0)
+  );
+};
+
 const ExternalConsultationToggle = ({
   initialValues = {},
   onValuesChange,
@@ -125,64 +133,65 @@ const ExternalConsultationToggle = ({
   const skipNotificationRef = useRef(false);
 
   // Initialize from props - ONLY ONCE
-useEffect(() => {
-  if (!initialValues || Object.keys(initialValues).length === 0) return;
+  useEffect(() => {
+    if (!initialValues || Object.keys(initialValues).length === 0) return;
 
-  if (
-    prevInitialValuesRef.current &&
-    JSON.stringify(prevInitialValuesRef.current) === JSON.stringify(initialValues)
-  ) {
-    return;
-  }
+    if (
+      prevInitialValuesRef.current &&
+      JSON.stringify(prevInitialValuesRef.current) === JSON.stringify(initialValues)
+    ) {
+      return;
+    }
 
-  prevInitialValuesRef.current = initialValues;
-  skipNotificationRef.current = true;
+    prevInitialValuesRef.current = initialValues;
+    skipNotificationRef.current = true;
 
-  let newToggleStates = { PET: false, MR: false, CT: false };
-  let newSectionValues = JSON.parse(JSON.stringify(defaultSectionValues));
+    let newToggleStates = { PET: false, MR: false, CT: false };
+    let newSectionValues = JSON.parse(JSON.stringify(defaultSectionValues));
 
-  if (initialValues.details) {
-    ["PET", "MR", "CT"].forEach(sectionId => {
-      const sectionData = initialValues.details[sectionId];
-      if (!sectionData) return;
+    if (initialValues.details) {
+      ["PET", "MR", "CT"].forEach(sectionId => {
+        const sectionData = initialValues.details[sectionId];
+        if (!sectionData) return;
 
-      newToggleStates[sectionId] = true;
+        newToggleStates[sectionId] = true;
 
-      Object.keys(sectionData).forEach(fieldKey => {
-        if (newSectionValues[sectionId][fieldKey]) {
-          newSectionValues[sectionId][fieldKey] = {
-            enabled: Boolean(sectionData[fieldKey].enabled),
-            value: String(sectionData[fieldKey].value ?? "0"),
-          };
-        }
+        Object.keys(sectionData).forEach(fieldKey => {
+          if (newSectionValues[sectionId][fieldKey]) {
+            newSectionValues[sectionId][fieldKey] = {
+              enabled: Boolean(sectionData[fieldKey].enabled),
+              // Normalize initial values to handle any full-width numbers
+              value: normalizeNumberInput(String(sectionData[fieldKey].value ?? "0")),
+            };
+          }
+        });
       });
-    });
-  }
+    }
 
-  const calculateTotal = (id) =>
-    Object.values(newSectionValues[id] || {}).reduce(
-      (sum, f) => (f.enabled ? sum + Number(f.value || 0) : sum),
-      0
-    );
+    const calculateTotal = (id) =>
+      Object.values(newSectionValues[id] || {}).reduce(
+        (sum, f) => (f.enabled ? sum + Number(f.value || 0) : sum),
+        0
+      );
 
-  const newTotals = {
-    PET: calculateTotal("PET"),
-    MR: calculateTotal("MR"),
-    CT: calculateTotal("CT"),
-  };
-  newTotals.grandTotal = newTotals.PET + newTotals.MR + newTotals.CT;
+    const newTotals = {
+      PET: calculateTotal("PET"),
+      MR: calculateTotal("MR"),
+      CT: calculateTotal("CT"),
+    };
+    newTotals.grandTotal = newTotals.PET + newTotals.MR + newTotals.CT;
 
-  setToggleStates(newToggleStates);
-  setSectionValues(newSectionValues);
-  setTotals(newTotals);
+    setToggleStates(newToggleStates);
+    setSectionValues(newSectionValues);
+    setTotals(newTotals);
 
-  // ✅ THIS IS THE MISSING LINE
-  isInitializedRef.current = true;
+    // ✅ THIS IS THE MISSING LINE
+    isInitializedRef.current = true;
 
-  setTimeout(() => {
-    skipNotificationRef.current = false;
-  }, 100);
-}, [initialValues]);
+    setTimeout(() => {
+      skipNotificationRef.current = false;
+    }, 100);
+  }, [initialValues]);
 
 
 
@@ -235,38 +244,40 @@ useEffect(() => {
   }, []);
 
   // Handle main toggle change
-const handleToggleChange = (sectionId) => {
-  if (readOnly || reportStatus === 'submitted') return;
+  const handleToggleChange = (sectionId) => {
+    if (readOnly || reportStatus === 'submitted') return;
 
-  const newToggleState = !toggleStates[sectionId];
-  console.log(`Toggle ${sectionId}: ${toggleStates[sectionId]} -> ${newToggleState}`);
+    const newToggleState = !toggleStates[sectionId];
+    console.log(`Toggle ${sectionId}: ${toggleStates[sectionId]} -> ${newToggleState}`);
 
-  setToggleStates(prev => ({
-    ...prev,
-    [sectionId]: newToggleState,
-  }));
-
-  // ✅ If toggled OFF → clear that section's values
-  if (!newToggleState) {
-    setSectionValues(prev => ({
+    setToggleStates(prev => ({
       ...prev,
-      [sectionId]: Object.fromEntries(
-        Object.keys(prev[sectionId]).map(key => [
-          key,
-          { ...prev[sectionId][key], value: "0" }
-        ])
-      ),
+      [sectionId]: newToggleState,
     }));
-  }
-};
 
+    // ✅ If toggled OFF → clear that section's values
+    if (!newToggleState) {
+      setSectionValues(prev => ({
+        ...prev,
+        [sectionId]: Object.fromEntries(
+          Object.keys(prev[sectionId]).map(key => [
+            key,
+            { ...prev[sectionId][key], value: "0" }
+          ])
+        ),
+      }));
+    }
+  };
 
   // Handle field value change
   const handleFieldValueChange = (sectionId, fieldKey, value) => {
     if (readOnly || reportStatus === 'submitted') return;
     
-    // Allow only numbers
-    if (!/^\d*$/.test(value)) return;
+    // Normalize full-width numbers to half-width
+    const normalizedValue = normalizeNumberInput(value);
+    
+    // Allow only numbers after normalization
+    if (!/^\d*$/.test(normalizedValue)) return;
     
     setSectionValues(prev => ({
       ...prev,
@@ -274,10 +285,34 @@ const handleToggleChange = (sectionId) => {
         ...prev[sectionId],
         [fieldKey]: {
           ...prev[sectionId][fieldKey],
-          value: value,
+          value: normalizedValue,
         },
       },
     }));
+  };
+
+  // Handle field blur to ensure normalization
+  const handleFieldBlur = (e, sectionId, fieldKey) => {
+    if (readOnly || reportStatus === 'submitted') return;
+    
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    const currentValue = sectionValues[sectionId][fieldKey].value;
+    
+    // Update if value changed after normalization
+    if (normalizedValue !== currentValue) {
+      if (/^\d*$/.test(normalizedValue)) {
+        setSectionValues(prev => ({
+          ...prev,
+          [sectionId]: {
+            ...prev[sectionId],
+            [fieldKey]: {
+              ...prev[sectionId][fieldKey],
+              value: normalizedValue,
+            },
+          },
+        }));
+      }
+    }
   };
 
   // Handle field toggle change
@@ -294,6 +329,12 @@ const handleToggleChange = (sectionId) => {
         },
       },
     }));
+  };
+
+  // Handle focus event to select all text - This helps with user experience
+  const handleFocusSelect = (e) => {
+    // Select all text when field is focused for easy editing
+    e.target.select();
   };
 
   // Notify parent of value changes
@@ -406,7 +447,8 @@ const handleToggleChange = (sectionId) => {
                 <TextField
                   value={fieldData.value}
                   onChange={(e) => handleFieldValueChange(section.id, field.key, e.target.value)}
-                  onFocus={(e) => e.target.select()}
+                  onBlur={(e) => handleFieldBlur(e, section.id, field.key)}
+                  //onFocus={handleFocusSelect} 
                   variant="outlined"
                   size="small"
                   fullWidth

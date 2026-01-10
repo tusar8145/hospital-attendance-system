@@ -49,6 +49,14 @@ import {
 import { useAppSelector } from 'app/store/hooks';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 
+// Helper function to convert full-width numbers to half-width
+const normalizeNumberInput = (value) => {
+  if (typeof value !== 'string') return value;
+  return value.replace(/[０-９]/g, (char) => 
+    String.fromCharCode(char.charCodeAt(0) - 0xFEE0)
+  );
+};
+
 const FrameScreen = React.memo(({
   formData = null,
   departments = [],
@@ -427,13 +435,41 @@ const FrameScreen = React.memo(({
     }
   }, [hospitalId]);
 
-  // Handle welfare data changes
+  // Handle welfare data changes - with number validation and normalization
   const handleWelfareDataChange = (field, value) => {
     console.log(`Changing field ${field} to:`, value);
-    setWelfareData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    
+    // Normalize full-width numbers to half-width
+    const normalizedValue = normalizeNumberInput(value);
+    
+    // For numeric fields, allow only numbers
+    const isNumericField = field.includes('_count') || 
+                          field.includes('_users') || 
+                          field.includes('_hospital') || 
+                          field.includes('_treated') ||
+                          field.includes('_capacity') ||
+                          field.includes('_utilization') ||
+                          field.includes('_avg') ||
+                          field.includes('_admission') ||
+                          field === 'section1_monthly_admission' ||
+                          field === 'section2_monthly_admission' ||
+                          field === 'section3_monthly_admission';
+    
+    if (isNumericField) {
+      // Allow only numbers (including empty string for deletion)
+      if (normalizedValue === '' || /^\d*$/.test(normalizedValue)) {
+        setWelfareData(prev => ({
+          ...prev,
+          [field]: normalizedValue
+        }));
+      }
+    } else {
+      // For text fields, allow any input
+      setWelfareData(prev => ({
+        ...prev,
+        [field]: normalizedValue
+      }));
+    }
     
     // Clear validation error if fixed
     if (validationErrors[field]) {
@@ -443,13 +479,29 @@ const FrameScreen = React.memo(({
     }
   };
 
+  // Handle blur event for numeric fields
+  const handleNumericFieldBlur = (field, value) => {
+    const normalizedValue = normalizeNumberInput(value);
+    const currentValue = welfareData[field];
+    
+    // Update if value changed after normalization
+    if (normalizedValue !== currentValue && /^\d*$/.test(normalizedValue)) {
+      // If empty, set to "0"
+      const finalValue = normalizedValue === '' ? '0' : normalizedValue;
+      setWelfareData(prev => ({
+        ...prev,
+        [field]: finalValue
+      }));
+    }
+  };
+
   // Handle special notes change (in 管理事項 section)
   const handleSpecialNotesChange = (e) => {
     setSpecialNotes(e.target.value);
   };
 
-  // Auto-select text field content on focus
-  const handleTextFieldFocus = (fieldId) => (event) => {
+  // Handle focus event - SELECTS ALL TEXT
+  const handleTextFieldFocus = (event) => {
     event.target.select();
   };
 
@@ -638,7 +690,10 @@ const FrameScreen = React.memo(({
         setSavingDialog(false);
       }
     } else if (type === 'capacity') {
-      if (!capacity || capacity === "" || isNaN(parseInt(capacity)) || parseInt(capacity) < 0) {
+      // Normalize the capacity input
+      const normalizedCapacity = normalizeNumberInput(capacity);
+      
+      if (!normalizedCapacity || normalizedCapacity === "" || isNaN(parseInt(normalizedCapacity)) || parseInt(normalizedCapacity) < 0) {
         showLocalSnackbar('定員は0以上の数値を入力してください', 'error');
         return;
       }
@@ -647,7 +702,7 @@ const FrameScreen = React.memo(({
       const capacityKey = `section${sectionNumber}_capacity`;
       
       // Update local state immediately
-      handleWelfareDataChange(capacityKey, capacity);
+      handleWelfareDataChange(capacityKey, normalizedCapacity);
       
       // Also update in medical_center table via API
       setSavingDialog(true);
@@ -655,7 +710,7 @@ const FrameScreen = React.memo(({
         const response = await axios.post(`${apiConfig.baseURL}/report-welfare/update-capacities`, {
           hospital_id: hospitalId,
           capacities: {
-            [sectionNumber]: parseInt(capacity) || 0
+            [sectionNumber]: parseInt(normalizedCapacity) || 0
           }
         });
         
@@ -771,6 +826,21 @@ const FrameScreen = React.memo(({
     const error = validationErrors[field];
     const helperText = error || (editable ? `${label}を入力してください` : '自動計算されます');
     
+    // Determine if it's a numeric field
+    const isNumericField = field.includes('_count') || 
+                          field.includes('_users') || 
+                          field.includes('_hospital') || 
+                          field.includes('_treated') ||
+                          field.includes('_capacity') ||
+                          field.includes('_utilization') ||
+                          field.includes('_avg') ||
+                          field.includes('_admission') ||
+                          field === 'section1_monthly_admission' ||
+                          field === 'section2_monthly_admission' ||
+                          field === 'section3_monthly_admission';
+    
+    const fieldType = isNumericField ? 'number' : 'text';
+    
     return (
       <Grid item xs={12} sm={isTextArea ? 12 : 6} md={isTextArea ? 12 : 3} key={field}>
         <Stack spacing={1}>
@@ -801,7 +871,7 @@ const FrameScreen = React.memo(({
               error={!!error}
               helperText={helperText}
               disabled={readOnly || reportStatus === 'submitted' || !editable}
-              onFocus={handleTextFieldFocus(field)}
+           //   onFocus={handleTextFieldFocus}
               InputProps={{
                 sx: {
                   borderRadius: "8px",
@@ -829,15 +899,26 @@ const FrameScreen = React.memo(({
             />
           ) : (
             <TextField
+              type={fieldType}
               value={value || "0"}
               onChange={(e) => handleWelfareDataChange(field, e.target.value)}
+              onBlur={(e) => {
+                if (isNumericField) {
+                  handleNumericFieldBlur(field, e.target.value);
+                }
+              }}
               variant="outlined"
               fullWidth
               size="small"
               error={!!error}
               helperText={helperText}
               disabled={readOnly || reportStatus === 'submitted' || !editable}
-              onFocus={handleTextFieldFocus(field)}
+            //  onFocus={handleTextFieldFocus} // AUTO-SELECTS ALL TEXT WHEN CLICKED
+              inputProps={{
+                inputMode: isNumericField ? 'numeric' : 'text',
+                pattern: isNumericField ? '[0-9]*' : undefined,
+                min: isNumericField ? 0 : undefined,
+              }}
               InputProps={{
                 sx: {
                   borderRadius: "8px",
@@ -848,9 +929,9 @@ const FrameScreen = React.memo(({
                   },
                   "& input": {
                     fontSize: fontSize.small,
-                    textAlign: 'right',
-                    paddingRight: 2,
-                    fontWeight: 500,
+                    textAlign: isNumericField ? 'right' : 'left',
+                    paddingRight: isNumericField ? 2 : 1,
+                    fontWeight: isNumericField ? 500 : 400,
                     color: editable ? "#2c3e50" : "#666",
                     '&::placeholder': {
                       fontSize: fontSize.small,
@@ -909,6 +990,7 @@ const FrameScreen = React.memo(({
           </Box>
           <TextField
             value={value}
+            type="number"
             variant="outlined"
             fullWidth
             size="small"
@@ -981,7 +1063,7 @@ const FrameScreen = React.memo(({
             rows={rows}
             size="small"
             disabled={readOnly || reportStatus === 'submitted'}
-            onFocus={handleTextFieldFocus(field)}
+          //  onFocus={handleTextFieldFocus} // AUTO-SELECTS ALL TEXT WHEN CLICKED
             InputProps={{
               sx: {
                 borderRadius: "8px",
@@ -1547,7 +1629,7 @@ const FrameScreen = React.memo(({
                     rows={4}
                     placeholder="特記事項があれば入力してください..."
                     disabled={readOnly || reportStatus === 'submitted'}
-                    onFocus={(e) => e.target.select()}
+                 //   onFocus={handleTextFieldFocus} // AUTO-SELECTS ALL TEXT WHEN CLICKED
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         bgcolor: "#ffffff",
@@ -1687,7 +1769,7 @@ const FrameScreen = React.memo(({
                 value={editDialog.name}
                 onChange={(e) => setEditDialog(prev => ({ ...prev, name: e.target.value }))}
                 disabled={savingDialog}
-                onFocus={(e) => e.target.select()}
+              //  onFocus={handleTextFieldFocus} // AUTO-SELECTS ALL TEXT WHEN CLICKED
                 inputProps={{
                   style: { fontSize: fontSize.medium }
                 }}
@@ -1700,12 +1782,25 @@ const FrameScreen = React.memo(({
                 fullWidth
                 type="number"
                 value={editDialog.capacity}
-                onChange={(e) => setEditDialog(prev => ({ ...prev, capacity: e.target.value }))}
+                onChange={(e) => {
+                  const normalizedValue = normalizeNumberInput(e.target.value);
+                  if (normalizedValue === '' || /^\d*$/.test(normalizedValue)) {
+                    setEditDialog(prev => ({ ...prev, capacity: normalizedValue }));
+                  }
+                }}
+                onBlur={(e) => {
+                  const normalizedValue = normalizeNumberInput(e.target.value);
+                  if (normalizedValue === '') {
+                    setEditDialog(prev => ({ ...prev, capacity: '0' }));
+                  }
+                }}
                 disabled={savingDialog}
-                onFocus={(e) => e.target.select()}
+               // onFocus={handleTextFieldFocus} // AUTO-SELECTS ALL TEXT WHEN CLICKED
                 inputProps={{
                   style: { fontSize: fontSize.medium },
-                  min: 0
+                  min: 0,
+                  inputMode: 'numeric',
+                  pattern: '[0-9]*'
                 }}
               />
             )}

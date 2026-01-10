@@ -33,6 +33,14 @@ import ExternalDoctorsSection from './ExternalDoctorsSection';
 import apiConfig from '../../../configs/apiConfig';
 import axios from 'axios';
 
+// Helper function to convert full-width numbers to half-width
+const normalizeNumberInput = (value) => {
+  if (typeof value !== 'string') return value;
+  return value.replace(/[０-９]/g, (char) => 
+    String.fromCharCode(char.charCodeAt(0) - 0xFEE0)
+  );
+};
+
 const FrameScreen = React.memo(({
   formData = null,
   departments = [],
@@ -429,9 +437,9 @@ const FrameScreen = React.memo(({
       errors.postTransportAdmission = "有効な搬送後入院数が必要です";
     }
     
-    if (!externalConsultation.visit || isNaN(parseInt(externalConsultation.visit))) {
-      errors.visit = "有効な訪問数が必要です";
-    }
+    /*if (!externalConsultation.visit || isNaN(parseInt(externalConsultation.visit))) {
+      errors.visit = "有効な訪問数が必要です ";
+    }*/
     
     // Validate shift nurses (at least one per shift)
     const hasEarlyNight = shiftNurses.earlyNight.some(nurse => nurse.name.trim() !== "");
@@ -579,15 +587,25 @@ const FrameScreen = React.memo(({
 
   // Handler functions for form fields with select all on focus
   const handleAdmissionChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
-      setAdmissionCount(value);
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    
+    // Now check if it's a valid number (both half-width and normalized full-width will pass)
+    if (/^\d*$/.test(normalizedValue)) {
+      setAdmissionCount(normalizedValue);
       // Clear error if fixed
-      if (validationErrors.admissionCount && value && !isNaN(parseInt(value))) {
+      if (validationErrors.admissionCount && normalizedValue && !isNaN(parseInt(normalizedValue))) {
         const newErrors = { ...validationErrors };
         delete newErrors.admissionCount;
         setValidationErrors(newErrors);
       }
+    }
+  };
+
+  // Handle blur to ensure normalization
+  const handleAdmissionBlur = (e) => {
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    if (normalizedValue !== admissionCount) {
+      setAdmissionCount(normalizedValue);
     }
   };
 
@@ -597,11 +615,12 @@ const FrameScreen = React.memo(({
   };
 
   const handleDischargeChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
-      setDischargeCount(value);
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    
+    if (/^\d*$/.test(normalizedValue)) {
+      setDischargeCount(normalizedValue);
       // Clear error if fixed
-      if (validationErrors.dischargeCount && value && !isNaN(parseInt(value))) {
+      if (validationErrors.dischargeCount && normalizedValue && !isNaN(parseInt(normalizedValue))) {
         const newErrors = { ...validationErrors };
         delete newErrors.dischargeCount;
         setValidationErrors(newErrors);
@@ -609,16 +628,25 @@ const FrameScreen = React.memo(({
     }
   };
 
+  // Handle blur to ensure normalization
+  const handleDischargeBlur = (e) => {
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    if (normalizedValue !== dischargeCount) {
+      setDischargeCount(normalizedValue);
+    }
+  };
+
   // Handle external consultation change (now free text)
   const handleEmergencyTransportChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    
+    if (/^\d*$/.test(normalizedValue)) {
       setExternalConsultation(prev => ({ 
         ...prev, 
-        emergencyTransport: value 
+        emergencyTransport: normalizedValue 
       }));
       // Clear error if fixed
-      if (validationErrors.emergencyTransport && value && !isNaN(parseInt(value))) {
+      if (validationErrors.emergencyTransport && normalizedValue && !isNaN(parseInt(normalizedValue))) {
         const newErrors = { ...validationErrors };
         delete newErrors.emergencyTransport;
         setValidationErrors(newErrors);
@@ -626,15 +654,27 @@ const FrameScreen = React.memo(({
     }
   };
 
-  const handlePostTransportAdmissionChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
+  // Handle blur to ensure normalization
+  const handleEmergencyTransportBlur = (e) => {
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    if (normalizedValue !== externalConsultation.emergencyTransport) {
       setExternalConsultation(prev => ({ 
         ...prev, 
-        postTransportAdmission: value 
+        emergencyTransport: normalizedValue 
+      }));
+    }
+  };
+
+  const handlePostTransportAdmissionChange = (e) => {
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    
+    if (/^\d*$/.test(normalizedValue)) {
+      setExternalConsultation(prev => ({ 
+        ...prev, 
+        postTransportAdmission: normalizedValue 
       }));
       // Clear error if fixed
-      if (validationErrors.postTransportAdmission && value && !isNaN(parseInt(value))) {
+      if (validationErrors.postTransportAdmission && normalizedValue && !isNaN(parseInt(normalizedValue))) {
         const newErrors = { ...validationErrors };
         delete newErrors.postTransportAdmission;
         setValidationErrors(newErrors);
@@ -642,15 +682,27 @@ const FrameScreen = React.memo(({
     }
   };
 
-  const handleVisitChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
+  // Handle blur to ensure normalization
+  const handlePostTransportAdmissionBlur = (e) => {
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    if (normalizedValue !== externalConsultation.postTransportAdmission) {
       setExternalConsultation(prev => ({ 
         ...prev, 
-        visit: value 
+        postTransportAdmission: normalizedValue 
+      }));
+    }
+  };
+
+  const handleVisitChange = (e) => {
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    
+    if (/^\d*$/.test(normalizedValue)) {
+      setExternalConsultation(prev => ({ 
+        ...prev, 
+        visit: normalizedValue 
       }));
       // Clear error if fixed
-      if (validationErrors.visit && value && !isNaN(parseInt(value))) {
+      if (validationErrors.visit && normalizedValue && !isNaN(parseInt(normalizedValue))) {
         const newErrors = { ...validationErrors };
         delete newErrors.visit;
         setValidationErrors(newErrors);
@@ -658,11 +710,33 @@ const FrameScreen = React.memo(({
     }
   };
 
+  // Handle blur to ensure normalization
+  const handleVisitBlur = (e) => {
+    const normalizedValue = normalizeNumberInput(e.target.value);
+    if (normalizedValue !== externalConsultation.visit) {
+      setExternalConsultation(prev => ({ 
+        ...prev, 
+        visit: normalizedValue 
+      }));
+    }
+  };
+
   // Handle external doctors change from the child component
   const handleExternalDoctorsChange = (newExternalDoctors) => {
+    // Convert any full-width numbers to half-width
+    const normalizedDoctors = Object.keys(newExternalDoctors).reduce((acc, key) => {
+      const value = newExternalDoctors[key];
+      if (typeof value === 'string') {
+        acc[key] = normalizeNumberInput(value);
+      } else {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+    
     // Only update if we haven't initialized from form data yet
     if (!externalDoctorsInitializedRef.current) {
-      setExternalDoctors(newExternalDoctors);
+      setExternalDoctors(normalizedDoctors);
     }
   };
 
@@ -1070,7 +1144,8 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={admissionCount}
                     onChange={handleAdmissionChange}
-                    onFocus={handleFocusSelect}
+                    onBlur={handleAdmissionBlur}
+                    //onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -1116,7 +1191,8 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={dischargeCount}
                     onChange={handleDischargeChange}
-                    onFocus={handleFocusSelect}
+                    onBlur={handleDischargeBlur}
+                    //onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -1221,7 +1297,8 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={externalConsultation.emergencyTransport}
                     onChange={handleEmergencyTransportChange}
-                    onFocus={handleFocusSelect}
+                    onBlur={handleEmergencyTransportBlur}
+                    //onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -1268,7 +1345,8 @@ const FrameScreen = React.memo(({
                   <TextField
                     value={externalConsultation.postTransportAdmission}
                     onChange={handlePostTransportAdmissionChange}
-                    onFocus={handleFocusSelect}
+                    onBlur={handlePostTransportAdmissionBlur}
+                    //onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -1309,13 +1387,14 @@ const FrameScreen = React.memo(({
                   }}>
                     訪問 
                     <Typography component="span" sx={{ color: "#df1c41", fontWeight: 600 }}>
-                      *
+                      
                     </Typography>
                   </Typography>
                   <TextField
                     value={externalConsultation.visit}
                     onChange={handleVisitChange}
-                    onFocus={handleFocusSelect}
+                    onBlur={handleVisitBlur}
+                    //onFocus={handleFocusSelect}
                     variant="outlined"
                     fullWidth
                     size="small"
