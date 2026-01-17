@@ -154,18 +154,49 @@ const ALL_DUTY_STAFF_POSITIONS = [
 function ensureAllDutyStaffPositions(dutyStaffData) {
   const result = [];
   
-  // Create a map of existing positions for quick lookup
-  const existingPositions = {};
-  if (dutyStaffData && Array.isArray(dutyStaffData)) {
-    dutyStaffData.forEach(staff => {
-      if (staff.position) {
-        existingPositions[staff.position] = staff;
-      }
-    });
+  if (!dutyStaffData || !Array.isArray(dutyStaffData) || dutyStaffData.length === 0) {
+    // Return default 7 positions if no data
+    return Array.from({ length: 7 }, (_, i) => ({
+      position: `field_group_${i + 1}`,
+      staff_name_1: "",
+      staff_name_2: "",
+      staff_name_3: ""
+    }));
   }
   
-  // Ensure all 21 positions exist
-  ALL_DUTY_STAFF_POSITIONS.forEach(position => {
+  // Sort duty staff by position number
+  const sortedDutyStaff = [...dutyStaffData].sort((a, b) => {
+    const numA = parseInt(a.position?.replace('field_group_', '') || '0');
+    const numB = parseInt(b.position?.replace('field_group_', '') || '0');
+    return numA - numB;
+  });
+  
+  // Find the highest position number
+  let maxPosition = 0;
+  sortedDutyStaff.forEach(staff => {
+    if (staff.position) {
+      const num = parseInt(staff.position.replace('field_group_', '') || '0');
+      if (num > maxPosition) {
+        maxPosition = num;
+      }
+    }
+  });
+  
+  // Ensure we have at least 7 positions as minimum
+  const requiredPositions = Math.max(7, maxPosition);
+  
+  // Create a map of existing positions for quick lookup
+  const existingPositions = {};
+  sortedDutyStaff.forEach(staff => {
+    if (staff.position) {
+      existingPositions[staff.position] = staff;
+    }
+  });
+  
+  // Ensure all positions from 1 to requiredPositions exist
+  for (let i = 1; i <= requiredPositions; i++) {
+    const position = `field_group_${i}`;
+    
     if (existingPositions[position]) {
       // Use existing data
       result.push({
@@ -183,7 +214,7 @@ function ensureAllDutyStaffPositions(dutyStaffData) {
         staff_name_3: ""
       });
     }
-  });
+  }
   
   return result;
 }
@@ -277,8 +308,9 @@ export const getReportByDateTable = async (req, res, next) => {
 
     const reportDate = new Date(date);
     
+    let existingReport= null
     // Get existing report
-    const existingReport = await prisma.report.findUnique({
+    existingReport = await prisma.report.findUnique({
       where: {
         medical_center_id_report_date: {
           medical_center_id: parseInt(hospital_id),
@@ -304,12 +336,54 @@ export const getReportByDateTable = async (req, res, next) => {
       }
     });
 
-
+    // NEW: Get duty staff from 7 days prior if current report's duty_staff is null or empty
+    let dutyStaffData = existingReport?.duty_staff || [];
+    
+    if (!dutyStaffData || dutyStaffData.length === 0) {
+      // Calculate date 7 days earlier
+      const priorDate = new Date(reportDate);
+      priorDate.setDate(priorDate.getDate() - 7);
+      
+      // Create a DateTime object for the start of the prior day
+      const searchPriorDate = new Date(priorDate);
+      searchPriorDate.setUTCHours(0, 0, 0, 0);
+      
+      // Find the report from 7 days prior
+      const priorReport = await prisma.report.findFirst({
+        where: {
+          medical_center_id: parseInt(hospital_id),
+          report_date: searchPriorDate,
+          status: {
+           // notIn: ['draft', 'rejected']
+          }
+        },
+        include: {
+          duty_staff: true
+        }
+      });
+      
+      // If found prior report with duty staff, use it
+      if (priorReport && priorReport.duty_staff && priorReport.duty_staff.length > 0) {
+        dutyStaffData = priorReport.duty_staff;
+        
+        // Update the existingReport object with the fetched duty staff
+        if (existingReport) {
+          existingReport.duty_staff = dutyStaffData;
+        }
+      }
+    }
+ 
+    console.log(dutyStaffData,'dutyStaffData')
   
     // Ensure all 21 duty staff positions exist
-    if (existingReport && existingReport.duty_staff) {
-      existingReport.duty_staff = ensureAllDutyStaffPositions(existingReport.duty_staff);
-    }
+    if (existingReport==null && dutyStaffData.length > 0) {
+        existingReport = {
+          duty_staff: dutyStaffData
+        }  // ensureAllDutyStaffPositions(dutyStaffData);
+    }/* else if (existingReport) {
+      // If still no duty staff data, create default empty positions
+      existingReport.duty_staff = ensureAllDutyStaffPositions([]);
+    }*/
 
     // Get related data for the form
     const departments = await prisma.department.findMany({

@@ -25,6 +25,8 @@ import HospitalDataTable from './components/HospitalDataTable';
 import SimpleDutyTable from './components/SimpleDutyTable';
 import MedicalManagementTable from './components/MedicalManagementTable';
 import DetailedDutyTable from './components/DetailedDutyTable';
+import DetailedDutyTable2 from './components/DetailedDutyTable2';
+
 import VisitTable from './components/VisitTable';
 import DiagnosisTable from './components/DiagnosisTable';
 import PatientCountTable from './components/PatientCountTable';
@@ -937,14 +939,16 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
               </div>
 
               <div className="flex gap-4 h-1/2">
-                <div className="w-2/6 p-0 bg-transparent">
+                <div className="w-4/6 p-0 bg-transparent">
                   <div className="h-full flex justify-left">
                     <div className="text-center w-full">
-                     {/* <SimpleDutyTable />*/}
+                      <DetailedDutyTable2 
+                     dutyStaff={reportData?.report?.duty_staff} 
+                    /> 
                     </div>
                   </div>
                 </div>
-                <div className="w-3/6 p-0 bg-transparent">
+                <div className="w-1/6 p-0 bg-transparent">
                 </div>
                 <div className="w-1/6 p-0 bg-transparent">
                   <div className="h-full flex justify-end">

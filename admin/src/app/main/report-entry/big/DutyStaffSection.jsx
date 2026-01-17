@@ -7,9 +7,13 @@ import {
   Typography,
   Alert,
   Tooltip,
-  Paper
+  Paper,
+  Button,
+  IconButton
 } from "@mui/material";
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 const DutyStaffSection = ({
   currentStatus,
@@ -23,23 +27,32 @@ const DutyStaffSection = ({
   sectionPadding = 3
 }) => {
   
-  // Field configuration for duty staff section - 21 fields total
-  const fieldData = [
-    { position: "field_group_1", required: false },
-    { position: "field_group_2", required: false },
-    { position: "field_group_3", required: false },
-    { position: "field_group_4", required: false },
-    { position: "field_group_5", required: false },
-    { position: "field_group_6", required: false },
-    { position: "field_group_7", required: false },
-  ];
+  // Field configuration for duty staff section - dynamic fields
+  const [fieldData, setFieldData] = React.useState(() => {
+    // Initialize based on currentStatus length
+    const fieldCount = currentStatus?.firstRow?.length || 7;
+    return Array.from({ length: fieldCount }, (_, i) => ({
+      position: `field_group_${i + 1}`,
+      required: false
+    }));
+  });
+
+  // Sync fieldData with currentStatus when it changes
+  React.useEffect(() => {
+    const currentFieldCount = currentStatus?.firstRow?.length || 0;
+    
+    if (currentFieldCount > 0 && fieldData.length !== currentFieldCount) {
+      // Create fieldData array based on currentStatus length
+      const newFieldData = Array.from({ length: currentFieldCount }, (_, i) => ({
+        position: `field_group_${i + 1}`,
+        required: false
+      }));
+      
+      setFieldData(newFieldData);
+    }
+  }, [currentStatus?.firstRow?.length]);
 
   const handleCurrentStatusChange = (row, index, value) => {
-    const field = fieldData[index];
-    const errorKey1 = `dutyStaff_${field.position}_1`;
-    const errorKey2 = `dutyStaff_${field.position}_2`;
-    const errorKey3 = `dutyStaff_${field.position}_3`;
-    
     const newStatus = {
       ...currentStatus,
       [row]: currentStatus[row].map((item, i) => i === index ? value : item)
@@ -48,6 +61,13 @@ const DutyStaffSection = ({
     onCurrentStatusChange(newStatus);
     
     // Clear errors if fixed
+    const field = fieldData[index];
+    if (!field) return;
+    
+    const errorKey1 = `dutyStaff_${field.position}_1`;
+    const errorKey2 = `dutyStaff_${field.position}_2`;
+    const errorKey3 = `dutyStaff_${field.position}_3`;
+    
     const newErrors = { ...validationErrors };
     if (row === 'firstRow' && validationErrors[errorKey1] && value.trim() !== "") {
       delete newErrors[errorKey1];
@@ -60,6 +80,72 @@ const DutyStaffSection = ({
     }
     
     // If validationErrors is a function (setState), call it
+    if (typeof validationErrors === 'function') {
+      validationErrors(newErrors);
+    }
+  };
+
+  // Add new field group
+  const handleAddNewField = () => {
+    if (readOnly) return;
+    
+    // Find the highest existing index
+    const existingIndices = fieldData.map(field => {
+      const match = field.position.match(/field_group_(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+    
+    const maxIndex = existingIndices.length > 0 ? Math.max(...existingIndices) : 0;
+    const newIndex = maxIndex + 1;
+    const newPosition = `field_group_${newIndex}`;
+    
+    // Add new field to fieldData
+    setFieldData([...fieldData, { position: newPosition, required: false }]);
+    
+    // Add empty entries to currentStatus arrays
+    const newStatus = {
+      firstRow: [...(currentStatus.firstRow || []), ""],
+      secondRow: [...(currentStatus.secondRow || []), ""],
+      thirdRow: [...(currentStatus.thirdRow || []), ""]
+    };
+    
+    onCurrentStatusChange(newStatus);
+  };
+
+  // Remove field group
+  const handleRemoveField = (index) => {
+    if (readOnly) return;
+    
+    // Don't remove if it's the last field
+    if (fieldData.length <= 1) {
+      // Optional: Show a message or alert that you can't remove the last field
+      return;
+    }
+    
+    // Remove field from fieldData
+    const removedField = fieldData[index];
+    const newFieldData = fieldData.filter((_, i) => i !== index);
+    setFieldData(newFieldData);
+    
+    // Remove corresponding entries from currentStatus
+    const newStatus = {
+      firstRow: (currentStatus.firstRow || []).filter((_, i) => i !== index),
+      secondRow: (currentStatus.secondRow || []).filter((_, i) => i !== index),
+      thirdRow: (currentStatus.thirdRow || []).filter((_, i) => i !== index)
+    };
+    
+    onCurrentStatusChange(newStatus);
+    
+    // Remove validation errors for this field
+    const errorKey1 = `dutyStaff_${removedField.position}_1`;
+    const errorKey2 = `dutyStaff_${removedField.position}_2`;
+    const errorKey3 = `dutyStaff_${removedField.position}_3`;
+    
+    const newErrors = { ...validationErrors };
+    delete newErrors[errorKey1];
+    delete newErrors[errorKey2];
+    delete newErrors[errorKey3];
+    
     if (typeof validationErrors === 'function') {
       validationErrors(newErrors);
     }
@@ -81,8 +167,21 @@ const DutyStaffSection = ({
     } else if (isTablet) {
       return { xs: 6, sm: 4, md: 3 }; // 4 per row on tablet
     } else {
-      return { xs: 12 / 7 }; // 7 per row on desktop (12/7 ≈ 1.71)
+      return { xs: 12 / Math.min(fieldData.length, 7) }; // Dynamic columns on desktop
     }
+  };
+
+  // Calculate field group label
+  const getFieldGroupLabel = (index) => {
+    // Extract number from position or use index
+    const field = fieldData[index];
+    if (field && field.position) {
+      const match = field.position.match(/field_group_(\d+)/);
+      if (match) {
+        return `部署${match[1]}`;
+      }
+    }
+    return `部署${index + 1}`;
   };
 
   return (
@@ -96,7 +195,7 @@ const DutyStaffSection = ({
       }}
     >
       <Stack spacing={3}>
-        {/* Section Header */}
+        {/* Section Header with Add Button */}
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -119,9 +218,33 @@ const DutyStaffSection = ({
             }} />
             当直
           </Typography>
-          <Tooltip title="部署別の当直スタッフ配置">
-            <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 24 }} />
-          </Tooltip>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="部署別の当直スタッフ配置">
+              <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 24 }} />
+            </Tooltip>
+            {!readOnly && (
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                startIcon={<AddCircleOutlineIcon />}
+                onClick={handleAddNewField}
+                sx={{
+                  ml: 1,
+                  fontSize: '0.875rem',
+                  py: 0.5,
+                  px: 2,
+                  borderRadius: '6px',
+                  backgroundColor: '#3498db',
+                  '&:hover': {
+                    backgroundColor: '#2980b9'
+                  }
+                }}
+              >
+                追加
+              </Button>
+            )}
+          </Box>
         </Box>
 
         <Box sx={{ 
@@ -132,7 +255,7 @@ const DutyStaffSection = ({
             minWidth: isMobile ? "600px" : "100%",
             width: '100%'
           }}>
-            {/* Grid layout for 21 fields */}
+            {/* Grid layout for dynamic fields */}
             <Grid container spacing={2}>
               {fieldData.map((field, index) => {
                 const errorKey1 = `dutyStaff_${field.position}_1`;
@@ -146,12 +269,12 @@ const DutyStaffSection = ({
                     xs={gridConfig.xs} 
                     sm={gridConfig.sm} 
                     md={gridConfig.md}
-                    key={index}
+                    key={field.position}
                     sx={{
-                      // For desktop: 7 equal columns
+                      // For desktop: dynamic columns
                       ...(!isMobile && !isTablet && {
-                        flex: `0 0 calc(100% / 7 - 16px)`,
-                        maxWidth: `calc(100% / 7 - 16px)`,
+                        flex: `0 0 calc(100% / ${Math.min(fieldData.length, 7)} - 16px)`,
+                        maxWidth: `calc(100% / ${Math.min(fieldData.length, 7)} - 16px)`,
                       })
                     }}
                   >
@@ -162,16 +285,58 @@ const DutyStaffSection = ({
                       textAlign: 'left',
                       bgcolor: '#fafafa',
                       height: '100%',
-                      minHeight: isMobile ? '220px' : '240px', // Increased min-height
+                      minHeight: isMobile ? '220px' : '240px',
                       display: 'flex',
                       flexDirection: 'column',
                       transition: 'all 0.2s ease',
+                      position: 'relative',
                       '&:hover': {
                         boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
                         borderColor: '#3498db'
                       }
                     }}>
-                      <Stack spacing={2.5} sx={{ flexGrow: 1, justifyContent: 'space-between' }}> {/* Increased spacing */}
+                      {/* Remove button (only show if not read-only and not the only field) */}
+                      {!readOnly && fieldData.length > 1 && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRemoveField(index)}
+                          sx={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            zIndex: 1,
+                            backgroundColor: '#ffebee',
+                            color: '#f44336',
+                            width: 24,
+                            height: 24,
+                            '&:hover': {
+                              backgroundColor: '#ffcdd2'
+                            }
+                          }}
+                        >
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      
+                      {/* Field group label */}
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          display: 'block', 
+                          textAlign: 'center',
+                          mb: 1,
+                          color: '#3498db',
+                          fontWeight: 700,
+                          fontSize: largeFontSize.small,
+                          backgroundColor: '#e3f2fd',
+                          py: 0.5,
+                          borderRadius: '4px'
+                        }}
+                      >
+                        {getFieldGroupLabel(index)}
+                      </Typography>
+                      
+                      <Stack spacing={2.5} sx={{ flexGrow: 1, justifyContent: 'space-between' }}>
                         {/* 1人目 - 診療科 */}
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography 
@@ -179,16 +344,16 @@ const DutyStaffSection = ({
                             sx={{ 
                               display: 'block', 
                               textAlign: 'left',
-                              mb: 1, // Increased margin
+                              mb: 1,
                               color: '#7f8c8d',
                               fontWeight: 600,
-                              fontSize: largeFontSize.large // Larger label font
+                              fontSize: largeFontSize.large
                             }}
                           >
                             診療科
                           </Typography>
                           <TextField
-                            value={currentStatus.firstRow[index] || ""}
+                            value={currentStatus?.firstRow?.[index] || ""}
                             onChange={(e) => handleCurrentStatusChange('firstRow', index, e.target.value)}
                             variant="outlined"
                             size="small"
@@ -204,11 +369,11 @@ const DutyStaffSection = ({
                                   borderColor: validationErrors?.[errorKey1] ? "#df1c41" : "#dfe1e7" 
                                 },
                                 "& input": {
-                                  fontSize: largeFontSize.large, // Larger input font
+                                  fontSize: largeFontSize.large,
                                   fontWeight: 500,
                                   color: "#2c3e50",
                                   textAlign: 'left',
-                                  padding: isMobile ? '8px 12px' : '10px 14px' // Increased padding
+                                  padding: isMobile ? '8px 12px' : '10px 14px'
                                 },
                               },
                             }}
@@ -216,7 +381,7 @@ const DutyStaffSection = ({
                           {validationErrors?.[errorKey1] && (
                             <Typography sx={{ 
                               color: "#df1c41", 
-                              fontSize: largeFontSize.small, // Larger error font
+                              fontSize: largeFontSize.small,
                               mt: 0.75,
                               textAlign: 'left'
                             }}>
@@ -232,16 +397,16 @@ const DutyStaffSection = ({
                             sx={{ 
                               display: 'block', 
                               textAlign: 'left',
-                              mb: 1, // Increased margin
+                              mb: 1,
                               color: '#7f8c8d',
                               fontWeight: 600,
-                              fontSize: largeFontSize.large // Larger label font
+                              fontSize: largeFontSize.large
                             }}
                           >
                             担当医師
                           </Typography>
                           <TextField
-                            value={currentStatus.secondRow[index] || ""}
+                            value={currentStatus?.secondRow?.[index] || ""}
                             onChange={(e) => handleCurrentStatusChange('secondRow', index, e.target.value)}
                             variant="outlined"
                             size="small"
@@ -257,11 +422,11 @@ const DutyStaffSection = ({
                                   borderColor: validationErrors?.[errorKey2] ? "#df1c41" : "#dfe1e7" 
                                 },
                                 "& input": {
-                                  fontSize: largeFontSize.large, // Larger input font
+                                  fontSize: largeFontSize.large,
                                   fontWeight: 500,
                                   color: "#2c3e50",
                                   textAlign: 'left',
-                                  padding: isMobile ? '8px 12px' : '10px 14px' // Increased padding
+                                  padding: isMobile ? '8px 12px' : '10px 14px'
                                 },
                               },
                             }}
@@ -269,7 +434,7 @@ const DutyStaffSection = ({
                           {validationErrors?.[errorKey2] && (
                             <Typography sx={{ 
                               color: "#df1c41", 
-                              fontSize: largeFontSize.small, // Larger error font
+                              fontSize: largeFontSize.small,
                               mt: 0.75,
                               textAlign: 'left'
                             }}>
@@ -285,16 +450,16 @@ const DutyStaffSection = ({
                             sx={{ 
                               display: 'block', 
                               textAlign: 'left',
-                              mb: 1, // Increased margin
+                              mb: 1,
                               color: '#7f8c8d',
                               fontWeight: 600,
-                              fontSize: largeFontSize.large // Larger label font
+                              fontSize: largeFontSize.large
                             }}
                           >
                             担当医師
                           </Typography>
                           <TextField
-                            value={currentStatus.thirdRow[index] || ""}
+                            value={currentStatus?.thirdRow?.[index] || ""}
                             onChange={(e) => handleCurrentStatusChange('thirdRow', index, e.target.value)}
                             variant="outlined"
                             size="small"
@@ -310,11 +475,11 @@ const DutyStaffSection = ({
                                   borderColor: validationErrors?.[errorKey3] ? "#df1c41" : "#dfe1e7" 
                                 },
                                 "& input": {
-                                  fontSize: largeFontSize.large, // Larger input font
+                                  fontSize: largeFontSize.large,
                                   fontWeight: 500,
                                   color: "#2c3e50",
                                   textAlign: 'left',
-                                  padding: isMobile ? '8px 12px' : '10px 14px' // Increased padding
+                                  padding: isMobile ? '8px 12px' : '10px 14px'
                                 },
                               },
                             }}
@@ -322,7 +487,7 @@ const DutyStaffSection = ({
                           {validationErrors?.[errorKey3] && (
                             <Typography sx={{ 
                               color: "#df1c41", 
-                              fontSize: largeFontSize.small, // Larger error font
+                              fontSize: largeFontSize.small,
                               mt: 0.75,
                               textAlign: 'left'
                             }}>
@@ -336,6 +501,31 @@ const DutyStaffSection = ({
                 );
               })}
             </Grid>
+            
+            {/* Add New Button at bottom for mobile */}
+            {!readOnly && isMobile && (
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="medium"
+                  startIcon={<AddCircleOutlineIcon />}
+                  onClick={handleAddNewField}
+                  sx={{
+                    fontSize: '0.875rem',
+                    py: 1,
+                    px: 3,
+                    borderRadius: '6px',
+                    backgroundColor: '#3498db',
+                    '&:hover': {
+                      backgroundColor: '#2980b9'
+                    }
+                  }}
+                >
+                  新しい部署を追加
+                </Button>
+              </Box>
+            )}
           </Box>
         </Box>
       </Stack>

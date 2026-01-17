@@ -87,9 +87,9 @@ const FrameScreen = React.memo(({
   });
 
   const [currentStatus, setCurrentStatus] = useState({
-    firstRow: Array(21).fill(""),
-    secondRow: Array(21).fill(""),
-    thirdRow: Array(21).fill("")
+    firstRow: Array(7).fill(""),
+    secondRow: Array(7).fill(""),
+    thirdRow: Array(7).fill("")
   });
   const [specialNotes, setSpecialNotes] = useState("");
   const [consolidatedData, setConsolidatedData] = useState([]);
@@ -237,40 +237,43 @@ const FrameScreen = React.memo(({
       lateNight
     });
     
-    // Duty staff - map to field positions
-    const fieldData = [
-      { position: "field_group_1" },
-      { position: "field_group_2" },
-      { position: "field_group_3" },
-      { position: "field_group_4" },
-      { position: "field_group_5" },
-      { position: "field_group_6" },
-      { position: "field_group_7" },
-    ];
-    
-    if (data.duty_staff && Array.isArray(data.duty_staff)) {
-      const firstRow = Array(21).fill("");
-      const secondRow = Array(21).fill("");
-      const thirdRow = Array(21).fill("");
-      
-      fieldData.forEach((field, index) => {
-        const staff = data.duty_staff.find(s => s.position === field.position);
-        if (staff) {
-          firstRow[index] = staff.staff_name_1 || "";
-          secondRow[index] = staff.staff_name_2 || "";
-          thirdRow[index] = staff.staff_name_3 || "";
-        }
+    // Duty staff - map to field positions dynamically
+    if (data.duty_staff && Array.isArray(data.duty_staff) && data.duty_staff.length > 0) {
+      // Sort duty staff by position to maintain order
+      const sortedDutyStaff = [...data.duty_staff].sort((a, b) => {
+        // Extract numbers from position strings like "field_group_1"
+        const numA = parseInt(a.position?.replace('field_group_', '') || '0');
+        const numB = parseInt(b.position?.replace('field_group_', '') || '0');
+        return numA - numB;
       });
       
-      console.log('Setting duty staff:', { firstRow, secondRow, thirdRow });
+      // Initialize arrays
+      const firstRow = [];
+      const secondRow = [];
+      const thirdRow = [];
+      
+      // Fill arrays with duty staff data
+      sortedDutyStaff.forEach(staff => {
+        firstRow.push(staff.staff_name_1 || "");
+        secondRow.push(staff.staff_name_2 || "");
+        thirdRow.push(staff.staff_name_3 || "");
+      });
+      
+      console.log('Setting duty staff:', { 
+        count: sortedDutyStaff.length,
+        firstRow, 
+        secondRow, 
+        thirdRow 
+      });
+      
       setCurrentStatus({ firstRow, secondRow, thirdRow });
     } else {
-      // Initialize with empty arrays if no data
-      console.log('No duty staff data, initializing empty');
+      // Initialize with default fields
+      console.log('No duty staff data, initializing with default fields');
       setCurrentStatus({ 
-        firstRow: Array(21).fill(""), 
-        secondRow: Array(21).fill(""),
-        thirdRow: Array(21).fill("")
+        firstRow: Array(7).fill(""), 
+        secondRow: Array(7).fill(""),
+        thirdRow: Array(7).fill("")
       });
     }
     
@@ -340,9 +343,9 @@ const FrameScreen = React.memo(({
     });
     
     setCurrentStatus({ 
-      firstRow: Array(21).fill(""), 
-      secondRow: Array(21).fill(""),
-      thirdRow: Array(21).fill("")
+      firstRow: Array(7).fill(""), 
+      secondRow: Array(7).fill(""),
+      thirdRow: Array(7).fill("")
     });
     
     setSpecialNotes("");
@@ -453,12 +456,12 @@ const FrameScreen = React.memo(({
       errors.lateNight = "遅夜勤看護師は少なくとも1人必要です";
     }
     
-    // Validate duty staff - 21 fields are now OPTIONAL
-    // Only validate if fields exist, they are strings
-    for (let i = 0; i < 21; i++) {
-      const firstRowValue = currentStatus.firstRow[i];
-      const secondRowValue = currentStatus.secondRow[i];
-      const thirdRowValue = currentStatus.thirdRow[i];
+    // Validate duty staff - dynamic validation based on current field count
+    const fieldCount = currentStatus.firstRow?.length || 0;
+    for (let i = 0; i < fieldCount; i++) {
+      const firstRowValue = currentStatus.firstRow?.[i];
+      const secondRowValue = currentStatus.secondRow?.[i];
+      const thirdRowValue = currentStatus.thirdRow?.[i];
       
       if (firstRowValue !== undefined && typeof firstRowValue !== 'string') {
         errors[`dutyStaff_field_group_${i + 1}_1`] = "当直部署は有効である必要があります";
@@ -512,24 +515,21 @@ const FrameScreen = React.memo(({
         }))
     ];
 
-    // Field configuration for duty staff section - 21 fields total
-    const fieldData = [
-      { position: "field_group_1", label: "保安" },
-      { position: "field_group_2", label: "医事" },
-      { position: "field_group_3", label: "医事" },
-      { position: "field_group_4", label: "保安" },
-      { position: "field_group_5", label: "医事" },
-      { position: "field_group_6", label: "内科" },
-      { position: "field_group_7", label: "外科" },
-    ];
+    // Get the current number of duty staff fields from the currentStatus
+    const fieldCount = currentStatus.firstRow?.length || 0;
 
-    // Prepare duty staff - all 21 fields with 3 people each
-    const dutyStaffData = fieldData.map((field, index) => ({
-      position: field.position,
-      staff_name_1: (currentStatus.firstRow[index] || "").trim(),
-      staff_name_2: (currentStatus.secondRow[index] || "").trim(),
-      staff_name_3: (currentStatus.thirdRow[index] || "").trim()
+    // Prepare duty staff - dynamic fields based on currentStatus length
+    const dutyStaffData = Array.from({ length: fieldCount }, (_, index) => ({
+      position: `field_group_${index + 1}`,
+      staff_name_1: (currentStatus.firstRow?.[index] || "").trim(),
+      staff_name_2: (currentStatus.secondRow?.[index] || "").trim(),
+      staff_name_3: (currentStatus.thirdRow?.[index] || "").trim()
     }));
+
+    // Filter out completely empty duty staff entries
+    const filteredDutyStaffData = dutyStaffData.filter(staff => 
+      staff.staff_name_1 || staff.staff_name_2 || staff.staff_name_3
+    );
 
     // Filter out empty consolidated data
     const filteredConsolidatedData = consolidatedData.filter(item => 
@@ -547,7 +547,7 @@ const FrameScreen = React.memo(({
       visit_count: parseInt(externalConsultation.visit) || 0,
       special_notes: specialNotes.trim(),
       shift_nurses: shiftNursesData,
-      duty_staff: dutyStaffData,
+      duty_staff: filteredDutyStaffData,
       report_details: filteredConsolidatedData,
       hospital_type: 'large_hospital',
     };
