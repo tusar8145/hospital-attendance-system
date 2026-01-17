@@ -26,7 +26,7 @@ const DetailedDutyTable2 = ({ dutyStaff = [] }) => {
     key: `remaining_${index}`,
     label: item.staff_name_1 || `-`,
     staffData: item
-  }));
+  }));     //
 
   return (
     <div className="detailed-duty-table w-full mt-10">
