@@ -57,7 +57,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 // Helper function to render circles
 const renderCircles = (count) => {
-  return '○'.repeat(Math.min(count || 0, 60));
+  return '-'
 };
 
 // 1. Conference and Special Notes Section
@@ -95,8 +95,8 @@ const ConferenceSpecialNotesSection = ({ welfareData }) => {
                   minHeight: '40px'
                 }}>
                   {index === 0 
-                    ? welfareData?.conference_events || renderCircles(row.circles)
-                    : welfareData?.special_notes_section || renderCircles(row.circles)
+                    ? welfareData?.conference_events 
+                    : welfareData?.special_notes_section 
                   }
                 </Typography>
               </TableCell>

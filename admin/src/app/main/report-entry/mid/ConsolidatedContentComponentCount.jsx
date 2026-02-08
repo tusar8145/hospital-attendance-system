@@ -1396,7 +1396,7 @@ const ConsolidatedContentComponentCount = ({
           gap: 2
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-            <Box>
+            {/* <Box>
               <Typography sx={{ 
                 fontSize: fontSize.medium,
                 color: "#666",
@@ -1411,7 +1411,7 @@ const ConsolidatedContentComponentCount = ({
               }}>
                 {calculateGrandTotal()} 名
               </Typography>
-            </Box>
+            </Box>*/}
             
             <Box>
               <Typography sx={{ 
@@ -1430,7 +1430,7 @@ const ConsolidatedContentComponentCount = ({
               </Typography>
             </Box>
             
-            <Box>
+            {/* <Box>
               <Typography sx={{ 
                 fontSize: fontSize.medium,
                 color: "#666",
@@ -1462,7 +1462,7 @@ const ConsolidatedContentComponentCount = ({
               }}>
                 {rows.length * 3} 時間帯
               </Typography>
-            </Box>
+            </Box>*/}
           </Box>
           
           {!readOnly && (

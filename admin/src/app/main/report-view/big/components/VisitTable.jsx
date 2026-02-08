@@ -19,7 +19,7 @@ const VisitTable = ({ visitCount = 0 }) => {
             <tbody>
               {/* Data row */}
               <tr>
-                <td className="border border-gray-300 p-4 text-center" style={{ height: '60px' }}>
+                <td className="border border-gray-300 p-4 text-center" style={{ height: '75px' }}>
                   <div className="flex items-center justify-center h-full">
                     <span className="text-2xl font-bold text-gray-800">
                       {visitCount.toLocaleString()}

@@ -12,7 +12,6 @@ const DetailedDutyTable2 = ({ dutyStaff = [] }) => {
     staffData: item
   }));
 
-  // If there are less than 7 items, fill with empty headers
   while (firstHeaders.length < 7) {
     firstHeaders.push({
       key: `empty_${firstHeaders.length}`,
@@ -26,47 +25,64 @@ const DetailedDutyTable2 = ({ dutyStaff = [] }) => {
     key: `remaining_${index}`,
     label: item.staff_name_1 || `-`,
     staffData: item
-  }));     //
+  }));
+
+  const COL_WIDTH = 61;
+  const fixedColClass = `w-[${COL_WIDTH}px] min-w-[${COL_WIDTH}px] max-w-[${COL_WIDTH}px]`;
 
   return (
-    <div className="detailed-duty-table w-full mt-10">
-      {/* Second Table - Items 8 and beyond (only if there are remaining items) */}
+    <div className="detailed-duty-table w-full h-full mt-10">
       {remainingItems.length > 0 && (
-        <div className="overflow-hidden rounded-md">
+        <div className="overflow-hidden rounded-md mb-10 h-full">
           <div className="overflow-x-auto">
- 
-            <table className="w-full border-collapse bg-white border border-gray-300 min-w-max">
+            <table
+              className="border-collapse table-fixed bg-white border border-gray-300"
+              style={{ width: remainingHeaders.length * COL_WIDTH }}
+            >
+              {/* Lock equal width */}
+              <colgroup>
+                {remainingHeaders.map((_, i) => (
+                  <col key={i} style={{ width: `${COL_WIDTH}px` }} />
+                ))}
+              </colgroup>
+
               <thead>
+                {/* Header Title Row */}
                 <tr>
-                  <th className="bg-blue-600 text-white font-bold p-2 text-center" colSpan={remainingHeaders.length}>
+                  <th
+                    className="bg-blue-600 text-white font-bold p-2 text-center"
+                    colSpan={remainingHeaders.length}
+                  >
                     <div className="text-md">当直</div>
                   </th>
                 </tr>
-                
+
+                {/* Header Names Row */}
                 <tr>
                   {remainingHeaders.map((header) => (
-                    <th 
+                    <th
                       key={`remaining-header-${header.key}`}
-                      className="bg-gray-300 text-black font-bold p-2 text-center min-w-[120px]"
+                      className={`bg-gray-300 text-black font-bold p-2 text-center ${fixedColClass}`}
                     >
-                      <div className="text-xs whitespace-nowrap">
+                      <div className="text-xs whitespace-nowrap overflow-hidden text-ellipsis">
                         {header.label}
                       </div>
                     </th>
                   ))}
                 </tr>
               </thead>
-              
+
               <tbody>
+                {/* staff_name_2 Row */}
                 <tr>
                   {remainingHeaders.map((header) => {
                     const staffData = header.staffData;
                     return (
-                      <td 
+                      <td
                         key={`${header.key}-2`}
-                        className="border border-gray-300 p-2 text-center min-w-[120px]"
+                        className={`border border-gray-300 p-2 text-center ${fixedColClass}`}
                       >
-                        <div className="text-sm font-medium text-gray-800 min-h-[24px]">
+                        <div className="text-sm font-medium text-gray-800 min-h-[24px] overflow-hidden text-ellipsis whitespace-nowrap">
                           {staffData?.staff_name_2 || (
                             <span className="text-gray-400">-</span>
                           )}
@@ -75,16 +91,17 @@ const DetailedDutyTable2 = ({ dutyStaff = [] }) => {
                     );
                   })}
                 </tr>
-                
+
+                {/* staff_name_3 Row */}
                 <tr>
                   {remainingHeaders.map((header) => {
                     const staffData = header.staffData;
                     return (
-                      <td 
+                      <td
                         key={`${header.key}-3`}
-                        className="border border-gray-300 p-2 text-center min-w-[120px]"
+                        className={`border border-gray-300 p-2 text-center ${fixedColClass}`}
                       >
-                        <div className="text-sm font-medium text-gray-800 min-h-[24px]">
+                        <div className="text-sm font-medium text-gray-800 min-h-[24px] overflow-hidden text-ellipsis whitespace-nowrap">
                           {staffData?.staff_name_3 || (
                             <span className="text-gray-400">-</span>
                           )}

@@ -956,18 +956,35 @@ export const updateSectionNames = async (req, res, next) => {
       return response.error("Hospital ID and section names are required", res, next);
     }
 
-    // Update section names in medical_center table
-    await prisma.medical_center.update({
-      where: { id: parseInt(hospital_id) },
-      data: {
-        section4_name: section_names.section4 || '〇〇〇〇1',
-        section5_name: section_names.section5 || '〇〇〇〇2',
-        section6_name: section_names.section6 || '〇〇〇〇3',
-        section7_name: section_names.section7 || '〇〇〇〇4',
-        updated_by: userId,
-        updated_at: new Date()
-      }
-    });
+
+    const updateData = {
+  updated_by: userId,
+  updated_at: new Date()
+};
+
+if (section_names?.section4 !== undefined) {
+  updateData.section4_name = section_names.section4 || '1';
+}
+
+if (section_names?.section5 !== undefined) {
+  updateData.section5_name = section_names.section5 || '2';
+}
+
+if (section_names?.section6 !== undefined) {
+  updateData.section6_name = section_names.section6 || '3';
+}
+
+if (section_names?.section7 !== undefined) {
+  updateData.section7_name = section_names.section7 || '4';
+}
+
+await prisma.medical_center.update({
+  where: { id: parseInt(hospital_id) },
+  data: updateData
+});
+
+
+ 
 
     response.success({
       success: true,

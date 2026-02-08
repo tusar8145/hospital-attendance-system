@@ -350,7 +350,7 @@ const DutyStaffSection = ({
                               fontSize: largeFontSize.large
                             }}
                           >
-                            診療科
+                            部署名
                           </Typography>
                           <TextField
                             value={currentStatus?.firstRow?.[index] || ""}
@@ -390,7 +390,7 @@ const DutyStaffSection = ({
                           )}
                         </Box>
                         
-                        {/* 2人目 - 担当医師 */}
+                        {/* 2人目 - 担当者 */}
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography 
                             variant="caption" 
@@ -403,7 +403,7 @@ const DutyStaffSection = ({
                               fontSize: largeFontSize.large
                             }}
                           >
-                            担当医師
+                            担当者
                           </Typography>
                           <TextField
                             value={currentStatus?.secondRow?.[index] || ""}
@@ -443,7 +443,7 @@ const DutyStaffSection = ({
                           )}
                         </Box>
                         
-                        {/* 3人目 - 担当医師 */}
+                        {/* 3人目 - 担当者 */}
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography 
                             variant="caption" 
@@ -456,7 +456,7 @@ const DutyStaffSection = ({
                               fontSize: largeFontSize.large
                             }}
                           >
-                            担当医師
+                            担当者
                           </Typography>
                           <TextField
                             value={currentStatus?.thirdRow?.[index] || ""}

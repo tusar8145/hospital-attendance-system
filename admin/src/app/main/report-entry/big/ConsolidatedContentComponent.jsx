@@ -1557,7 +1557,7 @@ const ConsolidatedContentComponent = ({
           gap: 2
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-            <Box>
+           {/* <Box>
               <Typography sx={{ 
                 fontSize: fontSize.medium,
                 color: "#666",
@@ -1572,7 +1572,7 @@ const ConsolidatedContentComponent = ({
               }}>
                 {calculateGrandTotal()} 名
               </Typography>
-            </Box>
+            </Box>*/}
             
             <Box>
               <Typography sx={{ 
@@ -1591,7 +1591,7 @@ const ConsolidatedContentComponent = ({
               </Typography>
             </Box>
             
-            <Box>
+             {/*<Box>
               <Typography sx={{ 
                 fontSize: fontSize.medium,
                 color: "#666",
@@ -1623,7 +1623,7 @@ const ConsolidatedContentComponent = ({
               }}>
                 {departmentOptions.length} 部門
               </Typography>
-            </Box>
+            </Box>*/}
           </Box>
           
           <Button

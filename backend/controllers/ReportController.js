@@ -101,9 +101,9 @@ function organizeDiagnosisData(reportDetails) {
     }
     
     const doctors = [];
-    if (detail.doctor1?.name) doctors.push(detail.doctor1.name);
-    if (detail.doctor2?.name) doctors.push(detail.doctor2.name);
-    if (detail.doctor3?.name) doctors.push(detail.doctor3.name);
+    if (detail.doctor1?.name) doctors.push(detail.doctor1.license_no);
+    if (detail.doctor2?.name) doctors.push(detail.doctor2.license_no);
+    if (detail.doctor3?.name) doctors.push(detail.doctor3.license_no);
     
     switch(detail.consultation_type) {
       case 'morning':

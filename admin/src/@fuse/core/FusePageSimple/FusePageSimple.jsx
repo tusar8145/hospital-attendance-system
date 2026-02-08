@@ -232,12 +232,9 @@ const FusePageSimple = forwardRef((props, ref) => {
 							{header && <FusePageSimpleHeader header={header} />}
 
 							{content && (
-								<FuseScrollbars
-									enable={scroll === 'content'}
-									className={clsx('FusePageSimple-content container')}
-								>
-									{content}
-								</FuseScrollbars>
+								 <>{content}</>
+									
+							 
 							)}
 						</div>
 						{rightSidebarContent && (

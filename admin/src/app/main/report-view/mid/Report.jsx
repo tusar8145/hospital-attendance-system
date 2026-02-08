@@ -125,9 +125,9 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
     // Get doctor names for each time slot
     const getDoctorNames = () => {
       const names = [];
-      if (detail.doctor1?.name) names.push(detail.doctor1.name);
-      if (detail.doctor2?.name) names.push(detail.doctor2.name);
-      if (detail.doctor3?.name) names.push(detail.doctor3.name);
+      if (detail.doctor1?.name) names.push(detail.doctor1.license_no);
+      if (detail.doctor2?.name) names.push(detail.doctor2.license_no);
+      if (detail.doctor3?.name) names.push(detail.doctor3.license_no);
       return names.join(' <br>');
     };
     
