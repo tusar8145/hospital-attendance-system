@@ -891,7 +891,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       {/* Data Tables Section */}
       <div className="flex flex-col lg:flex-row gap-0 mt-40 pl-1 pr-1">
         {/* Left Area - 40% */}
-        <div className="lg:w-4/12">
+        <div className="lg:w-6/12">
           <div className="p-0 h-full">
             <div className="flex flex-col h-full gap-4">
               <div className="p-0 bg-transparent flex-1">
@@ -901,6 +901,9 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
                       data={reportData.tableData?.hospitalData || reportData.hospitalData} 
                       total_admitted_patient={reportData.cumulativeStats.total_admitted_patient}
                       outpatient={reportData?.report?.report_details}
+
+                      emergencyData={reportData.tableData?.emergencyData || reportData.emergencyData}
+                      nurseData={reportData.tableData?.nurseData || reportData.nurseData}
                     />
                   </div>
                 </div>

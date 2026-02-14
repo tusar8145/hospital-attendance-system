@@ -76,8 +76,8 @@ const Overview = ({ cards, loading = false }) => {
               borderColor: "grey.50",
               boxShadow: "0px 2px 4px -1px rgba(13, 13, 18, 0.06)",
               padding: 2,
-              width: 299,
-              minWidth: 299,
+              width: 284,
+              minWidth: 284,
               cursor: "pointer",
               transition: 'all 0.2s ease',
               "&:hover": {

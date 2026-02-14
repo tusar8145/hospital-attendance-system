@@ -190,7 +190,7 @@ const MedicalManagementTable = () => {
               </tr>
               
               {/* Row 2 */}
-              <tr className="text-center">
+              <tr className="text-center"  style={{ "height": "146px" }}>
                 {/* Monthly emergency data */}
                 <td className="border border-gray-300 p-2 min-h-[100px] sm:min-h-[120px] w-1/2">
                   <div className="flex flex-col items-center justify-center h-full p-1 sm:p-2">

@@ -13,7 +13,8 @@ import {
   InputLabel,
   Typography,
   Chip,
-  IconButton
+  IconButton,
+  Grid
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
@@ -56,7 +57,9 @@ function ReportList() {
   // State
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingPendingCount, setLoadingPendingCount] = useState(true);
   const [reports, setReports] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -110,13 +113,38 @@ function ReportList() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
+  // Fetch pending approval count
+  const fetchPendingApprovalCount = useCallback(async () => {
+    setLoadingPendingCount(true);
+    try {
+      const payload = {
+        month: filters.month,
+        year: filters.year,
+        hospital_id: hospital?.id,
+        status: 'pendingApproval',
+        requires_approval: true
+      };
+
+      const response = await axios.post(`${apiConfig.baseURL}/dashboard/stats`, payload);
+
+      if (response.data.success) {
+        setPendingCount(response.data.data.myreport || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching pending approval count:', error);
+    } finally {
+      setLoadingPendingCount(false);
+    }
+  }, [filters.month, filters.year, hospital?.id]);
+
   // Initialize filters from URL
   useEffect(() => {
     const params = Object.fromEntries(searchParams.entries());
     
+          const defaultStatus = params.status || 'pendingApproval';
     const newFilters = {
       ...filters,
-      status: params.status || 'all',
+      status: defaultStatus,
       month: params.month ? parseInt(params.month) : new Date().getMonth() + 1,
       year: params.year ? parseInt(params.year) : new Date().getFullYear(),
       search: params.search || ''
@@ -159,6 +187,11 @@ function ReportList() {
     // Update URL without triggering navigation
     setSearchParams(params, { replace: true });
   }, [filters.status, filters.month, filters.year, filters.search]);
+
+  // Fetch pending count when filters change
+  useEffect(() => {
+    fetchPendingApprovalCount();
+  }, [filters.month, filters.year, hospital?.id]);
 
   // Fetch reports with pagination
   const fetchReports = useCallback(
@@ -366,8 +399,16 @@ function ReportList() {
     }
   };
 
-  // Format statistics for Overview component
+  // Format statistics for Overview component - with My Pending Approval as first card
   const overviewCards = [
+    {
+      bgColor: "#f44336", // Red color for pending approval
+      icon: "CheckCircle",
+      label: "マイ保留承認レポート",
+      value: loadingPendingCount ? "..." : pendingCount.toString(),
+      onClick: () => handleStatusFilter('pendingApproval'),
+      badge: pendingCount > 0 ? pendingCount : null
+    },
     {
       bgColor: "#f9b934",
       icon: "Loading",
@@ -530,10 +571,10 @@ function ReportList() {
             </Box>
           </Box>
 
-          {/* Stats Overview */}
+          {/* Stats Overview - Now includes My Pending Approval as first card */}
           <Overview 
             cards={overviewCards}
-            loading={loadingStats}
+            loading={loadingStats || loadingPendingCount}
           />
 
           {/* Main Content */}
