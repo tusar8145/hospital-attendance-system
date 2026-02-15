@@ -1058,7 +1058,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                   onChange={(event, newValue) => {
                     updateDoctor(index, 'department_ids', newValue.map(dept => dept.id));
                   }}
-                  disableCloseOnSelect
+                   
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1349,7 +1349,7 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
           onChange={(event, newValue) => {
             handleChange('department_ids', newValue.map(dept => dept.id));
           }}
-          disableCloseOnSelect
+           
           renderInput={(params) => (
             <TextField
               {...params}
@@ -1487,7 +1487,7 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
           onChange={(event, newValue) => {
             setSelectedDepartments(newValue);
           }}
-          disableCloseOnSelect
+          
           renderInput={(params) => (
             <TextField
               {...params}

@@ -34,7 +34,8 @@ import HeaderSection from '../HeaderSection';
 import StatusConfirmationSection from '../StatusConfirmationSection';
 import ManagementComments from '../ManagementComments';
 import apiConfig from '../../../configs/apiConfig';
-
+import DownloadIcon from '@mui/icons-material/Download';
+import { exportToPDF } from './pdf/exportUtils';
 // Styled components
 const StyledContainer = styled(Box)(({ theme }) => ({
   flex: 1,
@@ -791,7 +792,35 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       setReportLoading(false);
     }
   };
+// Inside the Report component, add these handler functions:
 
+const handleExportPDF = async () => {
+  try {
+    setLoading(true);
+    const hospitalInfo = getHospitalInfo();
+    const reportDate = getReportJapaneseDate();
+    
+    await exportToPDF(
+      reportData, 
+      reportDate, 
+      hospitalInfo,
+      statusData,
+      managementComments
+    );    
+    setSuccessAlert('PDFをダウンロードしました');
+    setTimeout(() => setSuccessAlert(null), 3000);
+  } catch (error) {
+    console.error('Error exporting to PDF:', error);
+    setFailAlert('PDFのダウンロードに失敗しました');
+    setTimeout(() => setFailAlert(null), 3000);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleExportMenuClick = () => {
+  handleExportPDF();
+};
   const [statusData, setStatusData] = useState([]);
 
   useEffect(() => {
@@ -1422,33 +1451,39 @@ const handleMakeDraft = async () => {
       )}
 
       {/* Header Section */}
-      <HeaderSection
-        title={`福祉施設日報 - ${reportDate}`}
-        subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
-        primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}
-        secondaryButtonText="編集"
-        showSecondaryButton={true}
-        primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
-        secondaryButtonColor="warning"
-        onPrimaryButtonClick={handlePrimaryButtonClick}
-        onSecondaryButtonClick={handleEdit}
-        onMakeDraft={handleMakeDraftClick}
-        showDate={true}
-        customDate={reportDate}
-        variant="gradient"
-        loading={loading}
-        reportNo={reportData.report?.report_no}
-        status={reportData.report?.status}
-        userRole={user?.role}
-        reportExists={reportData.exists}
-        approval ={ reportData.approvals?.some(
-          (a) => a.admin_id === user?.uid
-        ) ?? false}  
-      >
-        <div className="mt-2">
-          <StatusBadge status={reportData.report?.status} />
-        </div>
-      </HeaderSection>
+{/* Header Section */}
+<HeaderSection
+  title={`福祉施設日報 - ${reportDate}`}
+  subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
+  primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}
+  secondaryButtonText="編集"
+  showSecondaryButton={true}
+  showTertiaryButton={true} // Add this to show download button
+  tertiaryButtonText="ダウンロード"
+  tertiaryButtonIcon={<DownloadIcon />}
+  primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
+  secondaryButtonColor="warning"
+  tertiaryButtonColor="info"
+  onPrimaryButtonClick={handlePrimaryButtonClick}
+  onSecondaryButtonClick={handleEdit}
+  onTertiaryButtonClick={handleExportMenuClick} // Add this handler
+  onMakeDraft={handleMakeDraftClick}
+  showDate={true}
+  customDate={reportDate}
+  variant="gradient"
+  loading={loading}
+  reportNo={reportData.report?.report_no}
+  status={reportData.report?.status}
+  userRole={user?.role}
+  reportExists={reportData.exists}
+  approval={reportData.approvals?.some(
+    (a) => a.admin_id === user?.uid
+  ) ?? false}  
+>
+  <div className="mt-2">
+    <StatusBadge status={reportData.report?.status} />
+  </div>
+</HeaderSection>
 
       {/* Main content with scrolling */}
       <div className="flex-1 overflow-y-auto pr-2">

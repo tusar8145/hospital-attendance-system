@@ -1,10 +1,10 @@
-// D:\Projects\trans\hospital-attendance-system\admin\src\app\main\report-view\exportUtils.jsx
 import { pdf } from '@react-pdf/renderer';
 import { PDFDocument } from './PDFTemplate.jsx';
 
 // Export to PDF with actual report data
 export const exportToPDF = async (reportData, reportDate, hospitalInfo, statusData = [], managementComments = []) => {
   try {
+    console.log('Creating welfare PDF report with Japanese font...');
     
     const blob = await pdf(
       <PDFDocument 
@@ -27,7 +27,7 @@ export const exportToPDF = async (reportData, reportDate, hospitalInfo, statusDa
     link.click();
     URL.revokeObjectURL(url);
     
-    console.log('PDF report created successfully!');
+    console.log('Welfare PDF report created successfully!');
     return true;
   } catch (error) {
     console.error('PDF creation failed:', error);

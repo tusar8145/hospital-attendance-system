@@ -1,10 +1,10 @@
-// D:\Projects\trans\hospital-attendance-system\admin\src\app\main\report-view\exportUtils.jsx
 import { pdf } from '@react-pdf/renderer';
 import { PDFDocument } from './PDFTemplate.jsx';
 
 // Export to PDF with actual report data
 export const exportToPDF = async (reportData, reportDate, hospitalInfo, statusData = [], managementComments = []) => {
   try {
+    console.log('Creating PDF report with Japanese font...');
     
     const blob = await pdf(
       <PDFDocument 

@@ -334,7 +334,7 @@ const HeaderSection = ({
             }}
           >
             {/* Export to PDF Option */}
-            <MenuItem 
+            {/*<MenuItem 
               onClick={() => {
                 handleMenuClose();
                 if (onTertiaryButtonClick) {
@@ -351,26 +351,10 @@ const HeaderSection = ({
               <ListItemText>PDFとしてダウンロード</ListItemText>
             </MenuItem>
 
-            {/* Export to Excel Option */}
-            <MenuItem 
-              onClick={() => {
-                handleMenuClose();
-                if (onTertiaryButtonClick) {
-                  // Trigger export menu via parent component
-                  const event = { currentTarget: null };
-                  onTertiaryButtonClick(event);
-                }
-              }}
-              disabled={loading}
-            >
-              <ListItemIcon>
-                <GridOnIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Excelとしてダウンロード</ListItemText>
-            </MenuItem>
+ 
 
-            {/* Separator */}
-            <Box sx={{ borderBottom: '1px solid #e0e0e0', my: 1 }} />
+            {/* Separator * /}
+            <Box sx={{ borderBottom: '1px solid #e0e0e0', my: 1 }} />*/}
 
             {/* Make Draft Option */}
             {showMakeDraftOption && (

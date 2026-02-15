@@ -31,6 +31,8 @@ import { selectUser } from 'src/app/auth/user/store/userSlice';
 import { useAppSelector } from 'app/store/hooks';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
+import { exportToPDF } from './pdf/exportUtils';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
@@ -82,7 +84,7 @@ const PatientCountTable = ({ reportData }) => {
               </tr>
               
               {/* Values row */}
-              <tr>
+              <tr style={{ height: '145px' }}>
                 {patientCountData[1].map((value, index) => (
                   <td 
                     key={`value-${index}`}
@@ -1382,6 +1384,39 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
 
   const [statusData, setStatusData] = useState([]);
 
+
+  
+// Inside the Report component, add these handler functions:
+
+const handleExportPDF = async () => {
+  try {
+    setLoading(true);
+    const hospitalInfo = getHospitalInfo();
+    const reportDate = getReportJapaneseDate();
+    
+    await exportToPDF(
+      reportData, 
+      reportDate, 
+      hospitalInfo,
+      statusData,
+      managementComments
+    );    
+    setSuccessAlert('PDFをダウンロードしました');
+    setTimeout(() => setSuccessAlert(null), 3000);
+  } catch (error) {
+    console.error('Error exporting to PDF:', error);
+    setFailAlert('PDFのダウンロードに失敗しました');
+    setTimeout(() => setFailAlert(null), 3000);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleExportMenuClick = () => {
+  handleExportPDF();
+};
+
+
   useEffect(() => {
     const createDefaultStatusData = () => {
       return [
@@ -2003,16 +2038,22 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       )}
 
       {/* Header Section */}
+      {/* Header Section */}
       <HeaderSection
         title={`管理日誌レポート - ${reportDate}`}
         subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
         primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}
         secondaryButtonText="編集"
         showSecondaryButton={true}
+        showTertiaryButton={true} // Add this to show download button
+        tertiaryButtonText="ダウンロード"
+        tertiaryButtonIcon={<DownloadIcon />}
         primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
         secondaryButtonColor="warning"
+        tertiaryButtonColor="info"
         onPrimaryButtonClick={handlePrimaryButtonClick}
         onSecondaryButtonClick={handleEdit}
+        onTertiaryButtonClick={handleExportMenuClick} // Add this handler
         onMakeDraft={handleMakeDraftClick}
         showDate={true}
         customDate={reportDate}
@@ -2022,7 +2063,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         status={reportData.report?.status}
         userRole={user?.role}
         reportExists={reportData.exists}
-                approval ={ reportData.approvals?.some(
+        approval={reportData.approvals?.some(
           (a) => a.admin_id === user?.uid
         ) ?? false}  
       >
