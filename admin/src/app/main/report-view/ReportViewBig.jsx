@@ -238,7 +238,7 @@ function ReportView() {
 
 
 				<CommonHeader
-					title={`レポート詳細 - ${reportData?.report?.report_no || '不明なレポート'}`}
+					//title={`レポート詳細 - ${reportData?.report?.report_no || '不明なレポート'}`}
 					onBack={handleBack}
 					backButtonText="一覧に戻る"
 					showCreate={false}

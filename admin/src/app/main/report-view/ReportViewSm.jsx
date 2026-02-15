@@ -202,7 +202,7 @@ function ReportView() {
 				<div className="flex flex-col p-16 sm:p-24 container">
 
 					<CommonHeader
-						title={`レポート詳細 - ${reportData?.report?.report_no || '不明なレポート'}`}
+						//title={`レポート詳細 - ${reportData?.report?.report_no || '不明なレポート'}`}
 						onBack={handleBack}
 						backButtonText="一覧に戻る"
 						showCreate={false}

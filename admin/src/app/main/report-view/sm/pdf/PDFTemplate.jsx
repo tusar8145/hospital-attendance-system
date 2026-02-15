@@ -704,7 +704,7 @@ export const PDFDocument = ({
         {/* Footer for first page */}
         <View style={styles.footer}>
           <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
-          <Text>ページ 1/2</Text>
+          <Text>ページ 1/3</Text>
           <Text>最終更新: {reportData?.report?.updated_at ? new Date(reportData.report.updated_at).toLocaleDateString('ja-JP') : reportDate}</Text>
         </View>
       </Page>
@@ -742,34 +742,41 @@ export const PDFDocument = ({
           ))}
         </View>
 
-        {/* Management Comments */}
-        {managementComments.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>管理事項</Text>
-            <View style={[styles.table, { marginBottom: 5 }]}>
-              <View style={[styles.tableRow, styles.tableHeader]}>
-                <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.tableHeaderText}>コメント</Text></View>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>報告者</Text></View>
-                <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>日時</Text></View>
-              </View>
-              {managementComments.slice(0, 5).map((comment, idx) => (
-                <View key={idx} style={[styles.tableRow, idx === managementComments.length - 1 && { borderBottomWidth: 0 }]}>
-                  <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.cellText}>{comment.text}</Text></View>
-                  <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.author}</Text></View>
-                  <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.date} {comment.time}</Text></View>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
         {/* Footer for second page */}
         <View style={styles.footer}>
           <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
-          <Text>ページ 2/2</Text>
+          <Text>ページ 2/3</Text>
           <Text>承認者: {reportData?.report?.approved_by_admin?.name || '未承認'}</Text>
         </View>
       </Page>
+
+      {/* Third Page - Management Comments */}
+      {managementComments.length > 0 && (
+        <Page size="A4" orientation="landscape" style={styles.page}>
+          <Text style={styles.sectionTitle}>管理事項</Text>
+          <View style={[styles.table, { marginBottom: 5 }]}>
+            <View style={[styles.tableRow, styles.tableHeader]}>
+              <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.tableHeaderText}>コメント</Text></View>
+              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>報告者</Text></View>
+              <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>日時</Text></View>
+            </View>
+            {managementComments.slice(0, 5).map((comment, idx) => (
+              <View key={idx} style={[styles.tableRow, idx === managementComments.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.cellText}>{comment.text}</Text></View>
+                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.author}</Text></View>
+                <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.date} {comment.time}</Text></View>
+              </View>
+            ))}
+          </View>
+
+          {/* Footer for third page */}
+          <View style={styles.footer}>
+            <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
+            <Text>ページ 3/3</Text>
+            <Text>承認者: {reportData?.report?.approved_by_admin?.name || '未承認'}</Text>
+          </View>
+        </Page>
+      )}
     </Document>
   );
 };

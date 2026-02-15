@@ -265,7 +265,7 @@ const PatientCountPDF = ({ reportData }) => {
         </View>
         
         {/* Data row */}
-        <View style={[styles.tableRow, { borderBottomWidth: 0, height: 50 }]}>
+        <View style={[styles.tableRow, { borderBottomWidth: 0, height: 38 }]}>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{admission_count}</Text></View>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{discharge_count}</Text></View>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{external_duty}</Text></View>
