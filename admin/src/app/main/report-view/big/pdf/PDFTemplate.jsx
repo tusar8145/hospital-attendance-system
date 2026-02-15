@@ -160,6 +160,21 @@ const styles = StyleSheet.create({
   pageBreak: {
     marginTop: 15,
   },
+  
+  // Duty table specific styles
+  dutyRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    gap: 5,
+  },
+  dutyTableContainer: {
+    flex: 12, // 12 parts for duty table
+    marginBottom: 8,
+  },
+  visitTableContainer: {
+    flex: 4, // 4 parts for visit table
+    marginBottom: 8,
+  },
 });
 
 // Helper function to create vertical text
@@ -290,57 +305,70 @@ const MedicalManagementPDF = ({ emergencyData, nurseData }) => {
   );
 };
 
-// DetailedDutyTable component
-const DetailedDutyPDF = ({ dutyStaff = [], title = "当直", showFirst = true }) => {
-  const items = showFirst ? dutyStaff.slice(0, 7) : dutyStaff.slice(7);
-  const headers = items.map((item, index) => ({
-    key: index,
-    label: item?.staff_name_1 || '-',
-    staffData: item
-  }));
-
-  // Fill empty headers to maintain 7 columns for first table
-  if (showFirst) {
-    while (headers.length < 7) {
-      headers.push({ key: `empty-${headers.length}`, label: '-', staffData: null });
-    }
+// Merged Duty Table with 14 columns
+const DetailedDutyPDF = ({ dutyStaff = [] }) => {
+  if (!dutyStaff || dutyStaff.length === 0) return null;
+  
+  // Prepare 14 columns (fill empty slots with null)
+  const columns = [...dutyStaff];
+  while (columns.length < 14) {
+    columns.push(null);
   }
-
-  if (headers.length === 0) return null;
 
   return (
     <View style={styles.tableContainer}>
       <View style={styles.table}>
         {/* Title Row */}
         <View style={[styles.tableRow, styles.tableHeader]}>
-          <View style={[styles.lastTableCell, { flex: headers.length }]}>
-            <Text style={styles.tableHeaderText}>{title}</Text>
+          <View style={[styles.lastTableCell, { flex: 14 }]}>
+            <Text style={styles.tableHeaderText}>当直 (1-14)</Text>
           </View>
         </View>
         
-        {/* Header Row - Staff names */}
+        {/* Header Row - Staff names (Row 1) */}
         <View style={[styles.tableRow, styles.tableSubHeader]}>
-          {headers.map((header, idx) => (
-            <View key={header.key} style={[styles.tableCell, { flex: 1 }, idx === headers.length - 1 && styles.lastTableCell]}>
-              <Text style={styles.tableSubHeaderText}>{header.label}</Text>
+          {columns.map((item, idx) => (
+            <View 
+              key={`header-${idx}`} 
+              style={[
+                styles.tableCell, 
+                { flex: 1 }, 
+                idx === 13 && styles.lastTableCell
+              ]}
+            >
+              <Text style={styles.tableSubHeaderText}>{item?.staff_name_1 || '-'}</Text>
             </View>
           ))}
         </View>
         
         {/* Staff Name 2 Row */}
         <View style={styles.tableRow}>
-          {headers.map((header, idx) => (
-            <View key={`${header.key}-2`} style={[styles.tableCell, { flex: 1 }, idx === headers.length - 1 && styles.lastTableCell]}>
-              <Text style={styles.cellText}>{header.staffData?.staff_name_2 || '-'}</Text>
+          {columns.map((item, idx) => (
+            <View 
+              key={`name2-${idx}`} 
+              style={[
+                styles.tableCell, 
+                { flex: 1 }, 
+                idx === 13 && styles.lastTableCell
+              ]}
+            >
+              <Text style={styles.cellText}>{item?.staff_name_2 || '-'}</Text>
             </View>
           ))}
         </View>
         
         {/* Staff Name 3 Row */}
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          {headers.map((header, idx) => (
-            <View key={`${header.key}-3`} style={[styles.tableCell, { flex: 1 }, idx === headers.length - 1 && styles.lastTableCell]}>
-              <Text style={styles.cellText}>{header.staffData?.staff_name_3 || '-'}</Text>
+          {columns.map((item, idx) => (
+            <View 
+              key={`name3-${idx}`} 
+              style={[
+                styles.tableCell, 
+                { flex: 1 }, 
+                idx === 13 && styles.lastTableCell
+              ]}
+            >
+              <Text style={styles.cellText}>{item?.staff_name_3 || '-'}</Text>
             </View>
           ))}
         </View>
@@ -357,9 +385,15 @@ const VisitPDF = ({ visitCount = 0 }) => {
         <View style={[styles.tableRow, styles.tableHeader]}>
           <View style={styles.lastTableCell}><Text style={styles.tableHeaderText}>訪問</Text></View>
         </View>
-        <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          <View style={[styles.lastTableCell, { padding: 8 }]}>
-            <Text style={{ fontSize: 12, fontWeight: 700 }}>{visitCount.toLocaleString()}</Text>
+        <View style={[styles.tableRow, { borderBottomWidth: 0, height: 73 }]}>
+          <View style={[styles.lastTableCell, { 
+            padding: 8,
+            justifyContent: 'center',
+            alignItems: 'center',
+            flex: 1,
+            display: 'flex'
+          }]}>
+            <Text style={{ fontSize: 12, fontWeight: 700, textAlign: 'center' }}>{visitCount.toLocaleString()}</Text>
           </View>
         </View>
       </View>
@@ -680,26 +714,15 @@ export const PDFDocument = ({
               nurseData={reportData?.nurseData || reportData?.tableData?.nurseData}
             />
           </View>
-          <View style={{ flex: 4 }}>
-            <View style={{ flexDirection: 'column', gap: 3 }}>
-              <DetailedDutyPDF 
-                dutyStaff={reportData?.report?.duty_staff}
-                title="当直 (1-7)"
-                showFirst={true}
-              />
-              <View style={{ flexDirection: 'row', gap: 3 }}>
-                <View style={{ flex: 4 }}>
-                  <DetailedDutyPDF 
-                    dutyStaff={reportData?.report?.duty_staff}
-                    title="当直 (8-)"
-                    showFirst={false}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <VisitPDF visitCount={reportData?.visitCount || reportData?.tableData?.visitCount || 0} />
-                </View>
-              </View>
-            </View>
+        </View>
+
+        {/* Duty Table and Visit Table Side by Side */}
+        <View style={styles.dutyRow}>
+          <View style={styles.dutyTableContainer}>
+            <DetailedDutyPDF dutyStaff={reportData?.report?.duty_staff} />
+          </View>
+          <View style={styles.visitTableContainer}>
+            <VisitPDF visitCount={reportData?.visitCount || reportData?.tableData?.visitCount || 0} />
           </View>
         </View>
 
