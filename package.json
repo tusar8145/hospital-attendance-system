@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@fontsource/noto-sans-jp": "^5.2.9",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
+    "pdfmake": "^0.3.4",
+    "xlsx": "^0.18.5"
+  }
+}

@@ -39,6 +39,8 @@ import SendIcon from '@mui/icons-material/Send';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 import { useAppSelector } from 'app/store/hooks';
 import { useNavigate } from 'react-router-dom';
+import { exportToPDF } from '../exportUtils';
+import DownloadIcon from '@mui/icons-material/Download';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
   '& .FusePageSimple-header': {
@@ -498,6 +500,59 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
     }
   }, [reportData.report_comments, reportData.comments, reportData.report?.special_notes, user]);
 
+
+
+// Inside the Report component, add these handler functions:
+
+const handleExportPDF = async () => {
+  try {
+    setLoading(true);
+    const hospitalInfo = getHospitalInfo();
+    const reportDate = getReportJapaneseDate();
+    
+    await exportToPDF(
+      reportData, 
+      reportDate, 
+      hospitalInfo,
+      statusData,
+      managementComments
+    );    
+    setSuccessAlert('PDFをダウンロードしました');
+    setTimeout(() => setSuccessAlert(null), 3000);
+  } catch (error) {
+    console.error('Error exporting to PDF:', error);
+    setFailAlert('PDFのダウンロードに失敗しました');
+    setTimeout(() => setFailAlert(null), 3000);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleExportExcel = () => {
+  try {
+    setLoading(true);
+    const hospitalInfo = getHospitalInfo();
+    const reportDate = getReportJapaneseDate();
+    
+   // exportToExcel(reportData, reportDate, hospitalInfo);
+    
+    setSuccessAlert('Excelファイルをダウンロードしました');
+    setTimeout(() => setSuccessAlert(null), 3000);
+  } catch (error) {
+    console.error('Error exporting to Excel:', error);
+    setFailAlert('Excelのダウンロードに失敗しました');
+    setTimeout(() => setFailAlert(null), 3000);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleExportMenuClick = (event) => {
+handleExportPDF();
+};
+
+
+
   // Handle approval
   const handleApproval = async () => {
     try {
@@ -855,10 +910,15 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}
         secondaryButtonText="編集"
         showSecondaryButton={true}
+        showTertiaryButton={true} // Add this to show download button
+        tertiaryButtonText="ダウンロード"
+        tertiaryButtonIcon={<DownloadIcon />}
         primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
         secondaryButtonColor="warning"
+        tertiaryButtonColor="info"
         onPrimaryButtonClick={handlePrimaryButtonClick}
         onSecondaryButtonClick={handleEdit}
+        onTertiaryButtonClick={handleExportMenuClick} // Add this handler
         onMakeDraft={handleMakeDraftClick}
         showDate={true}
         customDate={reportDate}
@@ -868,11 +928,8 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         status={reportData.report?.status}
         userRole={user?.role}
         reportExists={reportData.report !== null}
-        approval ={ reportData.approvals?.some(
-          (a) => a.admin_id === user?.uid
-        ) ?? false}  
+        approval={reportData.approvals?.some((a) => a.admin_id === user?.uid) ?? false}
       >
-        {/* Status Badge displayed inside HeaderSection */}
         <div className="mt-2">
           <StatusBadge status={reportData.report?.status} />
         </div>
@@ -930,7 +987,9 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
         {/* Right Area - 40% */}
         <div className="lg:w-5/12">
           <div className="p-0 h-full ml-0">
-            <div className="flex flex-col h-full gap-4">
+
+
+            <div className="flex flex-col h-full gap-4 ">
               <div className="p-0 bg-transparent h-1/2">
                 <div className="h-full flex justify-center">
                   <div className="text-center w-full">
@@ -940,8 +999,8 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
                   </div>
                 </div>
               </div>
-
-              <div className="flex gap-4 h-1/2">
+ 
+              <div className="flex gap-4 h-1/2 mt-24">
                 <div className="w-4/6 p-0 bg-transparent">
                   <div className="h-full flex justify-left">
                     <div className="text-center w-full">
@@ -964,6 +1023,8 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
                 </div>
               </div>
             </div>
+
+
           </div>
         </div>
       </div>
