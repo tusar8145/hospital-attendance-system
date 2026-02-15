@@ -39,7 +39,7 @@ import SendIcon from '@mui/icons-material/Send';
 import { selectUser } from 'src/app/auth/user/store/userSlice';
 import { useAppSelector } from 'app/store/hooks';
 import { useNavigate } from 'react-router-dom';
-import { exportToPDF } from '../exportUtils';
+import { exportToPDF } from './exportUtils';
 import DownloadIcon from '@mui/icons-material/Download';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
