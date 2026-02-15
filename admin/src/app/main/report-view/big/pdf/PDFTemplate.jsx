@@ -15,7 +15,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 15,
     fontFamily: 'NotoSansJP',
-    fontSize: 8, // Slightly smaller font for landscape
+    fontSize: 8,
     flexDirection: 'column',
   },
   headerSection: {
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     color: '#1e40af',
   },
   
-  // Table styles - more compact for landscape
+  // Table styles
   tableContainer: {
     marginBottom: 8,
   },
@@ -138,16 +138,7 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
   },
   
-  // Grid layout for two-column tables
-  gridContainer: {
-    flexDirection: 'row',
-    gap: 5,
-  },
-  gridItem: {
-    flex: 1,
-  },
-  
-  // Main content rows for landscape
+  // Main content rows
   mainRow: {
     flexDirection: 'row',
     gap: 5,
@@ -156,16 +147,18 @@ const styles = StyleSheet.create({
   
   // Footer styles
   footer: {
-    position: 'absolute',
-    bottom: 15,
-    left: 15,
-    right: 15,
     fontSize: 6,
     color: '#9ca3af',
     borderTop: '1 solid #e5e7eb',
     paddingTop: 3,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  
+  // Page break marker
+  pageBreak: {
+    marginTop: 15,
   },
 });
 
@@ -225,7 +218,7 @@ const HospitalDataPDF = ({ data, outpatient, totalAdmittedPatient }) => {
         </View>
         
         {/* Data Row */} 
-        <View style={[styles.tableRow, { borderBottomWidth: 0,height: 71  }]}>
+        <View style={[styles.tableRow, { borderBottomWidth: 0, height: 71 }]}>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{hospitalData.inpatient.admission}</Text></View>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{hospitalData.inpatient.discharge}</Text></View>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{totalAdmittedPatient || 0}</Text></View>
@@ -385,11 +378,10 @@ const DiagnosisPDF = ({ diagnosisData = {} }) => {
   return (
     <View style={styles.tableContainer}>
       <View style={styles.table}>
-
-        {/* Row 2 - Department Names */}
+        {/* Row 1 - Department Names */}
         <View style={styles.tableRow}>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-            <Text style={styles.cellTextBold}>午前診</Text>
+            <Text style={styles.cellTextBold}>診療科</Text>
           </View>
           {departments.map(dept => (
             <View key={`dept-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
@@ -398,12 +390,12 @@ const DiagnosisPDF = ({ diagnosisData = {} }) => {
           ))}
           {additionalColumns.map(col => (
             <View key={`add-dept-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-              <Text style={styles.cellText}>C{col.id + departments.length}</Text>
+              <Text style={styles.cellText}>-</Text>
             </View>
           ))}
         </View>
         
-        {/* Row 3 - Morning */}
+        {/* Row 2 - Morning */}
         <View style={styles.tableRow}>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午前診</Text>
@@ -424,7 +416,7 @@ const DiagnosisPDF = ({ diagnosisData = {} }) => {
           ))}
         </View>
         
-        {/* Row 4 - Afternoon */}
+        {/* Row 3 - Afternoon */}
         <View style={styles.tableRow}>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午後診</Text>
@@ -445,7 +437,7 @@ const DiagnosisPDF = ({ diagnosisData = {} }) => {
           ))}
         </View>
         
-        {/* Row 5 - Night */}
+        {/* Row 4 - Night */}
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>夜診</Text>
@@ -493,10 +485,10 @@ const PatientCountPDF = ({ patientData = {} }) => {
       <View style={styles.table}>
         {/* Row 1 - Numbers */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1 }]} rowSpan={2}>
+          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
             <Text style={styles.cellText}></Text>
           </View>
-          <View style={[styles.tableCell, { flex: 1 }]} rowSpan={2}>
+          <View style={[styles.tableCell, { flex: 1 }]}>
             <Text style={styles.cellText}></Text>
           </View>
           {departments.map((_, idx) => (
@@ -509,15 +501,18 @@ const PatientCountPDF = ({ patientData = {} }) => {
               <Text style={[styles.cellTextBold, { fontSize: 8 }]}>{col.id + departments.length}</Text>
             </View>
           ))}
-          <View style={[styles.lastTableCell, { flex: 1 }]} rowSpan={2}>
+          <View style={[styles.lastTableCell, { flex: 1 }]}>
             <Text style={styles.cellTextBold}>合計</Text>
           </View>
         </View>
         
         {/* Row 2 - Department Names */}
         <View style={styles.tableRow}>
+          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6', borderRightWidth: 0 }]}>
+            <Text style={styles.cellTextBold}>診療科</Text>
+          </View>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-            <Text style={styles.cellTextBold}>午前診</Text>
+            <Text style={styles.cellTextBold}>時間</Text>
           </View>
           {departments.map(dept => (
             <View key={`dept-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
@@ -526,13 +521,19 @@ const PatientCountPDF = ({ patientData = {} }) => {
           ))}
           {additionalColumns.map(col => (
             <View key={`add-dept-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-              <Text style={styles.cellText}>C{col.id + departments.length}</Text>
+              <Text style={styles.cellText}>-</Text>
             </View>
           ))}
+          <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+            <Text style={styles.cellTextBold}>合計</Text>
+          </View>
         </View>
         
         {/* Row 3 - Morning */}
         <View style={styles.tableRow}>
+          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
+            <Text style={styles.cellTextBold}>患者数</Text>
+          </View>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午前診</Text>
           </View>
@@ -553,6 +554,9 @@ const PatientCountPDF = ({ patientData = {} }) => {
         
         {/* Row 4 - Afternoon */}
         <View style={styles.tableRow}>
+          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
+            <Text style={styles.cellText}></Text>
+          </View>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午後診</Text>
           </View>
@@ -573,6 +577,9 @@ const PatientCountPDF = ({ patientData = {} }) => {
         
         {/* Row 5 - Night */}
         <View style={styles.tableRow}>
+          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
+            <Text style={styles.cellText}></Text>
+          </View>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>夜診</Text>
           </View>
@@ -593,6 +600,9 @@ const PatientCountPDF = ({ patientData = {} }) => {
         
         {/* Row 6 - Totals */}
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
+            <Text style={styles.cellText}></Text>
+          </View>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#e5e7eb' }]}>
             <Text style={styles.cellTextBold}>合計</Text>
           </View>
@@ -603,7 +613,7 @@ const PatientCountPDF = ({ patientData = {} }) => {
             return (
               <View key={`total-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
                 <Text style={styles.cellTextBold}>{deptTotal}</Text>
-            </View>
+              </View>
             );
           })}
           {additionalColumns.map(col => (
@@ -620,7 +630,7 @@ const PatientCountPDF = ({ patientData = {} }) => {
   );
 };
 
-// Main PDF Document Component with Landscape
+// Main PDF Document Component with multiple pages
 export const PDFDocument = ({ 
   reportData, 
   reportDate, 
@@ -638,6 +648,7 @@ export const PDFDocument = ({
 
   return (
     <Document>
+      {/* First Page */}
       <Page size="A4" orientation="landscape" style={styles.page}>
         {/* Header */}
         <View style={styles.headerSection}>
@@ -654,7 +665,7 @@ export const PDFDocument = ({
           </View>
         </View>
 
-        {/* Main Tables - First Row in Landscape */}
+        {/* Main Tables - First Row */}
         <View style={styles.mainRow}>
           <View style={{ flex: 6 }}>
             <HospitalDataPDF 
@@ -696,12 +707,22 @@ export const PDFDocument = ({
         <Text style={styles.sectionTitle}>診察担当医</Text>
         <DiagnosisPDF diagnosisData={reportData?.diagnosisData || reportData?.tableData?.diagnosisData || {}} />
 
+        {/* Footer for first page */}
+        <View style={styles.footer}>
+          <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
+          <Text>ページ 1/2</Text>
+          <Text>最終更新: {reportData?.report?.updated_at ? new Date(reportData.report.updated_at).toLocaleDateString('ja-JP') : reportDate}</Text>
+        </View>
+      </Page>
+
+      {/* Second Page */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
         {/* Patient Count Table */}
         <Text style={styles.sectionTitle}>患者数</Text>
         <PatientCountPDF patientData={reportData?.patientCountData || reportData?.tableData?.patientCountData || {}} />
 
         {/* Status Confirmation Section */}
-        <Text style={styles.sectionTitle}>確認状態一覧</Text>
+        <Text style={[styles.sectionTitle, styles.pageBreak]}>確認状態一覧</Text>
         <View style={[styles.table, { marginBottom: 5 }]}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>役割</Text></View>
@@ -729,7 +750,7 @@ export const PDFDocument = ({
                 <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>報告者</Text></View>
                 <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>日時</Text></View>
               </View>
-              {managementComments.slice(0, 3).map((comment, idx) => (
+              {managementComments.slice(0, 5).map((comment, idx) => (
                 <View key={idx} style={[styles.tableRow, idx === managementComments.length - 1 && { borderBottomWidth: 0 }]}>
                   <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.cellText}>{comment.text}</Text></View>
                   <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.author}</Text></View>
@@ -740,11 +761,11 @@ export const PDFDocument = ({
           </>
         )}
 
-        {/* Footer */}
+        {/* Footer for second page */}
         <View style={styles.footer}>
           <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
+          <Text>ページ 2/2</Text>
           <Text>承認者: {reportData?.report?.approved_by_admin?.name || '未承認'}</Text>
-          <Text>最終更新: {reportData?.report?.updated_at ? new Date(reportData.report.updated_at).toLocaleDateString('ja-JP') : reportDate}</Text>
         </View>
       </Page>
     </Document>
