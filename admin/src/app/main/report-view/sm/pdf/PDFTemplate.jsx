@@ -180,7 +180,6 @@ const renderCirclesPDF = (count) => {
   return '-';
 };
 
-// 1. Conference and Special Notes Section
 // 1. Conference and Special Notes Section - UPDATED to single row with two columns
 const ConferenceSpecialNotesPDF = ({ welfareData }) => {
   return (
@@ -213,20 +212,13 @@ const ConferenceSpecialNotesPDF = ({ welfareData }) => {
   );
 };
 
-// 2. Daily Visitors Section (入所者状況)
+// 2. Daily Visitors Section (入所者状況) - UPDATED with ケアハウス column using section3 data
 const DailyVisitorsPDF = ({ welfareData, capacities }) => {
-  const sectionNames = ['入所', '短期入所', '合計'];
+  const sectionNames = ['入所', '短期入所', 'ケアハウス'];
   
-  // Calculate totals
-  const calculateTotal = (field1, field2) => {
-    const val1 = welfareData?.[field1] || 0;
-    const val2 = welfareData?.[field2] || 0;
-    return val1 + val2;
-  };
-
   const section1Capacity = capacities?.section1_capacity || 0;
   const section2Capacity = capacities?.section2_capacity || 0;
-  const totalCapacity = section1Capacity + section2Capacity;
+  const section3Capacity = capacities?.section3_capacity || 0;
 
   const dailyVisitorRows = [
     { 
@@ -234,7 +226,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${section1Capacity}`,
         `${section2Capacity}`,
-        `${totalCapacity}`
+        `${section3Capacity}`
       ]
     },
     { 
@@ -242,7 +234,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_admission_count || 0}`,
         `${welfareData?.section2_admission_count || 0}`,
-        `${calculateTotal('section1_admission_count', 'section2_admission_count')}`
+        `${welfareData?.section3_admission_count || 0}`
       ]
     },
     { 
@@ -250,7 +242,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_admission_treated || 0}`,
         `${welfareData?.section2_admission_treated || 0}`,
-        `${calculateTotal('section1_admission_treated', 'section2_admission_treated')}`
+        `${welfareData?.section3_admission_count || 0}`
       ]
     },
     { 
@@ -258,7 +250,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_discharge_treated || 0}`,
         `${welfareData?.section2_discharge_treated || 0}`,
-        `${calculateTotal('section1_discharge_treated', 'section2_discharge_treated')}`
+        `${welfareData?.section3_discharge_count || 0}`
       ]
     },
     { 
@@ -266,7 +258,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_outside_hospital || 0}`,
         `${welfareData?.section2_outside_hospital || 0}`,
-        `${calculateTotal('section1_outside_hospital', 'section2_outside_hospital')}`
+        `${welfareData?.section3_outside_hospital || 0}`
       ]
     },
     { 
@@ -274,7 +266,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_hospitalization_count || 0}`,
         `${welfareData?.section2_hospitalization_count || 0}`,
-        `${calculateTotal('section1_hospitalization_count', 'section2_hospitalization_count')}`
+        `${welfareData?.section3_hospitalization_count || 0}`
       ]
     },
     { 
@@ -282,7 +274,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_today_end_users || 0}`,
         `${welfareData?.section2_today_end_users || 0}`,
-        `${calculateTotal('section1_today_end_users', 'section2_today_end_users')}`
+        `${welfareData?.section3_today_end_users || 0}`
       ],
       bold: true
     }
@@ -294,7 +286,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_admission || 0}`,
         `${welfareData?.section2_monthly_admission || 0}`,
-        `${calculateTotal('section1_monthly_admission', 'section2_monthly_admission')}`
+        `${welfareData?.section3_monthly_admission || 0}`
       ]
     },
     { 
@@ -302,7 +294,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_avg || 0}`,
         `${welfareData?.section2_monthly_avg || 0}`,
-        `${calculateTotal('section1_monthly_avg', 'section2_monthly_avg')}`
+        `${welfareData?.section3_monthly_avg || 0}`
       ]
     },
     { 
@@ -310,7 +302,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_utilization || 0}%`,
         `${welfareData?.section2_monthly_utilization || 0}%`,
-        `${(((welfareData?.section1_monthly_avg || 0) + (welfareData?.section2_monthly_avg || 0)) / totalCapacity * 100).toFixed(1)}%`
+        `${welfareData?.section3_monthly_utilization || 0}%`
       ]
     }
   ];
@@ -321,7 +313,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_users || 0}`,
         `${welfareData?.section2_annual_users || 0}`,
-        `${calculateTotal('section1_annual_users', 'section2_annual_users')}`
+        `${welfareData?.section3_annual_users || 0}`
       ]
     },
     { 
@@ -329,7 +321,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_avg || 0}`,
         `${welfareData?.section2_annual_avg || 0}`,
-        `${calculateTotal('section1_annual_avg', 'section2_annual_avg')}`
+        `${welfareData?.section3_annual_avg || 0}`
       ]
     },
     { 
@@ -337,7 +329,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_utilization || 0}%`,
         `${welfareData?.section2_annual_utilization || 0}%`,
-        `${(((welfareData?.section1_annual_avg || 0) + (welfareData?.section2_annual_avg || 0)) / totalCapacity * 100).toFixed(1)}%`
+        `${welfareData?.section3_annual_utilization || 0}%`
       ]
     }
   ];
