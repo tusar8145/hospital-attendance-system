@@ -12,61 +12,61 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 8, // Reduced from 15 to 8
+    padding: 15,
     fontFamily: 'NotoSansJP',
-    fontSize: 5, // Reduced from 8 to 5
+    fontSize: 8,
     flexDirection: 'column',
   },
   headerSection: {
-    marginBottom: 5, // Reduced from 10 to 5
-    borderBottom: '0.5 solid #ccc', // Thinner border
-    paddingBottom: 4, // Reduced from 8 to 4
+    marginBottom: 10,
+    borderBottom: '1 solid #ccc',
+    paddingBottom: 8,
   },
   title: {
-    fontSize: 10, // Reduced from 16 to 10
+    fontSize: 16,
     fontWeight: 700,
-    marginBottom: 1, // Reduced from 3 to 1
+    marginBottom: 3,
     color: '#1e3a8a',
   },
   subtitle: {
-    fontSize: 6, // Reduced from 9 to 6
+    fontSize: 9,
     color: '#4b5563',
-    marginBottom: 1, // Reduced from 2 to 1
+    marginBottom: 2,
   },
   reportInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 1, // Reduced from 3 to 1
+    marginTop: 3,
   },
   reportNo: {
-    fontSize: 5, // Reduced from 8 to 5
+    fontSize: 8,
     color: '#6b7280',
   },
   statusBadge: {
     backgroundColor: '#dbeafe',
-    padding: '1 3', // Reduced padding
-    borderRadius: 8, // Reduced from 12 to 8
-    fontSize: 5, // Reduced from 8 to 5
+    padding: '2 6',
+    borderRadius: 12,
+    fontSize: 8,
     color: '#1e40af',
   },
   
   // Table styles
   tableContainer: {
-    marginBottom: 3, // Reduced from 8 to 3
+    marginBottom: 8,
   },
   table: {
     display: 'flex',
     width: '100%',
     borderStyle: 'solid',
-    borderWidth: 0.5, // Thinner border
+    borderWidth: 1,
     borderColor: '#d1d5db',
-    marginBottom: 2, // Reduced from 5 to 2
+    marginBottom: 5,
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 0.5, // Thinner border
+    borderBottomWidth: 1,
     borderBottomColor: '#d1d5db',
-    minHeight: 12, // Reduced from 20 to 12
+    minHeight: 20,
   },
   tableHeader: {
     backgroundColor: '#2563eb',
@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
   tableHeaderText: {
     color: 'white',
     fontWeight: 700,
-    fontSize: 5, // Reduced from 8 to 5
-    padding: 1, // Reduced from 3 to 1
+    fontSize: 8,
+    padding: 3,
   },
   tableSubHeader: {
     backgroundColor: '#e5e7eb',
@@ -83,57 +83,95 @@ const styles = StyleSheet.create({
   tableSubHeaderText: {
     color: '#111827',
     fontWeight: 700,
-    fontSize: 4.5, // Reduced from 7 to 4.5
-    padding: 1, // Reduced from 3 to 1
+    fontSize: 7,
+    padding: 3,
   },
   tableCell: {
-    borderRightWidth: 0.5, // Thinner border
+    borderRightWidth: 1,
     borderRightColor: '#d1d5db',
-    padding: 1, // Reduced from 3 to 1
+    padding: 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
   lastTableCell: {
     borderRightWidth: 0,
-    padding: 1, // Reduced from 3 to 1
+    padding: 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
   cellText: {
-    fontSize: 4.5, // Reduced from 7 to 4.5
+    fontSize: 7,
     textAlign: 'center',
   },
   cellTextBold: {
-    fontSize: 4.5, // Reduced from 7 to 4.5
+    fontSize: 7,
+    fontWeight: 700,
+    textAlign: 'center',
+  },
+  cellTextLarge: {
+    fontSize: 9,
     fontWeight: 700,
     textAlign: 'center',
   },
   cellTextLeft: {
-    fontSize: 4.5, // Reduced from 7 to 4.5
+    fontSize: 7,
     textAlign: 'left',
-    paddingLeft: 2, // Reduced from 4 to 2
+    paddingLeft: 4,
   },
   
   // Section title
   sectionTitle: {
-    fontSize: 7, // Reduced from 10 to 7
+    fontSize: 10,
     fontWeight: 700,
-    marginTop: 2, // Reduced from 5 to 2
-    marginBottom: 1, // Reduced from 3 to 1
+    marginTop: 5,
+    marginBottom: 3,
     color: '#1f2937',
-    borderLeft: '2 solid #2563eb', // Thinner border
-    paddingLeft: 2, // Reduced from 4 to 2
+    borderLeft: '3 solid #2563eb',
+    paddingLeft: 4,
   },
   
   // Footer styles
   footer: {
-    fontSize: 4, // Reduced from 6 to 4
+    fontSize: 6,
     color: '#9ca3af',
-    borderTop: '0.5 solid #e5e7eb', // Thinner border
-    paddingTop: 1, // Reduced from 3 to 1
+    borderTop: '1 solid #e5e7eb',
+    paddingTop: 3,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 3, // Reduced from 10 to 3
+    marginTop: 10,
+  },
+  
+  // Page break marker
+  pageBreak: {
+    marginTop: 15,
+  },
+  
+  // Conference section styles
+  conferenceRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
+    minHeight: 30,
+  },
+  conferenceLabel: {
+    width: '20%',
+    backgroundColor: '#f5f5f5',
+    padding: 5,
+    fontWeight: 700,
+    fontSize: 8,
+    borderRightWidth: 1,
+    borderRightColor: '#d1d5db',
+  },
+  conferenceContent: {
+    width: '80%',
+    padding: 5,
+    fontSize: 8,
+  },
+  
+  // Text content for notes
+  notesText: {
+    fontSize: 7,
+    lineHeight: 1.4,
   },
 });
 
@@ -153,7 +191,7 @@ const ConferenceSpecialNotesPDF = ({ welfareData }) => {
           <View style={[styles.tableCell, { flex: 2, backgroundColor: '#f5f5f5' }]}>
             <Text style={styles.cellTextBold}>会議・行事等</Text>
           </View>
-          <View style={[styles.tableCell, { flex: 3, padding: 1 }]}>
+          <View style={[styles.tableCell, { flex: 3, padding: 5 }]}>
             <Text style={styles.cellTextLeft}>
               {welfareData?.conference_events || renderCirclesPDF(60)}
             </Text>
@@ -163,7 +201,7 @@ const ConferenceSpecialNotesPDF = ({ welfareData }) => {
           <View style={[styles.tableCell, { flex: 2, backgroundColor: '#f5f5f5' }]}>
             <Text style={styles.cellTextBold}>特記事項</Text>
           </View>
-          <View style={[styles.lastTableCell, { flex: 3, padding: 1 }]}>
+          <View style={[styles.lastTableCell, { flex: 3, padding: 5 }]}>
             <Text style={styles.cellTextLeft}>
               {welfareData?.special_notes_section || renderCirclesPDF(60)}
             </Text>
@@ -593,13 +631,13 @@ const VacantBedPDF = ({ welfareData }) => {
         </View>
         
         {/* Data Row */}
-        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 30 }]}> {/* Reduced from 40 to 30 */}
-          <View style={[styles.tableCell, { flex: 5, padding: 1 }]}>
+        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 40 }]}>
+          <View style={[styles.tableCell, { flex: 5, padding: 5 }]}>
             <Text style={styles.cellTextLeft}>
               {vacantBedNotes || renderCirclesPDF(40)}
             </Text>
           </View>
-          <View style={[styles.lastTableCell, { flex: 5, padding: 1 }]}>
+          <View style={[styles.lastTableCell, { flex: 5, padding: 5 }]}>
             <Text style={styles.cellTextLeft}>
               {responseNotes || renderCirclesPDF(40)}
             </Text>
@@ -610,7 +648,7 @@ const VacantBedPDF = ({ welfareData }) => {
   );
 };
 
-// Main PDF Document Component - Single Page
+// Main PDF Document Component
 export const PDFDocument = ({ 
   reportData, 
   reportDate, 
@@ -628,95 +666,109 @@ export const PDFDocument = ({
 
   return (
     <Document>
-      {/* Single Page - All content combined */}
+      {/* First Page */}
       <Page size="A4" orientation="landscape" style={styles.page}>
-        {/* Main content container with padding */}
-        <View style={{ padding: 12 }}> {/* Added padding container */}
-          {/* Header */}
-          <View style={styles.headerSection}>
-            <Text style={styles.title}>福祉施設日報</Text>
-            <Text style={styles.subtitle}>{reportDate}</Text>
-            <Text style={styles.subtitle}>{hospitalInfo.name}</Text>
-            <Text style={styles.subtitle}>{hospitalInfo.address}</Text>
-            
-            <View style={styles.reportInfo}>
-              <Text style={styles.reportNo}>レポート番号: {reportData?.report?.report_no || '-'}</Text>
-              <View style={styles.statusBadge}>
-                <Text>ステータス: {statusText}</Text>
-              </View>
+        {/* Header */}
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>福祉施設日報</Text>
+          <Text style={styles.subtitle}>{reportDate}</Text>
+          <Text style={styles.subtitle}>{hospitalInfo.name}</Text>
+          <Text style={styles.subtitle}>{hospitalInfo.address}</Text>
+          
+          <View style={styles.reportInfo}>
+            <Text style={styles.reportNo}>レポート番号: {reportData?.report?.report_no || '-'}</Text>
+            <View style={styles.statusBadge}>
+              <Text>ステータス: {statusText}</Text>
             </View>
           </View>
+        </View>
 
-          {/* Conference and Special Notes Section */}
-          <ConferenceSpecialNotesPDF welfareData={reportData.welfare_data} />
+        {/* Conference and Special Notes Section */}
+        <ConferenceSpecialNotesPDF welfareData={reportData.welfare_data} />
 
-          {/* Daily Visitors Section */}
-          <Text style={styles.sectionTitle}>入所者状況</Text>
-          <DailyVisitorsPDF 
-            welfareData={reportData.welfare_data} 
-            capacities={reportData.capacities}
-          />
+        {/* Daily Visitors Section */}
+        <Text style={styles.sectionTitle}>入所者状況</Text>
+        <DailyVisitorsPDF 
+          welfareData={reportData.welfare_data} 
+          capacities={reportData.capacities}
+        />
 
-          {/* Daily Users Section */}
-          <Text style={styles.sectionTitle}>利用者状況</Text>
-          <DailyUsersPDF 
-            welfareData={reportData.welfare_data}
-            sectionNames={reportData.section_names}
-            capacities={reportData.capacities}
-          />
+        {/* Footer for first page */}
+        <View style={styles.footer}>
+          <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
+          <Text>ページ 1/3</Text>
+          <Text>最終更新: {reportData?.report?.updated_at ? new Date(reportData.report.updated_at).toLocaleDateString('ja-JP') : reportDate}</Text>
+        </View>
+      </Page>
 
-          {/* Vacant Bed Section */}
-          <Text style={styles.sectionTitle}>空床状況</Text>
-          <VacantBedPDF welfareData={reportData.welfare_data} />
+      {/* Second Page */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        {/* Daily Users Section */}
+        <Text style={styles.sectionTitle}>利用者状況</Text>
+        <DailyUsersPDF 
+          welfareData={reportData.welfare_data}
+          sectionNames={reportData.section_names}
+          capacities={reportData.capacities}
+        />
 
-          {/* Status Confirmation Section */}
-          {/*<Text style={styles.sectionTitle}>確認状態一覧</Text>
-          <View style={[styles.table, { marginBottom: 3 }]}>
-            <View style={[styles.tableRow, styles.tableHeader]}>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>役割</Text></View>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>状態</Text></View>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>確認者</Text></View>
-              <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>確認日時</Text></View>
+        {/* Vacant Bed Section */}
+        <Text style={[styles.sectionTitle, styles.pageBreak]}>空床状況</Text>
+        <VacantBedPDF welfareData={reportData.welfare_data} />
+
+        {/* Status Confirmation Section */}
+        <Text style={styles.sectionTitle}>確認状態一覧</Text>
+        <View style={[styles.table, { marginBottom: 5 }]}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>役割</Text></View>
+            <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>状態</Text></View>
+            <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>確認者</Text></View>
+            <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>確認日時</Text></View>
+          </View>
+          {statusData.map((item, idx) => (
+            <View key={idx} style={[styles.tableRow, idx === statusData.length - 1 && { borderBottomWidth: 0 }]}>
+              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.title}</Text></View>
+              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.status}</Text></View>
+              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.person || '-'}</Text></View>
+              <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.date || '-'}</Text></View>
             </View>
-            {statusData.map((item, idx) => (
-              <View key={idx} style={[styles.tableRow, idx === statusData.length - 1 && { borderBottomWidth: 0 }]}>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.title}</Text></View>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.status}</Text></View>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.person || '-'}</Text></View>
-                <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.date || '-'}</Text></View>
+          ))}
+        </View>
+
+        {/* Footer for second page */}
+        <View style={styles.footer}>
+          <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
+          <Text>ページ 2/3</Text>
+          <Text>承認者: {reportData?.report?.approved_by_admin?.name || '未承認'}</Text>
+        </View>
+      </Page>
+
+      {/* Third Page - Management Comments */}
+      {managementComments.length > 0 && (
+        <Page size="A4" orientation="landscape" style={styles.page}>
+          <Text style={styles.sectionTitle}>管理事項</Text>
+          <View style={[styles.table, { marginBottom: 5 }]}>
+            <View style={[styles.tableRow, styles.tableHeader]}>
+              <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.tableHeaderText}>コメント</Text></View>
+              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>報告者</Text></View>
+              <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>日時</Text></View>
+            </View>
+            {managementComments.slice(0, 5).map((comment, idx) => (
+              <View key={idx} style={[styles.tableRow, idx === managementComments.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.cellText}>{comment.text}</Text></View>
+                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.author}</Text></View>
+                <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.date} {comment.time}</Text></View>
               </View>
             ))}
-          </View>*/}
+          </View>
 
-          {/* Management Comments */}
-          {managementComments.length > 0 && (
-            <>
-              <Text style={[styles.sectionTitle, { marginBottom: 1 }]}>管理事項</Text>
-              <View style={[styles.table, { marginBottom: 3 }]}>
-                <View style={[styles.tableRow, styles.tableHeader]}>
-                  <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.tableHeaderText}>コメント</Text></View>
-                  <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>報告者</Text></View>
-                  <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>日時</Text></View>
-                </View>
-                {managementComments.slice(0, 5).map((comment, idx) => (
-                  <View key={idx} style={[styles.tableRow, idx === managementComments.length - 1 && { borderBottomWidth: 0 }]}>
-                    <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.cellText}>{comment.text}</Text></View>
-                    <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.author}</Text></View>
-                    <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellText}>{comment.date} {comment.time}</Text></View>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* Footer for single page */}
-         {/*} <View style={styles.footer}>
+          {/* Footer for third page */}
+          <View style={styles.footer}>
             <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
-            <Text>ページ 1/1</Text>
+            <Text>ページ 3/3</Text>
             <Text>承認者: {reportData?.report?.approved_by_admin?.name || '未承認'}</Text>
-          </View>*/}
-        </View> {/* Close padding container */}
-      </Page>
+          </View>
+        </Page>
+      )}
     </Document>
   );
 };
