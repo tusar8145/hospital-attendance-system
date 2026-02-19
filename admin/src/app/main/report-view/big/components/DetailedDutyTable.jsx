@@ -38,9 +38,9 @@ const DetailedDutyTable = ({ dutyStaff = [] }) => {
                 {headers.map((header) => (
                   <th 
                     key={`header-${header.key}`}
-                    className="bg-gray-300 text-black font-bold p-2 text-center w-1/7"
+                    className="bg-gray-300 text-black font-bold p-2 text-center w-1/7 align-top"
                   >
-                    <div className="text-xs whitespace-nowrap">
+                    <div className="text-xs break-words">
                       {header.label}
                     </div>
                   </th>
@@ -56,9 +56,9 @@ const DetailedDutyTable = ({ dutyStaff = [] }) => {
                   return (
                     <td 
                       key={`${header.key}-2`}
-                      className="border border-gray-300 p-2 text-center w-1/7"
+                      className="border border-gray-300 p-2 text-center w-1/7 align-top"
                     >
-                      <div className="text-sm font-medium text-gray-800 min-h-[24px]">
+                      <div className="text-sm font-medium text-gray-800 break-words">
                         {staffData?.staff_name_2 || (
                           <span className="text-gray-400">-</span>
                         )}
@@ -75,9 +75,9 @@ const DetailedDutyTable = ({ dutyStaff = [] }) => {
                   return (
                     <td 
                       key={`${header.key}-3`}
-                      className="border border-gray-300 p-2 text-center w-1/7"
+                      className="border border-gray-300 p-2 text-center w-1/7 align-top"
                     >
-                      <div className="text-sm font-medium text-gray-800 min-h-[24px]">
+                      <div className="text-sm font-medium text-gray-800 break-words">
                         {staffData?.staff_name_3 || (
                           <span className="text-gray-400">-</span>
                         )}
@@ -88,9 +88,6 @@ const DetailedDutyTable = ({ dutyStaff = [] }) => {
               </tr>
             </tbody>
           </table>
-          
-          {/* Display warning if there are more than 7 items */}
- 
         </div>
       </div>
     </div>

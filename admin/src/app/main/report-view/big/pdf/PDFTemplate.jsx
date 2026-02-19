@@ -13,61 +13,61 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 8, // Reduced from 15 to 8
+    padding: 8,
     fontFamily: 'NotoSansJP',
-    fontSize: 5, // Reduced from 8 to 5
+    fontSize: 5,
     flexDirection: 'column',
   },
   headerSection: {
-    marginBottom: 5, // Reduced from 10 to 5
-    borderBottom: '0.5 solid #ccc', // Thinner border
-    paddingBottom: 4, // Reduced from 8 to 4
+    marginBottom: 5,
+    borderBottom: '0.5 solid #ccc',
+    paddingBottom: 4,
   },
   title: {
-    fontSize: 10, // Reduced from 16 to 10
+    fontSize: 10,
     fontWeight: 700,
-    marginBottom: 1, // Reduced from 3 to 1
+    marginBottom: 1,
     color: '#1e3a8a',
   },
   subtitle: {
-    fontSize: 6, // Reduced from 9 to 6
+    fontSize: 6,
     color: '#4b5563',
-    marginBottom: 1, // Reduced from 2 to 1
+    marginBottom: 1,
   },
   reportInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 1, // Reduced from 3 to 1
+    marginTop: 1,
   },
   reportNo: {
-    fontSize: 5, // Reduced from 8 to 5
+    fontSize: 5,
     color: '#6b7280',
   },
   statusBadge: {
     backgroundColor: '#dbeafe',
-    padding: '1 3', // Reduced padding
-    borderRadius: 8, // Reduced from 12 to 8
-    fontSize: 5, // Reduced from 8 to 5
+    padding: '1 3',
+    borderRadius: 8,
+    fontSize: 5,
     color: '#1e40af',
   },
   
   // Table styles
   tableContainer: {
-    marginBottom: 3, // Reduced from 8 to 3
+    marginBottom: 3,
   },
   table: {
     display: 'flex',
     width: '100%',
     borderStyle: 'solid',
-    borderWidth: 0.5, // Thinner border
+    borderWidth: 0.5,
     borderColor: '#d1d5db',
-    marginBottom: 2, // Reduced from 5 to 2
+    marginBottom: 2,
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 0.5, // Thinner border
+    borderBottomWidth: 0.5,
     borderBottomColor: '#d1d5db',
-    minHeight: 12, // Reduced from 20 to 12
+    minHeight: 12,
   },
   tableHeader: {
     backgroundColor: '#2563eb',
@@ -75,8 +75,9 @@ const styles = StyleSheet.create({
   tableHeaderText: {
     color: 'white',
     fontWeight: 700,
-    fontSize: 5, // Reduced from 8 to 5
-    padding: 1, // Reduced from 3 to 1
+    fontSize: 5,
+    padding: 1,
+    textAlign: 'center',
   },
   tableSubHeader: {
     backgroundColor: '#e5e7eb',
@@ -84,33 +85,34 @@ const styles = StyleSheet.create({
   tableSubHeaderText: {
     color: '#111827',
     fontWeight: 700,
-    fontSize: 4.5, // Reduced from 7 to 4.5
-    padding: 1, // Reduced from 3 to 1
+    fontSize: 4.5,
+    padding: 1,
+    textAlign: 'center',
   },
   tableCell: {
-    borderRightWidth: 0.5, // Thinner border
+    borderRightWidth: 0.5,
     borderRightColor: '#d1d5db',
-    padding: 1, // Reduced from 3 to 1
+    padding: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   lastTableCell: {
     borderRightWidth: 0,
-    padding: 1, // Reduced from 3 to 1
+    padding: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   cellText: {
-    fontSize: 4.5, // Reduced from 7 to 4.5
+    fontSize: 4.5,
     textAlign: 'center',
   },
   cellTextBold: {
-    fontSize: 4.5, // Reduced from 7 to 4.5
+    fontSize: 4.5,
     fontWeight: 700,
     textAlign: 'center',
   },
   cellTextLarge: {
-    fontSize: 6, // Reduced from 9 to 6
+    fontSize: 6,
     fontWeight: 700,
     textAlign: 'center',
   },
@@ -122,53 +124,375 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   verticalTextChar: {
-    fontSize: 4, // Reduced from 6 to 4
+    fontSize: 4,
     lineHeight: 1,
-    marginVertical: 0.2, // Reduced from 0.5 to 0.2
+    marginVertical: 0.2,
   },
   
   // Section title
   sectionTitle: {
-    fontSize: 7, // Reduced from 10 to 7
+    fontSize: 7,
     fontWeight: 700,
-    marginTop: 2, // Reduced from 5 to 2
-    marginBottom: 1, // Reduced from 3 to 1
+    marginTop: 2,
+    marginBottom: 1,
     color: '#1f2937',
-    borderLeft: '2 solid #2563eb', // Thinner border
-    paddingLeft: 2, // Reduced from 4 to 2
+    borderLeft: '2 solid #2563eb',
+    paddingLeft: 2,
   },
   
   // Main content rows
   mainRow: {
     flexDirection: 'row',
-    gap: 2, // Reduced from 5 to 2
-    marginBottom: 2, // Reduced from 5 to 2
+    gap: 2,
+    marginBottom: 2,
   },
   
   // Footer styles
   footer: {
-    fontSize: 4, // Reduced from 6 to 4
+    fontSize: 4,
     color: '#9ca3af',
-    borderTop: '0.5 solid #e5e7eb', // Thinner border
-    paddingTop: 1, // Reduced from 3 to 1
+    borderTop: '0.5 solid #e5e7eb',
+    paddingTop: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 3, // Reduced from 10 to 3
+    marginTop: 3,
+  },
+  
+  // New layout styles for the top section
+  topSection: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    gap: 2,
+  },
+  leftColumn: {
+    flex: 12, // CombinedHospitalMedicalPDF takes 12 parts
+  },
+  rightColumn: {
+    flex: 8, // Right column takes 8 parts total
+    flexDirection: 'column',
+    gap: 2,
+  },
+  dutyRowContainer: {
+    flexDirection: 'row',
+    gap: 2,
+    flex: 1,
+  },
+  dutyTableContainer: {
+    flex: 7, // Takes 7 parts of the right column
+  },
+  visitTableContainer: {
+    flex: 1, // Takes 1 part of the right column
+    justifyContent: 'flex-start',
   },
   
   // Duty table specific styles
-  dutyRow: {
+  dutyTable: {
+    display: 'flex',
+    width: '100%',
+    borderStyle: 'solid',
+    borderWidth: 0.5,
+    borderColor: '#d1d5db',
+  },
+  dutyTableRow: {
     flexDirection: 'row',
-    marginBottom: 3, // Reduced from 8 to 3
-    gap: 2, // Reduced from 5 to 2
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#d1d5db',
+    minHeight: 12,
   },
-  dutyTableContainer: {
-    flex: 12,
-    marginBottom: 2, // Reduced from 8 to 2
+  dutyTableCell: {
+    borderRightWidth: 0.5,
+    borderRightColor: '#d1d5db',
+    padding: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
   },
-  visitTableContainer: {
-    flex: 4,
-    marginBottom: 2, // Reduced from 8 to 2
+  dutyLastTableCell: {
+    borderRightWidth: 0,
+    padding: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  
+  // Emergency data styles
+  emergencyContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 1,
+  },
+  emergencyNumber: {
+    fontSize: 7,
+    fontWeight: 700,
+    color: '#b91c1c',
+    marginBottom: 1,
+  },
+  emergencyLabel: {
+    fontSize: 3.5,
+    color: '#4b5563',
+    marginBottom: 0.5,
+  },
+  emergencySubNumber: {
+    fontSize: 5,
+    fontWeight: 700,
+    color: '#111827',
+  },
+  emergencyMonthlyContainer: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#d1d5db',
+    borderStyle: 'dashed',
+    paddingBottom: 1,
+    marginBottom: 1,
+    width: '100%',
+    alignItems: 'center',
+  },
+  
+  // Nurse data styles
+  nurseContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingLeft: 4,
+  },
+  nurseItem: {
+    fontSize: 4,
+    marginBottom: 0.5,
+  },
+  
+  // Vertical text for nurse headers
+  verticalNurseText: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verticalNurseChar: {
+    fontSize: 4.5,
+    lineHeight: 1.2,
+    fontWeight: 700,
+  },
+  
+  // New styles for Status Confirmation section (PDF version)
+  statusContainer: {
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  statusHeader: {
+    backgroundColor: 'lightgray',
+    padding: 4,
+  },
+  statusHeaderText: {
+    color: '#000000',
+    fontSize: 7,
+    fontWeight: 700,
+  },
+  statusContent: {
+    padding: 6,
+  },
+  statusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 3,
+  },
+  statusItem: {
+    width: '12%', // Approximately 8 items per row
+    borderWidth: 0.5,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 3,
+  },
+  statusItemHeader: {
+    padding: 2,
+    backgroundColor: '#3b82f6', // Default blue
+  },
+  statusItemHeaderBlue: {
+    backgroundColor: '#2563eb',
+  },
+  statusItemHeaderGreen: {
+    backgroundColor: '#16a34a',
+  },
+  statusItemHeaderPurple: {
+    backgroundColor: '#9333ea',
+  },
+  statusItemHeaderText: {
+    color: '#ffffff',
+    fontSize: 4.5,
+    fontWeight: 700,
+    textAlign: 'center',
+  },
+  statusItemBody: {
+    padding: 3,
+  },
+  statusPersonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  statusAvatar: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#6b7280',
+    marginRight: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusAvatarText: {
+    color: '#ffffff',
+    fontSize: 4,
+    fontWeight: 700,
+  },
+  statusPersonName: {
+    fontSize: 4.5,
+    color: '#1f2937',
+    flex: 1,
+  },
+  statusCheckbox: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#9ca3af',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusChecked: {
+    backgroundColor: '#22c55e',
+    borderColor: '#22c55e',
+  },
+  statusCheckmark: {
+    color: '#ffffff',
+    fontSize: 5,
+  },
+  statusIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  statusIcon: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 1,
+  },
+  statusIconGreen: {
+    backgroundColor: '#22c55e',
+  },
+  statusIconOrange: {
+    backgroundColor: '#f97316',
+  },
+  statusIconText: {
+    fontSize: 4,
+    color: '#22c55e',
+  },
+  statusIconTextOrange: {
+    color: '#f97316',
+  },
+  statusText: {
+    fontSize: 4,
+    color: '#22c55e',
+  },
+  statusTextOrange: {
+    color: '#f97316',
+  },
+  statusDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  statusTimeIcon: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#9ca3af',
+    marginRight: 1,
+  },
+  statusDateText: {
+    fontSize: 4,
+    color: '#6b7280',
+  },
+  statusApproverRow: {
+    marginTop: 2,
+    paddingTop: 1,
+    borderTopWidth: 0.5,
+    borderTopColor: '#e5e7eb',
+  },
+  statusApproverText: {
+    fontSize: 3.5,
+    color: '#6b7280',
+  },
+  statusSummary: {
+    marginTop: 4,
+    padding: 4,
+    backgroundColor: '#f9fafb',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+    borderRadius: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusSummaryLeft: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  statusSummaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusSummaryDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginRight: 2,
+  },
+  statusSummaryDotGreen: {
+    backgroundColor: '#22c55e',
+  },
+  statusSummaryDotOrange: {
+    backgroundColor: '#f97316',
+  },
+  statusSummaryDotBlue: {
+    backgroundColor: '#3b82f6',
+  },
+  statusSummaryText: {
+    fontSize: 4,
+    color: '#4b5563',
+  },
+  statusSummaryBold: {
+    fontWeight: 700,
+  },
+  statusSummaryDate: {
+    fontSize: 4,
+    color: '#9ca3af',
+  },
+  statusEmptyState: {
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  statusEmptyIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#d1d5db',
+    marginBottom: 4,
+  },
+  statusEmptyText: {
+    fontSize: 5,
+    color: '#6b7280',
+    marginBottom: 2,
+  },
+  statusEmptySubText: {
+    fontSize: 4,
+    color: '#9ca3af',
   },
 });
 
@@ -181,8 +505,23 @@ const VerticalText = ({ chars }) => (
   </View>
 );
 
-// HospitalDataTable component
-const HospitalDataPDF = ({ data, outpatient, totalAdmittedPatient }) => {
+// Helper function for vertical nurse text (with different styling)
+const VerticalNurseText = ({ chars }) => (
+  <View style={styles.verticalNurseText}>
+    {chars.split('').map((char, index) => (
+      <Text key={index} style={styles.verticalNurseChar}>{char}</Text>
+    ))}
+  </View>
+);
+
+// Combined Hospital and Medical Management Table
+const CombinedHospitalMedicalPDF = ({ 
+  data, 
+  outpatient, 
+  totalAdmittedPatient,
+  emergencyData,
+  nurseData 
+}) => {
   // Calculate outpatient totals
   const calculateOutpatientTotals = () => {
     let morning = 0, afternoon = 0, night = 0;
@@ -207,92 +546,160 @@ const HospitalDataPDF = ({ data, outpatient, totalAdmittedPatient }) => {
     outpatient: outpatientTotals
   };
 
+  const emergency = {
+    current: emergencyData?.current || 0,
+    hospitalization: emergencyData?.hospitalization || 0,
+    monthly: emergencyData?.monthly || 0,
+    cumulative: emergencyData?.cumulative || 0
+  };
+
   return (
     <View style={styles.tableContainer}>
       <View style={styles.table}>
-        {/* Header Row 1 */}
+        {/* Row 1: Main headers spanning multiple columns */}
         <View style={[styles.tableRow, styles.tableHeader]}>
-          <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.tableHeaderText}>入院</Text></View>
-          <View style={[styles.lastTableCell, { flex: 4 }]}><Text style={styles.tableHeaderText}>外来</Text></View>
+          <View style={[styles.tableCell, { flex: 3 }]}>
+            <Text style={styles.tableHeaderText}>入院</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 4 }]}>
+            <Text style={styles.tableHeaderText}>外来</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 4 }]}>
+            <Text style={styles.tableHeaderText}>緊急搬入数</Text>
+          </View>
+          <View style={[styles.lastTableCell, { flex: 4 }]}>
+            <Text style={styles.tableHeaderText}>外来看護師</Text>
+          </View>
         </View>
-        
-        {/* Header Row 2 */}
+
+        {/* Row 2: Subheaders */}
         <View style={[styles.tableRow, styles.tableSubHeader]}>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>入院数</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>退院数</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>入院患者数</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>朝診</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>午後診</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>当直</Text></View>
-          <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>合計</Text></View>
-        </View>
-        
-        {/* Data Row */} 
-        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 45 }]}> {/* Reduced height from 71 to 40 */}
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{hospitalData.inpatient.admission}</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{hospitalData.inpatient.discharge}</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{totalAdmittedPatient || 0}</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{hospitalData.outpatient.morning}</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{hospitalData.outpatient.afternoon}</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{hospitalData.outpatient.night}</Text></View>
-          <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{hospitalData.outpatient.total}</Text></View>
-        </View>
-      </View>
-    </View>
-  );
-};
+          {/* Inpatient subcategories */}
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>入院数</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>退院数</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>入院患者数</Text>
+          </View>
+          
+          {/* Outpatient subcategories */}
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>朝診</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>午後診</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>当直</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>合計</Text>
+          </View>
 
-// MedicalManagementTable component
-const MedicalManagementPDF = ({ emergencyData, nurseData }) => {
-  return (
-    <View style={styles.tableContainer}>
-      <View style={styles.table}>
-        {/* Header */}
-        <View style={[styles.tableRow, styles.tableHeader]}>
-          <View style={[styles.tableCell, { flex: 2 }]}><Text style={styles.tableHeaderText}>緊急搬入数</Text></View>
-          <View style={[styles.lastTableCell, { flex: 2 }]}><Text style={styles.tableHeaderText}>外来看護師</Text></View>
+          {/* Emergency subheaders (empty for now, will be filled in data rows) */}
+          <View style={[styles.tableCell, { flex: 4 }]}>
+            <Text style={styles.tableSubHeaderText}></Text>
+          </View>
+
+          {/* Nurse subheaders */}
+          <View style={[styles.tableCell, { flex: 1 }]}>
+           <Text style={styles.tableSubHeaderText}></Text>
+          </View>
+          <View style={[styles.lastTableCell, { flex: 3 }]}>
+            <Text style={styles.tableSubHeaderText}></Text>
+          </View>
         </View>
-        
-        {/* Row 1 */}
+
+        {/* Row 3: First data row with rowspan equivalent */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 2 }]}>
-            <View style={{ flexDirection: 'column', alignItems: 'center' }}>
-              <Text style={styles.cellTextLarge}>{emergencyData?.current || 0}</Text>
-              <Text style={[styles.cellText, { marginTop: 0.5 }]}>搬入後入院</Text>
-              <Text style={styles.cellTextBold}>{emergencyData?.hospitalization || 0}</Text>
+          {/* Inpatient data (rowspan=2) */}
+          <View style={[styles.tableCell, { flex: 1, minHeight: 40 }]}>
+            <Text style={styles.cellTextLarge}>{hospitalData.inpatient.admission}</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1, minHeight: 40 }]}>
+            <Text style={styles.cellTextLarge}>{hospitalData.inpatient.discharge}</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1, minHeight: 40 }]}>
+            <Text style={styles.cellTextLarge}>{totalAdmittedPatient || 0}</Text>
+          </View>
+          
+          {/* Outpatient data (rowspan=2) */}
+          <View style={[styles.tableCell, { flex: 1, minHeight: 40 }]}>
+            <Text style={styles.cellTextLarge}>{hospitalData.outpatient.morning}</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1, minHeight: 40 }]}>
+            <Text style={styles.cellTextLarge}>{hospitalData.outpatient.afternoon}</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1, minHeight: 40 }]}>
+            <Text style={styles.cellTextLarge}>{hospitalData.outpatient.night}</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1, minHeight: 40 }]}>
+            <Text style={styles.cellTextLarge}>{hospitalData.outpatient.total}</Text>
+          </View>
+
+          {/* Emergency data - first part (current/hospitalization) */}
+          <View style={[styles.tableCell, { flex: 4, minHeight: 40 }]}>
+            <View style={styles.emergencyContainer}>
+              <Text style={styles.emergencyNumber}>{emergency.current}</Text>
+              <Text style={styles.emergencyLabel}>搬入後入院件数</Text>
+              <Text style={styles.emergencySubNumber}>{emergency.hospitalization}</Text>
             </View>
           </View>
-          <View style={[styles.tableCell, { flex: 1 }]}>
-            <VerticalText chars="準夜" />
+
+          {/* Nurse data - quasi night (準夜) */}
+          <View style={[styles.tableCell, { flex: 1, minHeight: 40 }]}>
+            <VerticalNurseText chars="準夜" />
           </View>
-          <View style={[styles.lastTableCell, { flex: 1 }]}>
-            {nurseData?.quasiNight?.length > 0 ? 
-              nurseData.quasiNight.map((name, i) => (
-                <Text key={i} style={styles.cellText}>{name}</Text>
-              )) : <Text style={styles.cellText}>-</Text>
-            }
+          <View style={[styles.lastTableCell, { flex: 3, minHeight: 40 }]}>
+            <View style={styles.nurseContainer}>
+              {nurseData?.quasiNight?.length > 0 ? 
+                nurseData.quasiNight.map((name, i) => (
+                  <Text key={i} style={styles.nurseItem}>{name}</Text>
+                )) : <Text style={styles.nurseItem}>-</Text>
+              }
+            </View>
           </View>
         </View>
-        
-        {/* Row 2 */}
+
+        {/* Row 4: Second data row */}
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          <View style={[styles.tableCell, { flex: 2 }]}>
-            <View style={{ flexDirection: 'column', alignItems: 'center' }}>
-              <Text style={[styles.cellText, { marginBottom: 0.5 }]}>当月</Text>
-              <Text style={styles.cellTextLarge}>{emergencyData?.monthly || 0}</Text>
-              <Text style={[styles.cellText, { marginTop: 0.5, marginBottom: 0.5 }]}>入院累計</Text>
-              <Text style={styles.cellTextBold}>{emergencyData?.cumulative || 0}</Text>
+          {/* Inpatient and Outpatient cells are skipped (rowspan effect) */}
+          {/* Empty cells to maintain structure */}
+          <View style={[styles.tableCell, { flex: 1 }]}><Text></Text></View>
+          <View style={[styles.tableCell, { flex: 1 }]}><Text></Text></View>
+          <View style={[styles.tableCell, { flex: 1 }]}><Text></Text></View>
+          <View style={[styles.tableCell, { flex: 1 }]}><Text></Text></View>
+          <View style={[styles.tableCell, { flex: 1 }]}><Text></Text></View>
+          <View style={[styles.tableCell, { flex: 1 }]}><Text></Text></View>
+          <View style={[styles.tableCell, { flex: 1 }]}><Text></Text></View>
+
+          {/* Emergency data - second part (monthly/cumulative) */}
+          <View style={[styles.tableCell, { flex: 4 }]}>
+            <View style={styles.emergencyContainer}>
+              <View style={styles.emergencyMonthlyContainer}>
+                <Text style={styles.emergencyLabel}>当月緊急搬入数</Text>
+                <Text style={styles.emergencyNumber}>{emergency.monthly}</Text>
+              </View>
+              <Text style={styles.emergencyLabel}>搬入後入院者累計</Text>
+              <Text style={styles.emergencySubNumber}>{emergency.cumulative}</Text>
             </View>
           </View>
+
+          {/* Nurse data - midnight (深夜) */}
           <View style={[styles.tableCell, { flex: 1 }]}>
-            <VerticalText chars="深夜" />
+            <VerticalNurseText chars="深夜" />
           </View>
-          <View style={[styles.lastTableCell, { flex: 1 }]}>
-            {nurseData?.midnight?.length > 0 ? 
-              nurseData.midnight.map((name, i) => (
-                <Text key={i} style={styles.cellText}>{name}</Text>
-              )) : <Text style={styles.cellText}>-</Text>
-            }
+          <View style={[styles.lastTableCell, { flex: 3 }]}>
+            <View style={styles.nurseContainer}>
+              {nurseData?.midnight?.length > 0 ? 
+                nurseData.midnight.map((name, i) => (
+                  <Text key={i} style={styles.nurseItem}>{name}</Text>
+                )) : <Text style={styles.nurseItem}>-</Text>
+              }
+            </View>
           </View>
         </View>
       </View>
@@ -300,73 +707,79 @@ const MedicalManagementPDF = ({ emergencyData, nurseData }) => {
   );
 };
 
-// Merged Duty Table with 14 columns
-const DetailedDutyPDF = ({ dutyStaff = [] }) => {
-  if (!dutyStaff || dutyStaff.length === 0) return null;
+// Duty Table Component - Can be split into two parts
+const DutyTableSection = ({ dutyStaff = [], startIndex = 0, endIndex = 7 }) => {
+  if (!dutyStaff || dutyStaff.length === 0) {
+    // Create empty columns if no data
+    const emptyColumns = Array.from({ length: endIndex - startIndex }, (_, i) => null);
+    return renderDutyColumns(emptyColumns);
+  }
   
-  // Prepare 14 columns (fill empty slots with null)
-  const columns = [...dutyStaff];
-  while (columns.length < 14) {
+  // Get the slice of duty staff for this section
+  const columns = dutyStaff.slice(startIndex, endIndex);
+  
+  // Fill with null if less than expected columns
+  while (columns.length < (endIndex - startIndex)) {
     columns.push(null);
   }
+  
+  return renderDutyColumns(columns);
+};
 
+// Helper function to render duty columns
+const renderDutyColumns = (columns) => {
   return (
-    <View style={styles.tableContainer}>
-      <View style={styles.table}>
-        {/* Title Row */}
-        <View style={[styles.tableRow, styles.tableHeader]}>
-          <View style={[styles.lastTableCell, { flex: 14 }]}>
-            <Text style={styles.tableHeaderText}>当直 (1-14)</Text>
+    <View style={styles.dutyTable}>
+      {/* Title Row - Shows range */}
+      <View style={[styles.dutyTableRow, styles.tableHeader]}>
+        <View style={[styles.dutyLastTableCell, { flex: columns.length }]}>
+          <Text style={styles.tableHeaderText}>当直 ({columns.length}名)</Text>
+        </View>
+      </View>
+      
+      {/* Header Row - Staff names (Row 1) */}
+      <View style={[styles.dutyTableRow, styles.tableSubHeader]}>
+        {columns.map((item, idx) => (
+          <View 
+            key={`header-${idx}`} 
+            style={[
+              styles.dutyTableCell, 
+              idx === columns.length - 1 && styles.dutyLastTableCell
+            ]}
+          >
+            <Text style={styles.tableSubHeaderText}>{item?.staff_name_1 || '-'}</Text>
           </View>
-        </View>
-        
-        {/* Header Row - Staff names (Row 1) */}
-        <View style={[styles.tableRow, styles.tableSubHeader]}>
-          {columns.map((item, idx) => (
-            <View 
-              key={`header-${idx}`} 
-              style={[
-                styles.tableCell, 
-                { flex: 1 }, 
-                idx === 13 && styles.lastTableCell
-              ]}
-            >
-              <Text style={styles.tableSubHeaderText}>{item?.staff_name_1 || '-'}</Text>
-            </View>
-          ))}
-        </View>
-        
-        {/* Staff Name 2 Row */}
-        <View style={styles.tableRow}>
-          {columns.map((item, idx) => (
-            <View 
-              key={`name2-${idx}`} 
-              style={[
-                styles.tableCell, 
-                { flex: 1 }, 
-                idx === 13 && styles.lastTableCell
-              ]}
-            >
-              <Text style={styles.cellText}>{item?.staff_name_2 || '-'}</Text>
-            </View>
-          ))}
-        </View>
-        
-        {/* Staff Name 3 Row */}
-        <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          {columns.map((item, idx) => (
-            <View 
-              key={`name3-${idx}`} 
-              style={[
-                styles.tableCell, 
-                { flex: 1 }, 
-                idx === 13 && styles.lastTableCell
-              ]}
-            >
-              <Text style={styles.cellText}>{item?.staff_name_3 || '-'}</Text>
-            </View>
-          ))}
-        </View>
+        ))}
+      </View>
+      
+      {/* Staff Name 2 Row */}
+      <View style={styles.dutyTableRow}>
+        {columns.map((item, idx) => (
+          <View 
+            key={`name2-${idx}`} 
+            style={[
+              styles.dutyTableCell, 
+              idx === columns.length - 1 && styles.dutyLastTableCell
+            ]}
+          >
+            <Text style={styles.cellText}>{item?.staff_name_2 || '-'}</Text>
+          </View>
+        ))}
+      </View>
+      
+      {/* Staff Name 3 Row */}
+      <View style={[styles.dutyTableRow, { borderBottomWidth: 0 }]}>
+        {columns.map((item, idx) => (
+          <View 
+            key={`name3-${idx}`} 
+            style={[
+              styles.dutyTableCell, 
+              idx === columns.length - 1 && styles.dutyLastTableCell
+            ]}
+          >
+            <Text style={styles.cellText}>{item?.staff_name_3 || '-'}</Text>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -375,21 +788,19 @@ const DetailedDutyPDF = ({ dutyStaff = [] }) => {
 // VisitTable component
 const VisitPDF = ({ visitCount = 0 }) => {
   return (
-    <View style={styles.tableContainer}>
-      <View style={styles.table}>
-        <View style={[styles.tableRow, styles.tableHeader]}>
-          <View style={styles.lastTableCell}><Text style={styles.tableHeaderText}>訪問</Text></View>
-        </View>
-        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 36 }]}> {/* Reduced from 73 to 42 */}
-          <View style={[styles.lastTableCell, { 
-            padding: 4, // Reduced from 8 to 4
-            justifyContent: 'center',
-            alignItems: 'center',
-            flex: 1,
-            display: 'flex'
-          }]}>
-            <Text style={{ fontSize: 8, fontWeight: 700, textAlign: 'center' }}>{visitCount.toLocaleString()}</Text> {/* Reduced from 12 to 8 */}
-          </View>
+    <View style={[styles.dutyTable, { height: '49px' }]}>
+      <View style={[styles.dutyTableRow, styles.tableHeader]}>
+        <View style={styles.dutyLastTableCell}><Text style={styles.tableHeaderText}>訪問</Text></View>
+      </View>
+      <View style={[styles.dutyTableRow, { borderBottomWidth: 0, minHeight: 36, flex: 1 }]}>
+        <View style={[styles.dutyLastTableCell, { 
+          padding: 4,
+          justifyContent: 'center',
+          alignItems: 'center',
+          flex: 1,
+          display: 'flex'
+        }]}>
+          <Text style={{ fontSize: 8, fontWeight: 700, textAlign: 'center' }}>{visitCount.toLocaleString()}</Text>
         </View>
       </View>
     </View>
@@ -522,7 +933,7 @@ const PatientCountPDF = ({ patientData = {} }) => {
           </View>
           {departments.map((_, idx) => (
             <View key={`num-${idx}`} style={[styles.tableCell, { flex: 1 }]}>
-              <Text style={[styles.cellTextBold, { fontSize: 5 }]}>{idx + 1}</Text> {/* Reduced from 8 to 5 */}
+              <Text style={[styles.cellTextBold, { fontSize: 5 }]}>{idx + 1}</Text>
             </View>
           ))}
           {additionalColumns.map(col => (
@@ -659,8 +1070,168 @@ const PatientCountPDF = ({ patientData = {} }) => {
   );
 };
 
-// Main PDF Document Component - Now Single Page
-// Main PDF Document Component - Now Single Page
+// New StatusConfirmationPDF Component (PDF version of StatusConfirmationSection)
+const StatusConfirmationPDF = ({ 
+  statusData = [],
+  title = "確認状態一覧",
+  showSummary = true,
+  showDate = true
+}) => {
+  // Get current date in Japanese format
+  const getCurrentJapaneseDateWithoutWeekday = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
+    return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日`;
+  };
+
+  // Safe date formatting function
+  const formatDateForDisplay = (date) => {
+    if (!date) return '';
+    if (typeof date === 'string') {
+      // Try to parse the date string
+      const dateObj = new Date(date);
+      if (!isNaN(dateObj.getTime())) {
+        // Return only the date part (YYYY-MM-DD format)
+        const dateStr = date.split(' ')[0];
+        return dateStr;
+      }
+    }
+    return date;
+  };
+
+  // Get header color based on title
+  const getHeaderStyle = (title) => {
+    if (title === '理事長') return styles.statusItemHeaderBlue;
+    if (title === '専務') return styles.statusItemHeaderGreen;
+    if (title === '事務長') return styles.statusItemHeaderPurple;
+    return styles.statusItemHeader; // Default blue
+  };
+
+  // Get avatar initial
+  const getAvatarInitial = (person) => {
+    if (!person) return '#';
+    return person.charAt(0);
+  };
+
+  const checkedCount = statusData.filter(item => item.checked).length;
+  const totalCount = statusData.length;
+
+  return (
+    <View style={styles.statusContainer}>
+      {/* Header */}
+      <View style={styles.statusHeader}>
+        <Text style={styles.statusHeaderText}>{title}</Text>
+      </View>
+      
+      {/* Content */}
+      <View style={styles.statusContent}>
+        {/* Grid of Confirmation Boxes */}
+        <View style={styles.statusGrid}>
+          {statusData.map((item) => (
+            <View key={item.id} style={styles.statusItem}>
+              {/* Header with role-specific color */}
+              <View style={[styles.statusItemHeader, getHeaderStyle(item.title)]}>
+                <Text style={styles.statusItemHeaderText}>{item.title || '未設定'}</Text>
+              </View>
+              
+              {/* Body */}
+              <View style={styles.statusItemBody}>
+                {/* Person Row */}
+                <View style={styles.statusPersonRow}>
+                  <View style={[styles.statusAvatar, { backgroundColor: item.color || '#6b7280' }]}>
+                    <Text style={styles.statusAvatarText}>
+                      {getAvatarInitial(item.person)}
+                    </Text>
+                  </View>
+                  <Text style={styles.statusPersonName}>
+                    {item.person ? item.person.split(' ')[0] : '未設定'}
+                  </Text>
+                  
+                  {/* Checkbox indicator */}
+                  <View style={[styles.statusCheckbox, item.checked && styles.statusChecked]}>
+                    {item.checked && <Text style={styles.statusCheckmark}>✓</Text>}
+                  </View>
+                </View>
+                
+                {/* Status Row */}
+                <View style={styles.statusIconRow}>
+                  <View style={[styles.statusIcon, item.checked ? styles.statusIconGreen : styles.statusIconOrange]} />
+                  <Text style={[styles.statusText, !item.checked && styles.statusTextOrange]}>
+                    {item.status || (item.checked ? '確認済み' : '未確認')}
+                  </Text>
+                </View>
+                
+                {/* Date Row */}
+                <View style={styles.statusDateRow}>
+                  <View style={styles.statusTimeIcon} />
+                  <Text style={styles.statusDateText}>
+                    {formatDateForDisplay(item.date)}
+                  </Text>
+                </View>
+                
+                {/* Approver Information */}
+                {item.checked && item.approver && (
+                  <View style={styles.statusApproverRow}>
+                    <Text style={styles.statusApproverText}>
+                      承認者: {item.approver || item.person || '未設定'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+        
+        {/* Summary */}
+        {showSummary && totalCount > 0 && (
+          <View style={styles.statusSummary}>
+            <View style={styles.statusSummaryLeft}>
+              <View style={styles.statusSummaryItem}>
+                <View style={[styles.statusSummaryDot, styles.statusSummaryDotGreen]} />
+                <Text style={styles.statusSummaryText}>
+                  確認済み: <Text style={styles.statusSummaryBold}>{checkedCount}</Text>
+                </Text>
+              </View>
+              <View style={styles.statusSummaryItem}>
+                <View style={[styles.statusSummaryDot, styles.statusSummaryDotOrange]} />
+                <Text style={styles.statusSummaryText}>
+                  未確認: <Text style={styles.statusSummaryBold}>{totalCount - checkedCount}</Text>
+                </Text>
+              </View>
+              <View style={styles.statusSummaryItem}>
+                <View style={[styles.statusSummaryDot, styles.statusSummaryDotBlue]} />
+                <Text style={styles.statusSummaryText}>
+                  合計: <Text style={styles.statusSummaryBold}>{totalCount}</Text>
+                </Text>
+              </View>
+            </View>
+            
+            {showDate && (
+              <Text style={styles.statusSummaryDate}>
+                最終更新: {getCurrentJapaneseDateWithoutWeekday()}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Empty State */}
+        {totalCount === 0 && (
+          <View style={styles.statusEmptyState}>
+            <View style={styles.statusEmptyIcon} />
+            <Text style={styles.statusEmptyText}>承認履歴はまだありません</Text>
+            <Text style={styles.statusEmptySubText}>
+              最初の承認が行われるとここに表示されます
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
+// Main PDF Document Component - Now with updated layout and Status Confirmation at top
 export const PDFDocument = ({ 
   reportData, 
   reportDate, 
@@ -676,51 +1247,95 @@ export const PDFDocument = ({
     rejected: '却下済み'
   }[status] || '不明';
 
+  const dutyStaff = reportData?.report?.duty_staff || [];
+
   return (
     <Document>
       {/* Single Page - All content combined */}
       <Page size="A4" orientation="landscape" style={styles.page}>
         {/* Main content container with padding */}
-        <View style={{ padding: 12 }}> {/* Added padding container */}
+        <View style={{ padding: 12 }}>
           {/* Header */}
-          <View style={styles.headerSection}>
-            <Text style={styles.title}>管理日誌レポート</Text>
-            <Text style={styles.subtitle}>{reportDate}</Text>
-            <Text style={styles.subtitle}>{hospitalInfo.name}</Text>
-            <Text style={styles.subtitle}>{hospitalInfo.address}</Text>
-            
-            <View style={styles.reportInfo}>
-              <Text style={styles.reportNo}>レポート番号: {reportData?.report?.report_no || '-'}</Text>
-              <View style={styles.statusBadge}>
-                <Text>ステータス: {statusText}</Text>
-              </View>
-            </View>
-          </View>
+{/* Header - Compact Design */}
+<View style={styles.headerSection}>
+  {/* Top row with title and status badge */}
+  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+    <Text style={styles.title}>管理日誌レポート</Text>
+    <View style={[styles.statusBadge, { 
+      backgroundColor: status === 'approved' ? '#dcfce7' : 
+                       status === 'submitted' ? '#dbeafe' : 
+                       status === 'rejected' ? '#fee2e2' : '#f3f4f6',
+      paddingVertical: 2,
+      paddingHorizontal: 6,
+    }]}>
+      <Text style={[styles.cellTextBold, { 
+        color: status === 'approved' ? '#166534' : 
+               status === 'submitted' ? '#1e40af' : 
+               status === 'rejected' ? '#991b1b' : '#4b5563',
+        fontSize: 5
+      }]}>
+        {statusText}
+      </Text>
+    </View>
+  </View>
+  
+  {/* Second row with date and hospital info - horizontal layout */}
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 }}>
+       <Text style={[styles.cellText, { fontSize: 4.5, color: '#1f2937', marginLeft: 1 }]}>{reportDate}</Text>
+    </View>
+    
+    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 }}>
+       <Text style={[styles.cellText, { fontSize: 4.5, color: '#1f2937', marginLeft: 1 }]}>{hospitalInfo.name}</Text>
+    </View>
+  </View>
+  
+  {/* Third row with report number and address */}
+  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+       <Text style={[styles.cellText, { fontSize: 4, color: '#6b7280' }]}>No.{reportData?.report?.report_no || '-'}</Text>
+    </View>
+    <Text style={[styles.cellText, { fontSize: 4, color: '#9ca3af' }]}>{hospitalInfo.address}</Text>
+  </View>
+</View>
 
-          {/* Main Tables - First Row */}
-          <View style={[styles.mainRow, { marginBottom: 8 }]}>
-            <View style={{ flex: 6 }}>
-              <HospitalDataPDF 
+          {/* NEW: Status Confirmation Section at the TOP */}
+          <StatusConfirmationPDF 
+            statusData={statusData}
+            title="確認状態一覧"
+            showSummary={true}
+            showDate={true}
+          />
+
+          {/* Top Section with new layout */}
+          <View style={styles.topSection}>
+            {/* Left Column - CombinedHospitalMedicalPDF */}
+            <View style={styles.leftColumn}>
+              <CombinedHospitalMedicalPDF 
                 data={reportData?.hospitalData || reportData?.tableData?.hospitalData}
                 outpatient={reportData?.report?.report_details}
                 totalAdmittedPatient={reportData?.cumulativeStats?.total_admitted_patient}
-              />
-            </View>
-            <View style={{ flex: 2 }}>
-              <MedicalManagementPDF 
                 emergencyData={reportData?.emergencyData || reportData?.tableData?.emergencyData}
                 nurseData={reportData?.nurseData || reportData?.tableData?.nurseData}
               />
             </View>
-          </View>
 
-          {/* Duty Table and Visit Table Side by Side */}
-          <View style={[styles.dutyRow, { marginBottom: 8 }]}>
-            <View style={styles.dutyTableContainer}>
-              <DetailedDutyPDF dutyStaff={reportData?.report?.duty_staff} />
-            </View>
-            <View style={styles.visitTableContainer}>
-              <VisitPDF visitCount={reportData?.visitCount || reportData?.tableData?.visitCount || 0} />
+            {/* Right Column - Duty Tables and Visit */}
+            <View style={styles.rightColumn}>
+              {/* First Duty Row - First 7 columns */}
+              <View style={{ flex: 1 }}>
+                <DutyTableSection dutyStaff={dutyStaff} startIndex={0} endIndex={7} />
+              </View>
+              
+              {/* Second Duty Row with Visit */}
+              <View style={styles.dutyRowContainer}>
+                <View style={styles.dutyTableContainer}>
+                  <DutyTableSection dutyStaff={dutyStaff} startIndex={7} endIndex={14} />
+                </View>
+                <View style={styles.visitTableContainer}>
+                  <VisitPDF visitCount={reportData?.visitCount || reportData?.tableData?.visitCount || 0} />
+                </View>
+              </View>
             </View>
           </View>
 
@@ -734,25 +1349,6 @@ export const PDFDocument = ({
           <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>患者数</Text>
           <View style={{ marginBottom: 8 }}>
             <PatientCountPDF patientData={reportData?.patientCountData || reportData?.tableData?.patientCountData || {}} />
-          </View>
-
-          {/* Status Confirmation Section */}
-          <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>確認状態一覧</Text>
-          <View style={[styles.table, { marginBottom: 8 }]}>
-            <View style={[styles.tableRow, styles.tableHeader]}>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>役割</Text></View>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>状態</Text></View>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>確認者</Text></View>
-              <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>確認日時</Text></View>
-            </View>
-            {statusData.map((item, idx) => (
-              <View key={idx} style={[styles.tableRow, idx === statusData.length - 1 && { borderBottomWidth: 0 }]}>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.title}</Text></View>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.status}</Text></View>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.person || '-'}</Text></View>
-                <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.date || '-'}</Text></View>
-              </View>
-            ))}
           </View>
 
           {/* Management Comments */}
@@ -782,7 +1378,7 @@ export const PDFDocument = ({
             <Text>ページ 1/1</Text>
             <Text>承認者: {reportData?.report?.approved_by_admin?.name || '未承認'}</Text>
           </View>
-        </View> {/* Close padding container */}
+        </View>
       </Page>
     </Document>
   );

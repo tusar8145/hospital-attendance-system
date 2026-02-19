@@ -948,7 +948,7 @@ handleExportPDF();
       {/* Data Tables Section */}
       <div className="flex flex-col lg:flex-row gap-0 mt-40 pl-1 pr-1">
         {/* Left Area - 40% */}
-        <div className="lg:w-6/12">
+        <div className="lg:w-8/12">
           <div className="p-0 h-full">
             <div className="flex flex-col h-full gap-4">
               <div className="p-0 bg-transparent flex-1">
@@ -969,19 +969,7 @@ handleExportPDF();
           </div>
         </div>
 
-        {/* Middle Area - 20% */}
-        <div className="lg:w-2/12">
-          <div className="p-0 h-full">
-            <div className="h-full flex justify-center">
-              <div className="text-center w-full">
-                <MedicalManagementTable 
-                  emergencyData={reportData.tableData?.emergencyData || reportData.emergencyData}
-                  nurseData={reportData.tableData?.nurseData || reportData.nurseData}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+ 
         <div className="lg:w-1/12"></div>
         
         {/* Right Area - 40% */}
@@ -1000,7 +988,7 @@ handleExportPDF();
                 </div>
               </div>
  
-              <div className="flex gap-4 h-1/2 mt-24">
+              <div className="flex gap-4 h-1/2">
                 <div className="w-4/6 p-0 bg-transparent">
                   <div className="h-full flex justify-left">
                     <div className="text-center w-full">
@@ -1148,7 +1136,7 @@ handleExportPDF();
                     {comment.text}
                     {comment.is_special_notes && (
                       <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        特記事項
+                        インデックス
                       </span>
                     )}
                   </Typography>

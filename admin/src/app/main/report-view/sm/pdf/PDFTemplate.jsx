@@ -12,61 +12,61 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 8, // Reduced from 15 to 8
+    padding: 8,
     fontFamily: 'NotoSansJP',
-    fontSize: 5, // Reduced from 8 to 5
+    fontSize: 5,
     flexDirection: 'column',
   },
   headerSection: {
-    marginBottom: 5, // Reduced from 10 to 5
-    borderBottom: '0.5 solid #ccc', // Thinner border
-    paddingBottom: 4, // Reduced from 8 to 4
+    marginBottom: 5,
+    borderBottom: '0.5 solid #ccc',
+    paddingBottom: 4,
   },
   title: {
-    fontSize: 10, // Reduced from 16 to 10
+    fontSize: 10,
     fontWeight: 700,
-    marginBottom: 1, // Reduced from 3 to 1
+    marginBottom: 1,
     color: '#1e3a8a',
   },
   subtitle: {
-    fontSize: 6, // Reduced from 9 to 6
+    fontSize: 6,
     color: '#4b5563',
-    marginBottom: 1, // Reduced from 2 to 1
+    marginBottom: 1,
   },
   reportInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 1, // Reduced from 3 to 1
+    marginTop: 1,
   },
   reportNo: {
-    fontSize: 5, // Reduced from 8 to 5
+    fontSize: 5,
     color: '#6b7280',
   },
   statusBadge: {
     backgroundColor: '#dbeafe',
-    padding: '1 3', // Reduced padding
-    borderRadius: 8, // Reduced from 12 to 8
-    fontSize: 5, // Reduced from 8 to 5
+    padding: '1 3',
+    borderRadius: 8,
+    fontSize: 5,
     color: '#1e40af',
   },
   
   // Table styles
   tableContainer: {
-    marginBottom: 3, // Reduced from 8 to 3
+    marginBottom: 3,
   },
   table: {
     display: 'flex',
     width: '100%',
     borderStyle: 'solid',
-    borderWidth: 0.5, // Thinner border
+    borderWidth: 0.5,
     borderColor: '#d1d5db',
-    marginBottom: 2, // Reduced from 5 to 2
+    marginBottom: 2,
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 0.5, // Thinner border
+    borderBottomWidth: 0.5,
     borderBottomColor: '#d1d5db',
-    minHeight: 12, // Reduced from 20 to 12
+    minHeight: 12,
   },
   tableHeader: {
     backgroundColor: '#2563eb',
@@ -74,8 +74,9 @@ const styles = StyleSheet.create({
   tableHeaderText: {
     color: 'white',
     fontWeight: 700,
-    fontSize: 5, // Reduced from 8 to 5
-    padding: 1, // Reduced from 3 to 1
+    fontSize: 5,
+    padding: 1,
+    textAlign: 'center',
   },
   tableSubHeader: {
     backgroundColor: '#e5e7eb',
@@ -83,63 +84,439 @@ const styles = StyleSheet.create({
   tableSubHeaderText: {
     color: '#111827',
     fontWeight: 700,
-    fontSize: 4.5, // Reduced from 7 to 4.5
-    padding: 1, // Reduced from 3 to 1
+    fontSize: 4.5,
+    padding: 1,
+    textAlign: 'center',
   },
   tableCell: {
-    borderRightWidth: 0.5, // Thinner border
+    borderRightWidth: 0.5,
     borderRightColor: '#d1d5db',
-    padding: 1, // Reduced from 3 to 1
+    padding: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   lastTableCell: {
     borderRightWidth: 0,
-    padding: 1, // Reduced from 3 to 1
+    padding: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   cellText: {
-    fontSize: 4.5, // Reduced from 7 to 4.5
+    fontSize: 4.5,
     textAlign: 'center',
   },
   cellTextBold: {
-    fontSize: 4.5, // Reduced from 7 to 4.5
+    fontSize: 4.5,
     fontWeight: 700,
     textAlign: 'center',
   },
   cellTextLeft: {
-    fontSize: 4.5, // Reduced from 7 to 4.5
+    fontSize: 4.5,
     textAlign: 'left',
-    paddingLeft: 2, // Reduced from 4 to 2
+    paddingLeft: 2,
   },
   
   // Section title
   sectionTitle: {
-    fontSize: 7, // Reduced from 10 to 7
+    fontSize: 7,
     fontWeight: 700,
-    marginTop: 2, // Reduced from 5 to 2
-    marginBottom: 1, // Reduced from 3 to 1
+    marginTop: 2,
+    marginBottom: 1,
     color: '#1f2937',
-    borderLeft: '2 solid #2563eb', // Thinner border
-    paddingLeft: 2, // Reduced from 4 to 2
+    borderLeft: '2 solid #2563eb',
+    paddingLeft: 2,
   },
   
   // Footer styles
   footer: {
-    fontSize: 4, // Reduced from 6 to 4
+    fontSize: 4,
     color: '#9ca3af',
-    borderTop: '0.5 solid #e5e7eb', // Thinner border
-    paddingTop: 1, // Reduced from 3 to 1
+    borderTop: '0.5 solid #e5e7eb',
+    paddingTop: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 3, // Reduced from 10 to 3
+    marginTop: 3,
+  },
+
+  // New styles for Status Confirmation section
+  statusContainer: {
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  statusHeader: {
+    backgroundColor: 'lightgray',
+    padding: 4,
+  },
+  statusHeaderText: {
+    color: '#000000',
+    fontSize: 7,
+    fontWeight: 700,
+  },
+  statusContent: {
+    padding: 6,
+  },
+  statusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 3,
+  },
+  statusItem: {
+    width: '12%',
+    borderWidth: 0.5,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 3,
+  },
+  statusItemHeader: {
+    padding: 2,
+    backgroundColor: '#3b82f6',
+  },
+  statusItemHeaderBlue: {
+    backgroundColor: '#2563eb',
+  },
+  statusItemHeaderGreen: {
+    backgroundColor: '#16a34a',
+  },
+  statusItemHeaderPurple: {
+    backgroundColor: '#9333ea',
+  },
+  statusItemHeaderText: {
+    color: '#ffffff',
+    fontSize: 4.5,
+    fontWeight: 700,
+    textAlign: 'center',
+  },
+  statusItemBody: {
+    padding: 3,
+  },
+  statusPersonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  statusAvatar: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#6b7280',
+    marginRight: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusAvatarText: {
+    color: '#ffffff',
+    fontSize: 4,
+    fontWeight: 700,
+  },
+  statusPersonName: {
+    fontSize: 4.5,
+    color: '#1f2937',
+    flex: 1,
+  },
+  statusCheckbox: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#9ca3af',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusChecked: {
+    backgroundColor: '#22c55e',
+    borderColor: '#22c55e',
+  },
+  statusCheckmark: {
+    color: '#ffffff',
+    fontSize: 5,
+  },
+  statusIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  statusIcon: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 1,
+  },
+  statusIconGreen: {
+    backgroundColor: '#22c55e',
+  },
+  statusIconOrange: {
+    backgroundColor: '#f97316',
+  },
+  statusText: {
+    fontSize: 4,
+    color: '#22c55e',
+  },
+  statusTextOrange: {
+    color: '#f97316',
+  },
+  statusDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  statusTimeIcon: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#9ca3af',
+    marginRight: 1,
+  },
+  statusDateText: {
+    fontSize: 4,
+    color: '#6b7280',
+  },
+  statusApproverRow: {
+    marginTop: 2,
+    paddingTop: 1,
+    borderTopWidth: 0.5,
+    borderTopColor: '#e5e7eb',
+  },
+  statusApproverText: {
+    fontSize: 3.5,
+    color: '#6b7280',
+  },
+  statusSummary: {
+    marginTop: 4,
+    padding: 4,
+    backgroundColor: '#f9fafb',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+    borderRadius: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusSummaryLeft: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  statusSummaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusSummaryDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginRight: 2,
+  },
+  statusSummaryDotGreen: {
+    backgroundColor: '#22c55e',
+  },
+  statusSummaryDotOrange: {
+    backgroundColor: '#f97316',
+  },
+  statusSummaryDotBlue: {
+    backgroundColor: '#3b82f6',
+  },
+  statusSummaryText: {
+    fontSize: 4,
+    color: '#4b5563',
+  },
+  statusSummaryBold: {
+    fontWeight: 700,
+  },
+  statusSummaryDate: {
+    fontSize: 4,
+    color: '#9ca3af',
+  },
+  statusEmptyState: {
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  statusEmptyIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#d1d5db',
+    marginBottom: 4,
+  },
+  statusEmptyText: {
+    fontSize: 5,
+    color: '#6b7280',
+    marginBottom: 2,
+  },
+  statusEmptySubText: {
+    fontSize: 4,
+    color: '#9ca3af',
   },
 });
 
 // Helper function to render circles (as dashes for PDF)
 const renderCirclesPDF = (count) => {
   return '-';
+};
+
+// Status Confirmation Component
+const StatusConfirmationPDF = ({ 
+  statusData = [],
+  title = "確認状態一覧",
+  showSummary = true,
+  showDate = true
+}) => {
+  // Get current date in Japanese format
+  const getCurrentJapaneseDateWithoutWeekday = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
+    return `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日`;
+  };
+
+  // Safe date formatting function
+  const formatDateForDisplay = (date) => {
+    if (!date) return '';
+    if (typeof date === 'string') {
+      const dateObj = new Date(date);
+      if (!isNaN(dateObj.getTime())) {
+        const dateStr = date.split(' ')[0];
+        return dateStr;
+      }
+    }
+    return date;
+  };
+
+  // Get header color based on title
+  const getHeaderStyle = (title) => {
+    if (title === '理事長') return styles.statusItemHeaderBlue;
+    if (title === '専務') return styles.statusItemHeaderGreen;
+    if (title === '事務長') return styles.statusItemHeaderPurple;
+    return styles.statusItemHeader;
+  };
+
+  // Get avatar initial
+  const getAvatarInitial = (person) => {
+    if (!person) return '#';
+    return person.charAt(0);
+  };
+
+  const checkedCount = statusData.filter(item => item.checked).length;
+  const totalCount = statusData.length;
+
+  return (
+    <View style={styles.statusContainer}>
+      {/* Header */}
+      <View style={styles.statusHeader}>
+        <Text style={styles.statusHeaderText}>{title}</Text>
+      </View>
+      
+      {/* Content */}
+      <View style={styles.statusContent}>
+        {/* Grid of Confirmation Boxes */}
+        <View style={styles.statusGrid}>
+          {statusData.map((item) => (
+            <View key={item.id} style={styles.statusItem}>
+              {/* Header with role-specific color */}
+              <View style={[styles.statusItemHeader, getHeaderStyle(item.title)]}>
+                <Text style={styles.statusItemHeaderText}>{item.title || '未設定'}</Text>
+              </View>
+              
+              {/* Body */}
+              <View style={styles.statusItemBody}>
+                {/* Person Row */}
+                <View style={styles.statusPersonRow}>
+                  <View style={[styles.statusAvatar, { backgroundColor: item.color || '#6b7280' }]}>
+                    <Text style={styles.statusAvatarText}>
+                      {getAvatarInitial(item.person)}
+                    </Text>
+                  </View>
+                  <Text style={styles.statusPersonName}>
+                    {item.person ? item.person.split(' ')[0] : '未設定'}
+                  </Text>
+                  
+                  {/* Checkbox indicator */}
+                  <View style={[styles.statusCheckbox, item.checked && styles.statusChecked]}>
+                    {item.checked && <Text style={styles.statusCheckmark}>✓</Text>}
+                  </View>
+                </View>
+                
+                {/* Status Row */}
+                <View style={styles.statusIconRow}>
+                  <View style={[styles.statusIcon, item.checked ? styles.statusIconGreen : styles.statusIconOrange]} />
+                  <Text style={[styles.statusText, !item.checked && styles.statusTextOrange]}>
+                    {item.status || (item.checked ? '確認済み' : '未確認')}
+                  </Text>
+                </View>
+                
+                {/* Date Row */}
+                <View style={styles.statusDateRow}>
+                  <View style={styles.statusTimeIcon} />
+                  <Text style={styles.statusDateText}>
+                    {formatDateForDisplay(item.date)}
+                  </Text>
+                </View>
+                
+                {/* Approver Information */}
+                {item.checked && item.approver && (
+                  <View style={styles.statusApproverRow}>
+                    <Text style={styles.statusApproverText}>
+                      承認者: {item.approver || item.person || '未設定'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+        
+        {/* Summary */}
+        {/*showSummary && totalCount > 0 && (
+          <View style={styles.statusSummary}>
+            {/* }<View style={styles.statusSummaryLeft}>
+              <View style={styles.statusSummaryItem}>
+                <View style={[styles.statusSummaryDot, styles.statusSummaryDotGreen]} />
+                <Text style={styles.statusSummaryText}>
+                  確認済み: <Text style={styles.statusSummaryBold}>{checkedCount}</Text>
+                </Text>
+              </View>
+              <View style={styles.statusSummaryItem}>
+                <View style={[styles.statusSummaryDot, styles.statusSummaryDotOrange]} />
+                <Text style={styles.statusSummaryText}>
+                  未確認: <Text style={styles.statusSummaryBold}>{totalCount - checkedCount}</Text>
+                </Text>
+              </View>
+              <View style={styles.statusSummaryItem}>
+                <View style={[styles.statusSummaryDot, styles.statusSummaryDotBlue]} />
+                <Text style={styles.statusSummaryText}>
+                  合計: <Text style={styles.statusSummaryBold}>{totalCount}</Text>
+                </Text>
+              </View>
+            </View>
+            
+            {showDate && (
+              <Text style={styles.statusSummaryDate}>
+                最終更新: {getCurrentJapaneseDateWithoutWeekday()}
+              </Text>
+            )}
+          </View>
+        )}*/}
+
+        {/* Empty State */}
+        {totalCount === 0 && (
+          <View style={styles.statusEmptyState}>
+            <View style={styles.statusEmptyIcon} />
+            <Text style={styles.statusEmptyText}>承認履歴はまだありません</Text>
+            <Text style={styles.statusEmptySubText}>
+              最初の承認が行われるとここに表示されます
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
 };
 
 // 1. Conference and Special Notes Section - UPDATED to single row with two columns
@@ -593,7 +970,7 @@ const VacantBedPDF = ({ welfareData }) => {
         </View>
         
         {/* Data Row */}
-        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 30 }]}> {/* Reduced from 40 to 30 */}
+        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 30 }]}>
           <View style={[styles.tableCell, { flex: 5, padding: 1 }]}>
             <Text style={styles.cellTextLeft}>
               {vacantBedNotes || renderCirclesPDF(40)}
@@ -610,7 +987,7 @@ const VacantBedPDF = ({ welfareData }) => {
   );
 };
 
-// Main PDF Document Component - Single Page
+// Main PDF Document Component - Single Page with improved header and status section
 export const PDFDocument = ({ 
   reportData, 
   reportDate, 
@@ -631,21 +1008,57 @@ export const PDFDocument = ({
       {/* Single Page - All content combined */}
       <Page size="A4" orientation="landscape" style={styles.page}>
         {/* Main content container with padding */}
-        <View style={{ padding: 12 }}> {/* Added padding container */}
-          {/* Header */}
+        <View style={{ padding: 12 }}>
+          {/* Header - Compact Design */}
           <View style={styles.headerSection}>
-            <Text style={styles.title}>福祉施設日報</Text>
-            <Text style={styles.subtitle}>{reportDate}</Text>
-            <Text style={styles.subtitle}>{hospitalInfo.name}</Text>
-            <Text style={styles.subtitle}>{hospitalInfo.address}</Text>
-            
-            <View style={styles.reportInfo}>
-              <Text style={styles.reportNo}>レポート番号: {reportData?.report?.report_no || '-'}</Text>
-              <View style={styles.statusBadge}>
-                <Text>ステータス: {statusText}</Text>
+            {/* Top row with title and status badge */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+              <Text style={styles.title}>福祉施設日報</Text>
+              <View style={[styles.statusBadge, { 
+                backgroundColor: status === 'approved' ? '#dcfce7' : 
+                                 status === 'submitted' ? '#dbeafe' : 
+                                 status === 'rejected' ? '#fee2e2' : '#f3f4f6',
+                paddingVertical: 2,
+                paddingHorizontal: 6,
+              }]}>
+                <Text style={[styles.cellTextBold, { 
+                  color: status === 'approved' ? '#166534' : 
+                         status === 'submitted' ? '#1e40af' : 
+                         status === 'rejected' ? '#991b1b' : '#4b5563',
+                  fontSize: 5
+                }]}>
+                  {statusText}
+                </Text>
               </View>
             </View>
+            
+            {/* Second row with date and hospital info - horizontal layout */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 }}>
+                <Text style={[styles.cellText, { fontSize: 4.5, color: '#1f2937', marginLeft: 1 }]}>{reportDate}</Text>
+              </View>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 }}>
+                <Text style={[styles.cellText, { fontSize: 4.5, color: '#1f2937', marginLeft: 1 }]}>{hospitalInfo.name}</Text>
+              </View>
+            </View>
+            
+            {/* Third row with report number and address */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.cellText, { fontSize: 4, color: '#6b7280' }]}>No.{reportData?.report?.report_no || '-'}</Text>
+              </View>
+              <Text style={[styles.cellText, { fontSize: 4, color: '#9ca3af' }]}>{hospitalInfo.address}</Text>
+            </View>
           </View>
+
+          {/* Status Confirmation Section */}
+          <StatusConfirmationPDF 
+            statusData={statusData}
+            title="確認状態一覧"
+            showSummary={true}
+            showDate={true}
+          />
 
           {/* Conference and Special Notes Section */}
           <ConferenceSpecialNotesPDF welfareData={reportData.welfare_data} />
@@ -666,38 +1079,19 @@ export const PDFDocument = ({
           />
 
           {/* Vacant Bed Section */}
-          <Text style={styles.sectionTitle}>空床状況</Text>
+         {/* <Text style={styles.sectionTitle}>空床状況</Text>
           <VacantBedPDF welfareData={reportData.welfare_data} />
-
-          {/* Status Confirmation Section */}
-          {/*<Text style={styles.sectionTitle}>確認状態一覧</Text>
-          <View style={[styles.table, { marginBottom: 3 }]}>
-            <View style={[styles.tableRow, styles.tableHeader]}>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>役割</Text></View>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>状態</Text></View>
-              <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>確認者</Text></View>
-              <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>確認日時</Text></View>
-            </View>
-            {statusData.map((item, idx) => (
-              <View key={idx} style={[styles.tableRow, idx === statusData.length - 1 && { borderBottomWidth: 0 }]}>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.title}</Text></View>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.status}</Text></View>
-                <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.person || '-'}</Text></View>
-                <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.cellText}>{item.date || '-'}</Text></View>
-              </View>
-            ))}
-          </View>*/}
-
+*/}
           {/* Management Comments */}
           {managementComments.length > 0 && (
             <>
               <Text style={[styles.sectionTitle, { marginBottom: 1 }]}>管理事項</Text>
               <View style={[styles.table, { marginBottom: 3 }]}>
-                <View style={[styles.tableRow, styles.tableHeader]}>
+                {/*<View style={[styles.tableRow, styles.tableHeader]}>
                   <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.tableHeaderText}>コメント</Text></View>
                   <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>報告者</Text></View>
                   <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableHeaderText}>日時</Text></View>
-                </View>
+                </View>*/}
                 {managementComments.slice(0, 5).map((comment, idx) => (
                   <View key={idx} style={[styles.tableRow, idx === managementComments.length - 1 && { borderBottomWidth: 0 }]}>
                     <View style={[styles.tableCell, { flex: 3 }]}><Text style={styles.cellText}>{comment.text}</Text></View>
@@ -709,13 +1103,13 @@ export const PDFDocument = ({
             </>
           )}
 
-          {/* Footer for single page */}
-         {/*} <View style={styles.footer}>
+          {/* Footer * /}
+          <View style={styles.footer}>
             <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
             <Text>ページ 1/1</Text>
             <Text>承認者: {reportData?.report?.approved_by_admin?.name || '未承認'}</Text>
           </View>*/}
-        </View> {/* Close padding container */}
+        </View>
       </Page>
     </Document>
   );

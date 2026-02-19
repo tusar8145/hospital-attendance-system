@@ -193,7 +193,7 @@ const ManagementComments = ({
           </Stack>
         )}
         
-        {showSummary && comments.length > 0 && (
+        {/*showSummary && comments.length > 0 && (
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center">
               <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -204,7 +204,7 @@ const ManagementComments = ({
               </Typography>
             </div>
           </div>
-        )}
+        )*/}
       </div>
     </Paper>
   );

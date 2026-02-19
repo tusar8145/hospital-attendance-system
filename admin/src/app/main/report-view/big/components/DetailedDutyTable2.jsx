@@ -64,7 +64,7 @@ const DetailedDutyTable2 = ({ dutyStaff = [] }) => {
                       key={`remaining-header-${header.key}`}
                       className={`bg-gray-300 text-black font-bold p-2 text-center ${fixedColClass}`}
                     >
-                      <div className="text-xs whitespace-nowrap overflow-hidden text-ellipsis">
+                      <div className="text-xs break-words">
                         {header.label}
                       </div>
                     </th>
@@ -80,9 +80,9 @@ const DetailedDutyTable2 = ({ dutyStaff = [] }) => {
                     return (
                       <td
                         key={`${header.key}-2`}
-                        className={`border border-gray-300 p-2 text-center ${fixedColClass}`}
+                        className={`border border-gray-300 p-2 text-center align-top ${fixedColClass}`}
                       >
-                        <div className="text-sm font-medium text-gray-800 min-h-[24px] overflow-hidden text-ellipsis whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-800 break-words">
                           {staffData?.staff_name_2 || (
                             <span className="text-gray-400">-</span>
                           )}
@@ -99,9 +99,9 @@ const DetailedDutyTable2 = ({ dutyStaff = [] }) => {
                     return (
                       <td
                         key={`${header.key}-3`}
-                        className={`border border-gray-300 p-2 text-center ${fixedColClass}`}
+                        className={`border border-gray-300 p-2 text-center align-top ${fixedColClass}`}
                       >
-                        <div className="text-sm font-medium text-gray-800 min-h-[24px] overflow-hidden text-ellipsis whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-800 break-words">
                           {staffData?.staff_name_3 || (
                             <span className="text-gray-400">-</span>
                           )}

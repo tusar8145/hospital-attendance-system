@@ -1628,7 +1628,7 @@ const handleMakeDraft = async () => {
                       {comment.text}
                       {comment.is_special_notes && (
                         <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          特記事項
+                         インデックス
                         </span>
                       )}
                     </Typography>
