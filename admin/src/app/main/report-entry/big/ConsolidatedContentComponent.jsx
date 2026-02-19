@@ -224,11 +224,47 @@ const ConsolidatedContentComponent = ({
     return doctor.license_no ? `${doctor.license_no} ${doctor.name}` : doctor.name;
   };
 
+  // Helper function to check if a doctor is already selected in the same consultation type
+  const isDoctorSelectedInSameConsultation = (row, consultationIndex, doctorId, currentField) => {
+    if (!doctorId) return false;
+    
+    const consultation = row.consultations[consultationIndex];
+    
+    // Check all three doctor fields in this consultation
+    const selectedDoctors = [
+      consultation.doctor_id_1,
+      consultation.doctor_id_2,
+      consultation.doctor_id_3
+    ].filter(id => id !== null); // Filter out null values
+    
+    // If this doctor is already selected in any field (except the current field we're updating)
+    // we need to prevent duplicate selection
+    if (currentField === 'doctor_id_1') {
+      return selectedDoctors.includes(doctorId) && consultation.doctor_id_1 !== doctorId;
+    } else if (currentField === 'doctor_id_2') {
+      return selectedDoctors.includes(doctorId) && consultation.doctor_id_2 !== doctorId;
+    } else if (currentField === 'doctor_id_3') {
+      return selectedDoctors.includes(doctorId) && consultation.doctor_id_3 !== doctorId;
+    }
+    
+    return selectedDoctors.includes(doctorId);
+  };
+
   // Handler functions
   const handleDoctorChange = (rowId, consultationIndex, doctorField, doctorId) => {
     const newRows = rows.map(row => {
       if (row.id === rowId) {
         const updatedConsultations = [...row.consultations];
+        
+        // Check if this doctor is already selected in the same consultation
+        const isDuplicate = isDoctorSelectedInSameConsultation(row, consultationIndex, doctorId, doctorField);
+        
+        // If it's a duplicate, don't update and show alert
+        if (isDuplicate && doctorId) {
+          alert('同じ診療時間帯に同じ医師を重複して選択することはできません。');
+          return row;
+        }
+        
         updatedConsultations[consultationIndex] = {
           ...updatedConsultations[consultationIndex],
           [doctorField]: doctorId
@@ -732,7 +768,7 @@ const ConsolidatedContentComponent = ({
                   fontWeight: 400,
                   mt: 0.5
                 }}>
-                  (最大3名まで選択可能)
+                  (最大3名まで選択可能、同じ医師は同じ時間帯に重複選択できません)
                 </Typography>
               </TableCell>
               <TableCell sx={{ 
@@ -783,6 +819,13 @@ const ConsolidatedContentComponent = ({
                   const patientError = validationErrors[`patientCount_${rowIndex}_${consultationIndex}`];
                   const departmentDoctors = getDoctorsForDepartment(row.department_id);
                   const isDeptAlreadyUsed = isDepartmentAlreadyUsed(row.department_id, row.id);
+                  
+                  // Get currently selected doctors in this consultation
+                  const selectedDoctorIds = [
+                    consultation.doctor_id_1,
+                    consultation.doctor_id_2,
+                    consultation.doctor_id_3
+                  ].filter(id => id !== null);
                   
                   return (
                     <TableRow 
@@ -952,7 +995,7 @@ const ConsolidatedContentComponent = ({
                                 fontSize: fontSize.medium,
                                 mt: 0.5
                               }}>
-                                {isDeptAlreadyUsed ? 'この診療区は既に使用されています' : rowError}
+                                {isDeptAlreadyUsed ? '既に登録された診療区は全て選択済みです。こちらを削除して下さい。' : rowError}
                               </Typography>
                             )}
                           </FormControl>
@@ -1056,39 +1099,49 @@ const ConsolidatedContentComponent = ({
                               医師を選択
                             </Typography>
                           </MenuItem>
-                          {departmentDoctors.map((doctor) => (
-                            <MenuItem 
-                              key={`${row.id}-${consultation.type}-doctor1-${doctor.id}`}
-                              value={doctor.id}
-                              sx={{ 
-                                fontSize: fontSize.medium,
-                                '&.Mui-selected': {
-                                  backgroundColor: '#e3f2fd'
-                                }
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Box sx={{ 
-                                  width: 8, 
-                                  height: 8, 
-                                  borderRadius: '50%',
-                                  backgroundColor: '#0A6AE3'
-                                }} />
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor?.license_no}
-                                </Typography>
-                                {doctor.name && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    {doctor.name}
+                          {departmentDoctors.map((doctor) => {
+                            // Check if this doctor is already selected in this consultation (excluding current field)
+                            const isDoctorSelected = selectedDoctorIds.includes(doctor.id) && 
+                                                     consultation.doctor_id_1 !== doctor.id;
+                            
+                            return (
+                              <MenuItem 
+                                key={`${row.id}-${consultation.type}-doctor1-${doctor.id}`}
+                                value={doctor.id}
+                                disabled={isDoctorSelected}
+                                sx={{ 
+                                  fontSize: fontSize.medium,
+                                  '&.Mui-selected': {
+                                    backgroundColor: '#e3f2fd'
+                                  },
+                                  opacity: isDoctorSelected ? 0.5 : 1,
+                                  backgroundColor: isDoctorSelected ? '#f5f5f5' : 'inherit'
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                                  <Box sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%',
+                                    backgroundColor: isDoctorSelected ? '#ccc' : '#0A6AE3'
+                                  }} />
+                                  <Typography sx={{ fontWeight: 500 }}>
+                                    {doctor?.license_no}
                                   </Typography>
-                                )}
-                              </Box>
-                            </MenuItem>
-                          ))}
+                                  {doctor.name && (
+                                    <Typography sx={{ 
+                                      fontSize: fontSize.small, 
+                                      color: isDoctorSelected ? '#999' : '#666',
+                                      ml: 'auto'
+                                    }}>
+                                      {doctor.name}
+                                      {isDoctorSelected && ' (選択済み)'}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </MenuItem>
+                            );
+                          })}
                         </Select>
                       </TableCell>
                       
@@ -1134,30 +1187,63 @@ const ConsolidatedContentComponent = ({
                             }
                             return getDoctorDisplayName(selected);
                           }}
+                          MenuProps={{
+                            PaperProps: {
+                              sx: {
+                                maxHeight: 300,
+                                fontSize: fontSize.medium
+                              }
+                            }
+                          }}
                         >
-                          <MenuItem value="">医師を選択</MenuItem>
-                          {departmentDoctors.map((doctor) => (
-                            <MenuItem 
-                              key={`${row.id}-${consultation.type}-doctor2-${doctor.id}`}
-                              value={doctor.id}
-                              sx={{ fontSize: fontSize.medium }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor?.license_no}
-                                </Typography>
-                                {doctor.name && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    {doctor.name}
+                          <MenuItem value="">
+                            <Typography sx={{ color: '#999', fontSize: fontSize.medium }}>
+                              医師を選択
+                            </Typography>
+                          </MenuItem>
+                          {departmentDoctors.map((doctor) => {
+                            // Check if this doctor is already selected in this consultation (excluding current field)
+                            const isDoctorSelected = selectedDoctorIds.includes(doctor.id) && 
+                                                     consultation.doctor_id_2 !== doctor.id;
+                            
+                            return (
+                              <MenuItem 
+                                key={`${row.id}-${consultation.type}-doctor2-${doctor.id}`}
+                                value={doctor.id}
+                                disabled={isDoctorSelected}
+                                sx={{ 
+                                  fontSize: fontSize.medium,
+                                  '&.Mui-selected': {
+                                    backgroundColor: '#e3f2fd'
+                                  },
+                                  opacity: isDoctorSelected ? 0.5 : 1,
+                                  backgroundColor: isDoctorSelected ? '#f5f5f5' : 'inherit'
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                                  <Box sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%',
+                                    backgroundColor: isDoctorSelected ? '#ccc' : '#0A6AE3'
+                                  }} />
+                                  <Typography sx={{ fontWeight: 500 }}>
+                                    {doctor?.license_no}
                                   </Typography>
-                                )}
-                              </Box>
-                            </MenuItem>
-                          ))}
+                                  {doctor.name && (
+                                    <Typography sx={{ 
+                                      fontSize: fontSize.small, 
+                                      color: isDoctorSelected ? '#999' : '#666',
+                                      ml: 'auto'
+                                    }}>
+                                      {doctor.name}
+                                      {isDoctorSelected && ' (選択済み)'}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </MenuItem>
+                            );
+                          })}
                         </Select>
                       </TableCell>
                       
@@ -1203,30 +1289,63 @@ const ConsolidatedContentComponent = ({
                             }
                             return getDoctorDisplayName(selected);
                           }}
+                          MenuProps={{
+                            PaperProps: {
+                              sx: {
+                                maxHeight: 300,
+                                fontSize: fontSize.medium
+                              }
+                            }
+                          }}
                         >
-                          <MenuItem value="">医師を選択</MenuItem>
-                          {departmentDoctors.map((doctor) => (
-                            <MenuItem 
-                              key={`${row.id}-${consultation.type}-doctor3-${doctor.id}`}
-                              value={doctor.id}
-                              sx={{ fontSize: fontSize.medium }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography sx={{ fontWeight: 500 }}>
-                                  {doctor?.license_no}
-                                </Typography>
-                                {doctor.name && (
-                                  <Typography sx={{ 
-                                    fontSize: fontSize.small, 
-                                    color: '#666',
-                                    ml: 'auto'
-                                  }}>
-                                    {doctor.name}
+                          <MenuItem value="">
+                            <Typography sx={{ color: '#999', fontSize: fontSize.medium }}>
+                              医師を選択
+                            </Typography>
+                          </MenuItem>
+                          {departmentDoctors.map((doctor) => {
+                            // Check if this doctor is already selected in this consultation (excluding current field)
+                            const isDoctorSelected = selectedDoctorIds.includes(doctor.id) && 
+                                                     consultation.doctor_id_3 !== doctor.id;
+                            
+                            return (
+                              <MenuItem 
+                                key={`${row.id}-${consultation.type}-doctor3-${doctor.id}`}
+                                value={doctor.id}
+                                disabled={isDoctorSelected}
+                                sx={{ 
+                                  fontSize: fontSize.medium,
+                                  '&.Mui-selected': {
+                                    backgroundColor: '#e3f2fd'
+                                  },
+                                  opacity: isDoctorSelected ? 0.5 : 1,
+                                  backgroundColor: isDoctorSelected ? '#f5f5f5' : 'inherit'
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                                  <Box sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%',
+                                    backgroundColor: isDoctorSelected ? '#ccc' : '#0A6AE3'
+                                  }} />
+                                  <Typography sx={{ fontWeight: 500 }}>
+                                    {doctor?.license_no}
                                   </Typography>
-                                )}
-                              </Box>
-                            </MenuItem>
-                          ))}
+                                  {doctor.name && (
+                                    <Typography sx={{ 
+                                      fontSize: fontSize.small, 
+                                      color: isDoctorSelected ? '#999' : '#666',
+                                      ml: 'auto'
+                                    }}>
+                                      {doctor.name}
+                                      {isDoctorSelected && ' (選択済み)'}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </MenuItem>
+                            );
+                          })}
                         </Select>
                       </TableCell>
                       

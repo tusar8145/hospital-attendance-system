@@ -2201,11 +2201,54 @@ export const getReadOnlyStats = async (req, res, next) => {
         }
       });
       
-      return stats;
+      return stats; 
     };
+
+    /**
+ * Calculate monthly cumulative stats up to a specific date
+ * @param {Array} reports - Array of report objects from DB
+ * @param {Date} targetDate - Date up to which cumulative stats should be calculated
+ * @returns {Object} stats - { morningClinic, afternoonClinic, onDuty, totalPatientCount }
+ */
+const calculateMonthlyCumulative = (reports, targetDate) => {
+  const stats = {
+    morningClinic: 0,
+    afternoonClinic: 0,
+    onDuty: 0,
+    totalPatientCount: 0
+  };
+
+  reports.forEach(report => {
+    // Skip reports after the targetDate
+    const reportTime = new Date(report.report_date);
+    if (reportTime > targetDate) return;
+
+    if (report.report_details && report.report_details.length > 0) {
+      report.report_details.forEach(detail => {
+        const patientCount = detail.patient_count || 0;
+        stats.totalPatientCount += patientCount;
+
+        switch(detail.consultation_type) {
+          case 'morning':
+            stats.morningClinic += patientCount;
+            break;
+          case 'afternoon':
+            stats.afternoonClinic += patientCount;
+            break;
+          case 'night':
+            stats.onDuty += patientCount;
+            break;
+        }
+      });
+    }
+  });
+
+  return stats;
+};
+
     
     // Calculate monthly cumulative stats (from start of month up to previous day)
-    const monthlyCumulativeStats = calculateStats(monthlyReports, true, reportDate);
+const monthlyCumulativeStats = calculateMonthlyCumulative(monthlyReports, reportDate);
     
     // Calculate full month stats (including current day if it exists)
     const monthlyStats = calculateStats(monthlyReports);

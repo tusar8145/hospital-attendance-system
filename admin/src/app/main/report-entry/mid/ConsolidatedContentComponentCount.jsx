@@ -952,7 +952,7 @@ const ConsolidatedContentComponentCount = ({
                                 fontSize: fontSize.medium,
                                 mt: 0.5
                               }}>
-                                {isDeptAlreadyUsed ? 'この診療区は既に使用されています' : rowError}
+                                {isDeptAlreadyUsed ? '既に登録された診療区は全て選択済みです。こちらを削除して下さい。' : rowError}
                               </Typography>
                             )}
                           </FormControl>

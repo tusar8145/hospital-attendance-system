@@ -148,7 +148,7 @@ const MedicalManagementTable = () => {
             
             <tbody>
               {/* Row 1 */}
-              <tr className="text-center">
+              <tr className="text-center"   style={{ "height": "100px" }}>
                 {/* Emergency data */}
                 <td className="border border-gray-300 p-2 min-h-[80px] sm:min-h-[100px] w-1/2">
                   <div className="flex flex-col items-center justify-center h-full p-1 sm:p-2">

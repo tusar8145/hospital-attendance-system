@@ -118,7 +118,7 @@ const HospitalDataTable = ({ data = {}, outpatient = [], total_admitted_patient 
               {/* Single data row */}
               <tr>
                 {/* Inpatient data */}
-                <td className="border border-gray-300 p-2 text-center w-1/7" style={{ "height": "218px" }}>
+                <td className="border border-gray-300 p-2 text-center w-1/7" style={{ "height": "227px" }}>
                   <div className="text-sm font-medium text-gray-800">
                     {hospitalData.inpatient.admission}
                   </div>
