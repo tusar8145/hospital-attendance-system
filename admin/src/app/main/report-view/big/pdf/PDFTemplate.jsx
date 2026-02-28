@@ -818,10 +818,32 @@ const DiagnosisPDF = ({ diagnosisData = {} }) => {
   return (
     <View style={styles.tableContainer}>
       <View style={styles.table}>
+
+
+
+        {/* Row 1 - Numbers */}
+        <View style={styles.tableRow}>
+ 
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.cellText}></Text>
+          </View>
+          {departments.map((_, idx) => (
+            <View key={`num-${idx}`} style={[styles.tableCell, { flex: 1 }]}>
+              <Text style={[styles.cellTextBold, { fontSize: 5 }]}>{idx + 1}</Text>
+            </View>
+          ))}
+          {additionalColumns.map(col => (
+            <View key={`add-num-${col.id}`} style={[styles.tableCell, { flex: 1 }]}>
+              <Text style={[styles.cellTextBold, { fontSize: 5 }]}>{col.id + departments.length}</Text>
+            </View>
+          ))}
+        </View>
+
+
         {/* Row 1 - Department Names */}
         <View style={styles.tableRow}>
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-            <Text style={styles.cellTextBold}>診療科</Text>
+            <Text style={styles.cellTextBold}></Text>
           </View>
           {departments.map(dept => (
             <View key={`dept-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
@@ -925,9 +947,7 @@ const PatientCountPDF = ({ patientData = {} }) => {
       <View style={styles.table}>
         {/* Row 1 - Numbers */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
-            <Text style={styles.cellText}></Text>
-          </View>
+ 
           <View style={[styles.tableCell, { flex: 1 }]}>
             <Text style={styles.cellText}></Text>
           </View>
@@ -948,11 +968,9 @@ const PatientCountPDF = ({ patientData = {} }) => {
         
         {/* Row 2 - Department Names */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6', borderRightWidth: 0 }]}>
-            <Text style={styles.cellTextBold}>診療科</Text>
-          </View>
+ 
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-            <Text style={styles.cellTextBold}>時間</Text>
+            <Text style={styles.cellTextBold}></Text>
           </View>
           {departments.map(dept => (
             <View key={`dept-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
@@ -965,15 +983,13 @@ const PatientCountPDF = ({ patientData = {} }) => {
             </View>
           ))}
           <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-            <Text style={styles.cellTextBold}>合計</Text>
+            <Text style={styles.cellTextBold}></Text>
           </View>
         </View>
         
         {/* Row 3 - Morning */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
-            <Text style={styles.cellTextBold}>患者数</Text>
-          </View>
+ 
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午前診</Text>
           </View>
@@ -994,9 +1010,7 @@ const PatientCountPDF = ({ patientData = {} }) => {
         
         {/* Row 4 - Afternoon */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
-            <Text style={styles.cellText}></Text>
-          </View>
+ 
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午後診</Text>
           </View>
@@ -1017,9 +1031,7 @@ const PatientCountPDF = ({ patientData = {} }) => {
         
         {/* Row 5 - Night */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
-            <Text style={styles.cellText}></Text>
-          </View>
+ 
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>夜診</Text>
           </View>
@@ -1040,9 +1052,7 @@ const PatientCountPDF = ({ patientData = {} }) => {
         
         {/* Row 6 - Totals */}
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          <View style={[styles.tableCell, { flex: 1, borderRightWidth: 0 }]}>
-            <Text style={styles.cellText}></Text>
-          </View>
+ 
           <View style={[styles.tableCell, { flex: 1, backgroundColor: '#e5e7eb' }]}>
             <Text style={styles.cellTextBold}>合計</Text>
           </View>

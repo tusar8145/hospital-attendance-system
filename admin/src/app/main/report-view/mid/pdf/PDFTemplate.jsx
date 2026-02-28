@@ -728,9 +728,8 @@ const TreatmentTimePDF = ({ reportDetails }) => {
               key={`floor-${index}`} 
               style={[styles.tableCell, { flex: 1, backgroundColor: '#e5e7eb' }]}
             >
-              <Text style={styles.cellTextBold}>診{index + 1}</Text>
-              <Text style={[styles.cellText, { fontSize: 4 }]}>{floorData.floor}</Text>
-            </View>
+              <Text style={styles.cellTextBold}>{floorData.floor}</Text>
+             </View>
           ))}
         </View>
         
@@ -868,7 +867,6 @@ const DiagnosisPDF = ({ reportDetailsMid }) => {
         
         {/* Row 1 - Department numbers */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 0.5, backgroundColor: '#f3f4f6', borderRightWidth: 0 }]} />
           <View style={[styles.tableCell, { flex: 0.5, backgroundColor: '#f3f4f6' }]} />
           
           {departments.map((_, index) => (
@@ -890,9 +888,7 @@ const DiagnosisPDF = ({ reportDetailsMid }) => {
         
         {/* Row 2 - Department names */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 0.5, backgroundColor: '#f3f4f6', borderRightWidth: 0 }]}>
-            <VerticalText chars="診療時間" />
-          </View>
+
           <View style={[styles.tableCell, { flex: 0.5, backgroundColor: '#f3f4f6' }]} />
           
           {departments.map(dept => (
@@ -908,13 +904,12 @@ const DiagnosisPDF = ({ reportDetailsMid }) => {
           ))}
           
           <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-            <Text style={styles.cellTextBold}>全体</Text>
+            <Text style={styles.cellTextBold}></Text>
           </View>
         </View>
         
         {/* Row 3 - Morning */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 0.5, borderRightWidth: 0 }]} />
           <View style={[styles.tableCell, { flex: 0.5, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午前診</Text>
           </View>
@@ -939,7 +934,6 @@ const DiagnosisPDF = ({ reportDetailsMid }) => {
         
         {/* Row 4 - Afternoon */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 0.5, borderRightWidth: 0 }]} />
           <View style={[styles.tableCell, { flex: 0.5, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午後診</Text>
           </View>
@@ -964,7 +958,6 @@ const DiagnosisPDF = ({ reportDetailsMid }) => {
         
         {/* Row 5 - Night */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 0.5, borderRightWidth: 0 }]} />
           <View style={[styles.tableCell, { flex: 0.5, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>夜診</Text>
           </View>
@@ -989,7 +982,6 @@ const DiagnosisPDF = ({ reportDetailsMid }) => {
         
         {/* Row 6 - Grand total */}
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          <View style={[styles.tableCell, { flex: 0.5, borderRightWidth: 0 }]} />
           <View style={[styles.tableCell, { flex: 0.5, backgroundColor: '#e5e7eb' }]}>
             <Text style={styles.cellTextBold}>合計</Text>
           </View>

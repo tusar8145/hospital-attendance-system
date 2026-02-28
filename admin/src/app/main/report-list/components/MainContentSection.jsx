@@ -47,7 +47,7 @@ export const MainContentSection = ({
               border: 1,
               borderColor: "#FFE0B2",
               fontWeight: 500,
-              fontSize: "0.75rem",
+              fontSize: "1rem",
             }}
           />
         );
@@ -62,7 +62,7 @@ export const MainContentSection = ({
               border: 1,
               borderColor: "#BBDEFB",
               fontWeight: 500,
-              fontSize: "0.75rem",
+              fontSize: "1rem",
             }}
           />
         );
@@ -87,7 +87,7 @@ export const MainContentSection = ({
                   border: 1,
                   borderColor: "#0bb530ff",
                   fontWeight: 500,
-                  fontSize: "0.75rem",
+                  fontSize: "1rem",
                 }}
               />
               <Box
@@ -148,7 +148,7 @@ export const MainContentSection = ({
               border: 1,
               borderColor: "#FFCDD2",
               fontWeight: 500,
-              fontSize: "0.75rem",
+              fontSize: "1rem",
             }}
           />
         );
@@ -163,7 +163,7 @@ export const MainContentSection = ({
               border: 1,
               borderColor: "#FEE4E2",
               fontWeight: 500,
-              fontSize: "0.75rem",
+              fontSize: "1rem",
             }}
           />
         );
@@ -279,7 +279,7 @@ export const MainContentSection = ({
               color: "primary.main",
               borderRadius: 1,
               textTransform: "none",
-              fontSize: "0.875rem",
+              fontSize: "1rem",
               fontWeight: 600,
               boxShadow: 1,
               minWidth: 100,
@@ -538,7 +538,7 @@ export const MainContentSection = ({
                           sx={{ 
                             color: hospitalType.color,
                             fontWeight: 500,
-                            fontSize: '0.7rem',
+                            fontSize: '1rem',
                             lineHeight: 1.2
                           }}
                         >
@@ -684,7 +684,7 @@ export const MainContentSection = ({
     sx={{
       color: "#0A6AE3",
       fontWeight: 600,
-      fontSize: "0.875rem",
+      fontSize: "1rem",
       cursor: "pointer",
       '&:hover': {
         color: "#0847A3",
@@ -755,7 +755,7 @@ export const MainContentSection = ({
                   sx={{
                     minWidth: 32,
                     height: 32,
-                    fontSize: "0.75rem",
+                    fontSize: "1rem",
                     fontWeight: 500,
                     border: 1,
                     borderColor: "grey.200",

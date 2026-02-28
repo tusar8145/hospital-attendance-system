@@ -443,12 +443,12 @@ const ExternalConsultationToggle = ({
                       },
                     }}
                   />
-                </Stack>
+                </Stack> 
                 <TextField
                   value={fieldData.value}
                   onChange={(e) => handleFieldValueChange(section.id, field.key, e.target.value)}
                   onBlur={(e) => handleFieldBlur(e, section.id, field.key)}
-                  //onFocus={handleFocusSelect} 
+                  onFocus={handleFocusSelect} 
                   variant="outlined"
                   size="small"
                   fullWidth

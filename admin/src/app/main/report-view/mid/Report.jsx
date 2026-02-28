@@ -184,11 +184,8 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
           className="bg-gradient-to-b from-gray-200 to-gray-300 text-gray-800 font-bold p-3 text-center border border-gray-400"
         >
           <div className="flex flex-col items-center">
-            <span className="text-lg font-bold text-gray-900">診{index + 1}</span>
-            <span className="text-xs text-gray-600 mt-1 bg-white px-2 py-1 rounded-full shadow-sm">
-              {floorData.floor}
-            </span>
-          </div>
+            <span className="text-md   text-gray-700">  {floorData.floor} </span>
+           </div>
         </th>
       ))}
     </tr>
@@ -464,7 +461,7 @@ const DiagnosisTable = ({ reportDetailsMid }) => {
                 
                 {/* Total column header */}
                 <td 
-                  className="border border-gray-200 bg-gray-300 font-bold p-1 text-center"
+                  className="border border-gray-200 bg-white  font-bold p-1 text-center"
                   style={{ 
                     width: '60px',
                     height: '24px'
@@ -503,13 +500,13 @@ const DiagnosisTable = ({ reportDetailsMid }) => {
                 ))}
                 
                 <td 
-                  className="border border-gray-200 bg-gray-300 font-bold p-1 text-center"
+                  className="border border-gray-200 bg-white font-bold p-1 text-center"
                   style={{ 
                     width: '60px',
                     height: '24px'
                   }}
                 >
-                  <div className="text-xs leading-none">全体</div>
+                  <div className="text-xs leading-none"></div>
                 </td>
               </tr>
               

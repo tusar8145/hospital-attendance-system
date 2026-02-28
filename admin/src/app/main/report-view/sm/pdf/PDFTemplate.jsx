@@ -1005,8 +1005,8 @@ export const PDFDocument = ({
 
   return (
     <Document>
-      {/* Single Page - All content combined */}
-      <Page size="A4" orientation="landscape" style={styles.page}>
+      {/* Single Page - All content combined */} 
+      <Page size="A4" orientation="portrait" style={styles.page}>
         {/* Main content container with padding */}
         <View style={{ padding: 12 }}>
           {/* Header - Compact Design */}
