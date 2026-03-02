@@ -594,10 +594,10 @@ const DiagnosisTable = ({ reportDetailsMid }) => {
                   >
                     <div className="text-xs leading-tight flex flex-col justify-center h-full">
                       <span className="font-semibold text-gray-900 ml-10">
-                        {groupedData[dept]?.morning.total || 0}
+                        {groupedData[dept]?.afternoon.total || 0}
                       </span>
                       <span className="font-semibold text-[12px] text-gray-900">
-                        （ {groupedData[dept]?.morning.new || 0} ）
+                        （ {groupedData[dept]?.afternoon.new || 0} ）
                       </span>
                     </div>
                   </td>
@@ -653,10 +653,10 @@ const DiagnosisTable = ({ reportDetailsMid }) => {
                   >
                     <div className="text-xs leading-tight flex flex-col justify-center h-full">
                       <span className="font-semibold text-gray-900 ml-10">
-                        {groupedData[dept]?.morning.total || 0}
+                        {groupedData[dept]?.night.total || 0}
                       </span>
                       <span className="font-semibold text-[12px] text-gray-900">
-                        （ {groupedData[dept]?.morning.new || 0} ）
+                        （ {groupedData[dept]?.night.new || 0} ）
                       </span>
                     </div>
                   </td>
@@ -2035,14 +2035,13 @@ const handleExportMenuClick = () => {
       )}
 
       {/* Header Section */}
-      {/* Header Section */}
       <HeaderSection
         title={`管理日誌レポート - ${reportDate}`}
         subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
         primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}
         secondaryButtonText="編集"
         showSecondaryButton={true}
-        showTertiaryButton={true} // Add this to show download button
+        showTertiaryButton={true}
         tertiaryButtonText="ダウンロード"
         tertiaryButtonIcon={<DownloadIcon />}
         primaryButtonColor={reportData.report?.status === 'approved' ? 'secondary' : 'success'}
@@ -2050,7 +2049,7 @@ const handleExportMenuClick = () => {
         tertiaryButtonColor="info"
         onPrimaryButtonClick={handlePrimaryButtonClick}
         onSecondaryButtonClick={handleEdit}
-        onTertiaryButtonClick={handleExportMenuClick} // Add this handler
+        onTertiaryButtonClick={handleExportMenuClick}
         onMakeDraft={handleMakeDraftClick}
         showDate={true}
         customDate={reportDate}
@@ -2082,41 +2081,65 @@ const handleExportMenuClick = () => {
         />
 
         {/* Patient Count and Treatment Time Tables */}
-<Box className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8">
-  <div className="lg:col-span-1">
-    <PatientCountTable reportData={reportData} />
-  </div>
-  <div className="lg:col-span-2">
-    <TreatmentTimeTable 
-      reportDetails={reportData.report?.report_details} 
-      doctors={reportData.doctors}
-    />
-  </div>
-</Box>
+        <Box className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8">
+          <div className="lg:col-span-1">
+            <PatientCountTable reportData={reportData} />
+          </div>
+          <div className="lg:col-span-2">
+            <TreatmentTimeTable 
+              reportDetails={reportData.report?.report_details} 
+              doctors={reportData.doctors}
+            />
+          </div>
+        </Box>
 
         {/* Diagnosis Table */}
         <div className="mt-20">
           <DiagnosisTable reportDetailsMid={reportData.report?.report_details_mid} />
         </div>
  
-        {/* External Consultation Summary */}
-		{(reportData.report?.emergency_transport>0 || reportData.report?.post_transport_admission>0 || reportData.report?.visit_count>0)  && (
-		<div className="mt-20">
-        <ExternalConsultationSummary 
-          externalConsultationDetails={reportData.report?.external_consultation_details}
-        />
-		</div>
-		)}
+        {/* External Consultation Sections - Only show if grand total > 0 */}
+        {reportData.report?.external_consultation_details && 
+          (() => {
+            // Calculate grand total to check if it's 0
+            const externalDetails = reportData.report.external_consultation_details;
+            
+            const calculateCategoryTotal = (category) => {
+              if (!externalDetails[category]) return 0;
+              return Object.values(externalDetails[category]).reduce((sum, item) => {
+                if (item.enabled) {
+                  const value = parseInt(item.value) || 0;
+                  return sum + value;
+                }
+                return sum;
+              }, 0);
+            };
+            
+            const petTotal = calculateCategoryTotal('PET');
+            const mrTotal = calculateCategoryTotal('MR');
+            const ctTotal = calculateCategoryTotal('CT');
+            const grandTotal = petTotal + mrTotal + ctTotal;
+            
+            // Only show if grand total is greater than 0
+            return grandTotal > 0 ? (
+              <>
+                <div className="mt-20">
+                  <ExternalConsultationSummary 
+                    externalConsultationDetails={externalDetails}
+                  />
+                </div>
 
-        {/* Detailed External Consultation Table */}
-		{(reportData.report?.emergency_transport>0 || reportData.report?.post_transport_admission>0 || reportData.report?.visit_count>0)  && (
-          <div className="mt-20">
-            <DetailedExternalConsultationTable 
-              externalConsultationDetails={reportData.report.external_consultation_details}
-            />
-          </div>
-        )}
-        
+                {/* Detailed External Consultation Table */}
+                <div className="mt-20">
+                  <DetailedExternalConsultationTable 
+                    externalConsultationDetails={externalDetails}
+                  />
+                </div>
+              </>
+            ) : null;
+          })()
+        }
+        <br></br>
         {/* Add Comment Section */}
         <div className="detailed-duty-table w-full mt-8">
           <div className="overflow-hidden rounded-md mb-4">
