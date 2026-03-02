@@ -28,7 +28,7 @@ const PatientCountTable = ({ patientData = {} }) => {
   // Generate additional empty columns
   const additionalColumns = Array.from({ length: additionalColumnsCount }, (_, i) => ({
     id: i + 1,
-    label: `C${i + 1}`
+    label: `-`
   }));
 
   return (

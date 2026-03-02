@@ -495,7 +495,7 @@ const DiagnosisTable = ({ reportDetailsMid }) => {
                       height: '24px'
                     }}
                   >
-                    <div className="text-xs text-gray-600">空欄</div>
+                    <div className="text-xs text-gray-600">-</div>
                   </td>
                 ))}
                 

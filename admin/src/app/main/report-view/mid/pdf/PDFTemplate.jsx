@@ -899,7 +899,7 @@ const DiagnosisPDF = ({ reportDetailsMid }) => {
           
           {Array.from({ length: additionalColumnsCount }).map((_, i) => (
             <View key={`empty-dept-${i}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
-              <Text style={styles.cellText}>空欄</Text>
+              <Text style={styles.cellText}>-</Text>
             </View>
           ))}
           
@@ -1036,28 +1036,47 @@ const ExternalConsultationSummaryPDF = ({ externalConsultationDetails }) => {
   return (
     <View style={styles.tableContainer}>
       <View style={styles.table}>
+        {/* Header */}
         <View style={[styles.tableRow, styles.tableHeader]}>
           <View style={[styles.lastTableCell, { flex: 5 }]}>
             <Text style={styles.tableHeaderText}>患者数（外部診療）</Text>
           </View>
         </View>
         
+        {/* Sub Header */}
         <View style={[styles.tableRow, styles.tableSubHeader]}>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}></Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>PET</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>MR</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>CT</Text></View>
-          <View style={[styles.lastTableCell, { flex: 1 }]}><Text style={styles.tableSubHeaderText}>合計</Text></View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}></Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>PET</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>MR</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>CT</Text>
+          </View>
+          <View style={[styles.lastTableCell, { flex: 1 }]}>
+            <Text style={styles.tableSubHeaderText}>合計</Text>
+          </View>
         </View>
         
-        <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+        {/* Data Row - FIXED with alignSelf stretch and minHeight */}
+        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 20 }]}>
+          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6', alignSelf: 'stretch' }]}>
             <Text style={styles.cellTextBold}>患者数</Text>
           </View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextBold}>{petTotal}</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextBold}>{mrTotal}</Text></View>
-          <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextBold}>{ctTotal}</Text></View>
-          <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#eff6ff' }]}>
+          <View style={[styles.tableCell, { flex: 1, alignSelf: 'stretch' }]}>
+            <Text style={styles.cellTextBold}>{petTotal}</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1, alignSelf: 'stretch' }]}>
+            <Text style={styles.cellTextBold}>{mrTotal}</Text>
+          </View>
+          <View style={[styles.tableCell, { flex: 1, alignSelf: 'stretch' }]}>
+            <Text style={styles.cellTextBold}>{ctTotal}</Text>
+          </View>
+          <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#eff6ff', alignSelf: 'stretch' }]}>
             <Text style={styles.cellTextBold}>{grandTotal}</Text>
           </View>
         </View>
