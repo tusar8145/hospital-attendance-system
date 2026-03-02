@@ -1604,7 +1604,8 @@ const FrameScreen = React.memo(({
                     }} />
                     管理事項
                   </Typography>
-                  <Tooltip title="特記事項や備考を入力">
+                  <Tooltip title="当日の業務に関する特記事項を記入する欄になります。
+フリーでテキスト入力ができます。">
                     <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
                   </Tooltip>
                 </Box>

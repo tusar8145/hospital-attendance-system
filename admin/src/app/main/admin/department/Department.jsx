@@ -427,7 +427,7 @@ const Table = (props) => {
         page: pagination.pageIndex + 1,
         perPage: pagination.pageSize,
         sortBy: sorting.length > 0 ? sorting[0].id : 'id',
-        sortType: sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : 'asc',
+        sortType: sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : 'desc',
         filter: filterPayload
       };
 

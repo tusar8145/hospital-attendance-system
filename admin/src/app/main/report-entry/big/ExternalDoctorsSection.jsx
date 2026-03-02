@@ -248,7 +248,13 @@ const ExternalDoctorsSection = React.memo(({
               }} />
               外来
             </Typography>
-            <Tooltip title="外来診療の患者数（月間累積・読み取り専用）">
+            <Tooltip title={
+    <>
+      午前診・午後診・当直に診療を行った患者数が自動で計算されて表示されます。<br />
+      こちらに表示される人数は、当月の合計人数が表示されます。<br />
+      こちらは自動計算されて表示されますので入力不要項目です。
+    </>
+  }>
               <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
             </Tooltip>
           </Box>
@@ -295,7 +301,13 @@ const ExternalDoctorsSection = React.memo(({
             }} />
             外来
           </Typography>
-          <Tooltip title="外来診療の患者数（月間累積・読み取り専用）">
+          <Tooltip title={
+    <>
+      午前診・午後診・当直に診療を行った患者数が自動で計算されて表示されます。<br />
+      こちらに表示される人数は、当月の合計人数が表示されます。<br />
+      こちらは自動計算されて表示されますので入力不要項目です。
+    </>
+  }>
             <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
           </Tooltip>
         </Box>

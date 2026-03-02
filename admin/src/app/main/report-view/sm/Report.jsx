@@ -111,14 +111,15 @@ const ConferenceSpecialNotesSection = ({ welfareData }) => {
 
 // 2. Daily Visitors Section (入所者状況) - Updated to 3 columns
 // 2. Daily Visitors Section (入所者状況) - Updated to 3 columns: 入所, 短期入所, ケアハウス
+// 2. Daily Visitors Section (入所者状況) - Updated to 4 columns: 入所, 短期入所, 合計, ケアハウス
 const DailyVisitorsSection = ({ welfareData, capacities }) => {
-  const sectionNames = ['入所', '短期入所', 'ケアハウス'];
+  const sectionNames = ['入所', '短期入所', '合計', 'ケアハウス'];
   
-  // Calculate totals
-  const calculateTotal = (field1, field2) => {
-    const val1 = welfareData?.[field1] || 0;
-    const val2 = welfareData?.[field2] || 0;
-    return val1 + val2;
+  // Calculate totals for 入所 and 短期入所
+  const calculateTotal = (val1, val2) => {
+    const num1 = parseInt(val1) || 0;
+    const num2 = parseInt(val2) || 0;
+    return num1 + num2;
   };
 
   const section1Capacity = capacities?.section1_capacity || 0;
@@ -131,6 +132,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${section1Capacity}`,
         `${section2Capacity}`,
+        `${calculateTotal(section1Capacity, section2Capacity)}`,
         `${section3Capacity}`
       ],
       bold: false
@@ -140,6 +142,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_admission_count || 0}`,
         `${welfareData?.section2_admission_count || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_admission_count,
+          welfareData?.section2_admission_count
+        )}`,
         `${welfareData?.section3_admission_count || 0}`
       ],
       bold: false
@@ -149,6 +155,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_admission_treated || 0}`,
         `${welfareData?.section2_admission_treated || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_admission_treated,
+          welfareData?.section2_admission_treated
+        )}`,
         `${welfareData?.section3_admission_count || 0}`
       ],
       bold: false
@@ -158,6 +168,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_discharge_treated || 0}`,
         `${welfareData?.section2_discharge_treated || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_discharge_treated,
+          welfareData?.section2_discharge_treated
+        )}`,
         `${welfareData?.section3_discharge_count || 0}`
       ],
       bold: false
@@ -167,6 +181,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_outside_hospital || 0}`,
         `${welfareData?.section2_outside_hospital || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_outside_hospital,
+          welfareData?.section2_outside_hospital
+        )}`,
         `${welfareData?.section3_outside_hospital || 0}`
       ],
       bold: false
@@ -176,6 +194,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_hospitalization_count || 0}`,
         `${welfareData?.section2_hospitalization_count || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_hospitalization_count,
+          welfareData?.section2_hospitalization_count
+        )}`,
         `${welfareData?.section3_hospitalization_count || 0}`
       ],
       bold: false
@@ -185,6 +207,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_today_end_users || 0}`,
         `${welfareData?.section2_today_end_users || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_today_end_users,
+          welfareData?.section2_today_end_users
+        )}`,
         `${welfareData?.section3_today_end_users || 0}`
       ],
       bold: true
@@ -197,6 +223,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_admission || 0}`,
         `${welfareData?.section2_monthly_admission || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_monthly_admission,
+          welfareData?.section2_monthly_admission
+        )}`,
         `${welfareData?.section3_monthly_admission || 0}`
       ],
       bold: false
@@ -206,6 +236,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_avg || 0}`,
         `${welfareData?.section2_monthly_avg || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_monthly_avg,
+          welfareData?.section2_monthly_avg
+        )}`,
         `${welfareData?.section3_monthly_avg || 0}`
       ],
       bold: false
@@ -215,6 +249,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_utilization || 0}%`,
         `${welfareData?.section2_monthly_utilization || 0}%`,
+        '-', // 合計 column for utilization shows dash
         `${welfareData?.section3_monthly_utilization || 0}%`
       ],
       bold: false
@@ -227,6 +262,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_users || 0}`,
         `${welfareData?.section2_annual_users || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_annual_users,
+          welfareData?.section2_annual_users
+        )}`,
         `${welfareData?.section3_annual_users || 0}`
       ],
       bold: false
@@ -236,6 +275,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_avg || 0}`,
         `${welfareData?.section2_annual_avg || 0}`,
+        `${calculateTotal(
+          welfareData?.section1_annual_avg,
+          welfareData?.section2_annual_avg
+        )}`,
         `${welfareData?.section3_annual_avg || 0}`
       ],
       bold: false
@@ -245,6 +288,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_utilization || 0}%`,
         `${welfareData?.section2_annual_utilization || 0}%`,
+        '-', // 合計 column for utilization shows dash
         `${welfareData?.section3_annual_utilization || 0}%`
       ],
       bold: false
@@ -262,7 +306,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                 sx={{ 
                   border: '1px solid #e0e0e0', 
                   fontWeight: 'bold',
-                  width: '25%',
+                  width: '20%',
                   backgroundColor: '#f5f5f5',
                   borderRadius: 0
                 }}
@@ -275,8 +319,8 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   sx={{ 
                     border: '1px solid #e0e0e0', 
                     fontWeight: 'bold',
-                    width: '25%',
-                    backgroundColor: '#f5f5f5',
+                    width: '20%',
+                    backgroundColor: index === 2 ? '#e3f2fd' : '#f5f5f5', // Light blue background for 合計 column
                     borderRadius: 0
                   }}
                 >
@@ -292,7 +336,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   border: '1px solid #e0e0e0',
                   fontWeight: row.bold ? 'bold' : 'normal',
                   backgroundColor: row.bold ? '#f5f5f5' : 'white',
-                  width: '25%',
+                  width: '20%',
                   borderRadius: 0
                 }}>
                   {row.label}
@@ -303,9 +347,10 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                     align="center"
                     sx={{ 
                       border: '1px solid #e0e0e0',
-                      backgroundColor: row.bold ? '#f5f5f5' : 'white',
-                      width: '25%',
-                      borderRadius: 0
+                      backgroundColor: idx === 2 ? '#f5f9ff' : (row.bold ? '#f5f5f5' : 'white'), // Light background for 合計 column
+                      width: '20%',
+                      borderRadius: 0,
+                      fontWeight: idx === 2 && row.bold ? 'bold' : 'normal'
                     }}
                   >
                     {value}
@@ -327,7 +372,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   border: '1px solid #e0e0e0',
                   fontWeight: 'bold',
                   backgroundColor: '#f5f5f5',
-                  width: '25%',
+                  width: '20%',
                   borderRadius: 0
                 }}
               >
@@ -340,8 +385,8 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   sx={{ 
                     border: '1px solid #e0e0e0',
                     fontWeight: 'bold',
-                    backgroundColor: '#f5f5f5',
-                    width: '25%',
+                    backgroundColor: index === 2 ? '#e3f2fd' : '#f5f5f5', // Light blue background for 合計 column
+                    width: '20%',
                     borderRadius: 0
                   }}
                 >
@@ -355,7 +400,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
               <TableRow key={index}>
                 <TableCell sx={{ 
                   border: '1px solid #e0e0e0',
-                  width: '25%',
+                  width: '20%',
                   borderRadius: 0
                 }}>
                   {row.label}
@@ -366,8 +411,9 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                     align="center"
                     sx={{ 
                       border: '1px solid #e0e0e0',
-                      width: '25%',
-                      borderRadius: 0
+                      width: '20%',
+                      borderRadius: 0,
+                      backgroundColor: idx === 2 ? '#f5f9ff' : 'white' // Light background for 合計 column
                     }}
                   >
                     {value}
@@ -389,7 +435,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   border: '1px solid #e0e0e0',
                   fontWeight: 'bold',
                   backgroundColor: '#f5f5f5',
-                  width: '25%',
+                  width: '20%',
                   borderRadius: 0
                 }}
               >
@@ -402,8 +448,8 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                   sx={{ 
                     border: '1px solid #e0e0e0',
                     fontWeight: 'bold',
-                    backgroundColor: '#f5f5f5',
-                    width: '25%',
+                    backgroundColor: index === 2 ? '#e3f2fd' : '#f5f5f5', // Light blue background for 合計 column
+                    width: '20%',
                     borderRadius: 0
                   }}
                 >
@@ -417,7 +463,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
               <TableRow key={index}>
                 <TableCell sx={{ 
                   border: '1px solid #e0e0e0',
-                  width: '25%',
+                  width: '20%',
                   borderRadius: 0
                 }}>
                   {row.label}
@@ -428,8 +474,9 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
                     align="center"
                     sx={{ 
                       border: '1px solid #e0e0e0',
-                      width: '25%',
-                      borderRadius: 0
+                      width: '20%',
+                      borderRadius: 0,
+                      backgroundColor: idx === 2 ? '#f5f9ff' : 'white' // Light background for 合計 column
                     }}
                   >
                     {value}
@@ -445,6 +492,7 @@ const DailyVisitorsSection = ({ welfareData, capacities }) => {
 };
 
 // 3. Daily Users Section (利用者状況) - 4 columns for sections 4,5,6,7
+// 3. Daily Users Section (利用者状況) - 4 columns for sections 4,5,6,7
 const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
   const sections = ['section4', 'section5', 'section6', 'section7'];
   
@@ -459,44 +507,60 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
     }
   };
 
+  // Check if section capacity is zero (column should be hidden)
+  const isCapacityZero = (section) => {
+    return getCapacity(section) === 0;
+  };
+
+  // Helper function to conditionally render value or empty string
+  const renderValue = (section, value) => {
+    if (isCapacityZero(section)) {
+      return ''; // Return empty string for zero capacity columns
+    }
+    return value;
+  };
+
   const dailyUserRows = [
     { 
       label: '定員', 
-      getValue: (section) => `${getCapacity(section)}`
+      getValue: (section) => renderValue(section, `${getCapacity(section)}`)
     },
     { 
       label: '当日 利用者数', 
-      getValue: (section) => `${welfareData?.[`${section}_daily_users`] || 0}`,
+      getValue: (section) => renderValue(section, `${welfareData?.[`${section}_daily_users`] || 0}`),
       bold: true
     },
     { 
       label: '当月 利用者数累計', 
-      getValue: (section) => `${welfareData?.[`${section}_monthly_users_cumulative`] || 0}`
+      getValue: (section) => renderValue(section, `${welfareData?.[`${section}_monthly_users_cumulative`] || 0}`)
     },
     { 
       label: '当月 平均利用者数', 
-      getValue: (section) => `${welfareData?.[`${section}_monthly_avg`] || 0}`
+      getValue: (section) => renderValue(section, `${welfareData?.[`${section}_monthly_avg`] || 0}`)
     },
     { 
       label: '当月 稼働率', 
-      getValue: (section) => `${welfareData?.[`${section}_monthly_utilization`] || 0}%`
+      getValue: (section) => renderValue(section, `${welfareData?.[`${section}_monthly_utilization`] || 0}%`)
     },
   ];
 
   const yearlyUserRows = [
     { 
       label: '年度 利用者数累計', 
-      getValue: (section) => `${welfareData?.[`${section}_annual_users`] || 0}`
+      getValue: (section) => renderValue(section, `${welfareData?.[`${section}_annual_users`] || 0}`)
     },
     { 
       label: '年度 平均利用者数', 
-      getValue: (section) => `${welfareData?.[`${section}_annual_avg`] || 0}`
+      getValue: (section) => renderValue(section, `${welfareData?.[`${section}_annual_avg`] || 0}`)
     },
     { 
       label: '年度 稼働率', 
-      getValue: (section) => `${welfareData?.[`${section}_annual_utilization`] || 0}%`
+      getValue: (section) => renderValue(section, `${welfareData?.[`${section}_annual_utilization`] || 0}%`)
     },
   ];
+
+  // Check if any section has zero capacity
+  const hasZeroCapacitySection = sections.some(section => isCapacityZero(section));
 
   return (
     <>
@@ -515,21 +579,30 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
                 }}
               >
               </TableCell>
-              {sections.map((section, index) => (
-                <TableCell
-                  key={section}
-                  align="center"
-                  sx={{ 
-                    border: '1px solid #e0e0e0', 
-                    fontWeight: 'bold',
-                    width: '20%',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: 0
-                  }}
-                >
-                  {sectionNames?.[section] || `セクション${index + 4}`}
-                </TableCell>
-              ))}
+              {sections.map((section, index) => {
+                const isZeroCapacity = isCapacityZero(section);
+                return (
+                  <TableCell
+                    key={section}
+                    align="center"
+                    sx={{ 
+                      border: '1px solid #e0e0e0', 
+                      fontWeight: 'bold',
+                      width: '20%',
+                      backgroundColor: isZeroCapacity ? '#f0f0f0' : '#f5f5f5',
+                      borderRadius: 0,
+                      opacity: isZeroCapacity ? 0.6 : 1
+                    }}
+                  >
+                    {sectionNames?.[section] || `セクション${index + 4}`}
+                    {isZeroCapacity && (
+                      <Typography variant="caption" display="block" sx={{ fontSize: '0.6rem', color: '#999' }}>
+                        (定員0)
+                      </Typography>
+                    )}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -544,20 +617,24 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
                 }}>
                   {row.label}
                 </TableCell>
-                {sections.map((section, idx) => (
-                  <TableCell
-                    key={idx}
-                    align="center"
-                    sx={{ 
-                      border: '1px solid #e0e0e0',
-                      backgroundColor: row.bold ? '#f5f5f5' : 'white',
-                      width: '20%',
-                      borderRadius: 0
-                    }}
-                  >
-                    {row.getValue(section)}
-                  </TableCell>
-                ))}
+                {sections.map((section, idx) => {
+                  const isZeroCapacity = isCapacityZero(section);
+                  return (
+                    <TableCell
+                      key={idx}
+                      align="center"
+                      sx={{ 
+                        border: '1px solid #e0e0e0',
+                        backgroundColor: isZeroCapacity ? '#f9f9f9' : (row.bold ? '#f5f5f5' : 'white'),
+                        width: '20%',
+                        borderRadius: 0,
+                        color: isZeroCapacity ? '#ccc' : 'inherit'
+                      }}
+                    >
+                      {row.getValue(section)}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>
@@ -580,21 +657,30 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
               >
                 年度統計
               </TableCell>
-              {sections.map((section, index) => (
-                <TableCell
-                  key={section}
-                  align="center"
-                  sx={{ 
-                    border: '1px solid #e0e0e0',
-                    fontWeight: 'bold',
-                    backgroundColor: '#f5f5f5',
-                    width: '20%',
-                    borderRadius: 0
-                  }}
-                >
-                  {sectionNames?.[section] || `セクション${index + 4}`}
-                </TableCell>
-              ))}
+              {sections.map((section, index) => {
+                const isZeroCapacity = isCapacityZero(section);
+                return (
+                  <TableCell
+                    key={section}
+                    align="center"
+                    sx={{ 
+                      border: '1px solid #e0e0e0',
+                      fontWeight: 'bold',
+                      backgroundColor: isZeroCapacity ? '#f0f0f0' : '#f5f5f5',
+                      width: '20%',
+                      borderRadius: 0,
+                      opacity: isZeroCapacity ? 0.6 : 1
+                    }}
+                  >
+                    {sectionNames?.[section] || `セクション${index + 4}`}
+                    {isZeroCapacity && (
+                      <Typography variant="caption" display="block" sx={{ fontSize: '0.6rem', color: '#999' }}>
+                        (定員0)
+                      </Typography>
+                    )}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -607,24 +693,36 @@ const DailyUsersSection = ({ welfareData, sectionNames, capacities }) => {
                 }}>
                   {row.label}
                 </TableCell>
-                {sections.map((section, idx) => (
-                  <TableCell
-                    key={idx}
-                    align="center"
-                    sx={{ 
-                      border: '1px solid #e0e0e0',
-                      width: '20%',
-                      borderRadius: 0
-                    }}
-                  >
-                    {row.getValue(section)}
-                  </TableCell>
-                ))}
+                {sections.map((section, idx) => {
+                  const isZeroCapacity = isCapacityZero(section);
+                  return (
+                    <TableCell
+                      key={idx}
+                      align="center"
+                      sx={{ 
+                        border: '1px solid #e0e0e0',
+                        width: '20%',
+                        borderRadius: 0,
+                        backgroundColor: isZeroCapacity ? '#f9f9f9' : 'white',
+                        color: isZeroCapacity ? '#ccc' : 'inherit'
+                      }}
+                    >
+                      {row.getValue(section)}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Note about hidden columns if any capacity is zero */}
+      {hasZeroCapacitySection && (
+        <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#999', fontStyle: 'italic' }}>
+          ※ 定員が0のセクションのデータは非表示になっています
+        </Typography>
+      )}
     </>
   );
 };

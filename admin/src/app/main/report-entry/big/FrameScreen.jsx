@@ -1119,7 +1119,12 @@ const FrameScreen = React.memo(({
                 }} />
                 入院
               </Typography>
-              <Tooltip title="入院・退院に関する統計情報">
+              <Tooltip title={
+    <>
+      当日の確定した入院人数および退院人数を入力してください。<br />
+      こちらに入力した人数は自動的に集計され統計データとして保存されます。
+    </>
+  }>
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>
@@ -1272,7 +1277,8 @@ const FrameScreen = React.memo(({
                 }} />
                 緊急
               </Typography>
-              <Tooltip title="緊急搬入・訪問診療に関する情報">
+              <Tooltip title="救急車等により搬送された患者数を記入します。その後入院に至った数を入力する。
+訪問は訪問きた人数を記入します。">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>
@@ -1506,7 +1512,8 @@ const FrameScreen = React.memo(({
                 }} />
                 管理事項
               </Typography>
-              <Tooltip title="特記事項や備考を入力">
+              <Tooltip title="当日の業務に関する特記事項を記入する欄になります。
+フリーでテキスト入力ができます。">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>

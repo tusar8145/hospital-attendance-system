@@ -86,7 +86,8 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     fontSize: 4.5,
     padding: 1,
-    textAlign: 'center',
+    textAlign: 'left',
+    paddingLeft: 2,
   },
   tableCell: {
     borderRightWidth: 0.5,
@@ -154,6 +155,8 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 7,
     fontWeight: 700,
+    textAlign: 'left',
+    paddingLeft: 2,
   },
   statusContent: {
     padding: 6,
@@ -353,6 +356,20 @@ const styles = StyleSheet.create({
     fontSize: 4,
     color: '#9ca3af',
   },
+  invisibleCell: {
+    borderRightWidth: 0.5,
+    borderRightColor: '#d1d5db',
+    padding: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    color: 'transparent',
+    backgroundColor: '#ffffff',
+  },
+  invisibleText: {
+    fontSize: 4.5,
+    textAlign: 'center',
+    color: 'transparent',
+  },
 });
 
 // Helper function to render circles (as dashes for PDF)
@@ -472,10 +489,11 @@ const StatusConfirmationPDF = ({
           ))}
         </View>
         
-        {/* Summary */}
-        {/*showSummary && totalCount > 0 && (
+        {/* Summary - Commented out as in original */}
+        {/*
+        {showSummary && totalCount > 0 && (
           <View style={styles.statusSummary}>
-            {/* }<View style={styles.statusSummaryLeft}>
+            <View style={styles.statusSummaryLeft}>
               <View style={styles.statusSummaryItem}>
                 <View style={[styles.statusSummaryDot, styles.statusSummaryDotGreen]} />
                 <Text style={styles.statusSummaryText}>
@@ -502,7 +520,8 @@ const StatusConfirmationPDF = ({
               </Text>
             )}
           </View>
-        )}*/}
+        )}
+        */}
 
         {/* Empty State */}
         {totalCount === 0 && (
@@ -528,7 +547,7 @@ const ConferenceSpecialNotesPDF = ({ welfareData }) => {
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
           {/* Conference Events Column */}
           <View style={[styles.tableCell, { flex: 2, backgroundColor: '#f5f5f5' }]}>
-            <Text style={styles.cellTextBold}>会議・行事等</Text>
+            <Text style={[styles.cellTextBold, { textAlign: 'left', paddingLeft: 2 }]}>会議・行事等</Text>
           </View>
           <View style={[styles.tableCell, { flex: 3, padding: 1 }]}>
             <Text style={styles.cellTextLeft}>
@@ -538,7 +557,7 @@ const ConferenceSpecialNotesPDF = ({ welfareData }) => {
           
           {/* Special Notes Column */}
           <View style={[styles.tableCell, { flex: 2, backgroundColor: '#f5f5f5' }]}>
-            <Text style={styles.cellTextBold}>特記事項</Text>
+            <Text style={[styles.cellTextBold, { textAlign: 'left', paddingLeft: 2 }]}>特記事項</Text>
           </View>
           <View style={[styles.lastTableCell, { flex: 3, padding: 1 }]}>
             <Text style={styles.cellTextLeft}>
@@ -551,9 +570,9 @@ const ConferenceSpecialNotesPDF = ({ welfareData }) => {
   );
 };
 
-// 2. Daily Visitors Section (入所者状況) - UPDATED with ケアハウス column using section3 data
+// 2. Daily Visitors Section (入所者状況) - UPDATED with 合計 column and left-aligned labels
 const DailyVisitorsPDF = ({ welfareData, capacities }) => {
-  const sectionNames = ['入所', '短期入所', 'ケアハウス'];
+  const sectionNames = ['入所', '短期入所', '合計', 'ケアハウス'];
   
   const section1Capacity = capacities?.section1_capacity || 0;
   const section2Capacity = capacities?.section2_capacity || 0;
@@ -565,6 +584,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${section1Capacity}`,
         `${section2Capacity}`,
+        `${section1Capacity + section2Capacity}`,
         `${section3Capacity}`
       ]
     },
@@ -573,6 +593,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_admission_count || 0}`,
         `${welfareData?.section2_admission_count || 0}`,
+        `${(welfareData?.section1_admission_count || 0) + (welfareData?.section2_admission_count || 0)}`,
         `${welfareData?.section3_admission_count || 0}`
       ]
     },
@@ -581,6 +602,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_admission_treated || 0}`,
         `${welfareData?.section2_admission_treated || 0}`,
+        `${(welfareData?.section1_admission_treated || 0) + (welfareData?.section2_admission_treated || 0)}`,
         `${welfareData?.section3_admission_count || 0}`
       ]
     },
@@ -589,6 +611,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_discharge_treated || 0}`,
         `${welfareData?.section2_discharge_treated || 0}`,
+        `${(welfareData?.section1_discharge_treated || 0) + (welfareData?.section2_discharge_treated || 0)}`,
         `${welfareData?.section3_discharge_count || 0}`
       ]
     },
@@ -597,6 +620,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_outside_hospital || 0}`,
         `${welfareData?.section2_outside_hospital || 0}`,
+        `${(welfareData?.section1_outside_hospital || 0) + (welfareData?.section2_outside_hospital || 0)}`,
         `${welfareData?.section3_outside_hospital || 0}`
       ]
     },
@@ -605,6 +629,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_hospitalization_count || 0}`,
         `${welfareData?.section2_hospitalization_count || 0}`,
+        `${(welfareData?.section1_hospitalization_count || 0) + (welfareData?.section2_hospitalization_count || 0)}`,
         `${welfareData?.section3_hospitalization_count || 0}`
       ]
     },
@@ -613,6 +638,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_today_end_users || 0}`,
         `${welfareData?.section2_today_end_users || 0}`,
+        `${(welfareData?.section1_today_end_users || 0) + (welfareData?.section2_today_end_users || 0)}`,
         `${welfareData?.section3_today_end_users || 0}`
       ],
       bold: true
@@ -625,6 +651,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_admission || 0}`,
         `${welfareData?.section2_monthly_admission || 0}`,
+        `${(welfareData?.section1_monthly_admission || 0) + (welfareData?.section2_monthly_admission || 0)}`,
         `${welfareData?.section3_monthly_admission || 0}`
       ]
     },
@@ -633,6 +660,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_avg || 0}`,
         `${welfareData?.section2_monthly_avg || 0}`,
+        `${((welfareData?.section1_monthly_avg || 0) + (welfareData?.section2_monthly_avg || 0)).toFixed(1)}`,
         `${welfareData?.section3_monthly_avg || 0}`
       ]
     },
@@ -641,6 +669,9 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_monthly_utilization || 0}%`,
         `${welfareData?.section2_monthly_utilization || 0}%`,
+        section1Capacity + section2Capacity > 0 
+          ? `${Math.round((((welfareData?.section1_monthly_avg || 0) + (welfareData?.section2_monthly_avg || 0)) / (section1Capacity + section2Capacity)) * 100)}%`
+          : '0%',
         `${welfareData?.section3_monthly_utilization || 0}%`
       ]
     }
@@ -652,6 +683,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_users || 0}`,
         `${welfareData?.section2_annual_users || 0}`,
+        `${(welfareData?.section1_annual_users || 0) + (welfareData?.section2_annual_users || 0)}`,
         `${welfareData?.section3_annual_users || 0}`
       ]
     },
@@ -660,6 +692,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_avg || 0}`,
         `${welfareData?.section2_annual_avg || 0}`,
+        `${((welfareData?.section1_annual_avg || 0) + (welfareData?.section2_annual_avg || 0)).toFixed(1)}`,
         `${welfareData?.section3_annual_avg || 0}`
       ]
     },
@@ -668,6 +701,9 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
       values: [
         `${welfareData?.section1_annual_utilization || 0}%`,
         `${welfareData?.section2_annual_utilization || 0}%`,
+        section1Capacity + section2Capacity > 0 
+          ? `${Math.round((((welfareData?.section1_annual_avg || 0) + (welfareData?.section2_annual_avg || 0)) / (section1Capacity + section2Capacity)) * 100)}%`
+          : '0%',
         `${welfareData?.section3_annual_utilization || 0}%`
       ]
     }
@@ -686,7 +722,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
             {sectionNames.map((name, index) => (
               <View 
                 key={`header-${index}`} 
-                style={[styles.tableCell, { flex: 3 }, index === 2 && styles.lastTableCell]}
+                style={[styles.tableCell, { flex: 2.5 }, index === 3 && styles.lastTableCell]}
               >
                 <Text style={styles.tableSubHeaderText}>{name}</Text>
               </View>
@@ -699,16 +735,16 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
               key={`daily-${rowIndex}`} 
               style={[styles.tableRow, rowIndex === dailyVisitorRows.length - 1 && { borderBottomWidth: 0 }]}
             >
-              <View style={[styles.tableCell, { flex: 3, backgroundColor: row.bold ? '#f5f5f5' : 'white' }]}>
-                <Text style={row.bold ? styles.cellTextBold : styles.cellText}>{row.label}</Text>
+              <View style={[styles.tableCell, { flex: 3, backgroundColor: row.bold ? '#f5f5f5' : 'white', alignItems: 'flex-start' }]}>
+                <Text style={[row.bold ? styles.cellTextBold : styles.cellText, { textAlign: 'left', paddingLeft: 2 }]}>{row.label}</Text>
               </View>
               {row.values.map((value, colIndex) => (
                 <View 
                   key={`daily-val-${rowIndex}-${colIndex}`} 
                   style={[
                     styles.tableCell, 
-                    { flex: 3, backgroundColor: row.bold ? '#f5f5f5' : 'white' },
-                    colIndex === 2 && styles.lastTableCell
+                    { flex: 2.5, backgroundColor: row.bold ? '#f5f5f5' : 'white' },
+                    colIndex === 3 && styles.lastTableCell
                   ]}
                 >
                   <Text style={row.bold ? styles.cellTextBold : styles.cellText}>{value}</Text>
@@ -724,13 +760,15 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
         <View style={styles.table}>
           {/* Header Row */}
           <View style={[styles.tableRow, styles.tableSubHeader]}>
-            <View style={[styles.tableCell, { flex: 3 }]}>
-              <Text style={styles.tableSubHeaderText}>当月統計</Text>
-            </View>
+<View style={[styles.tableCell, { flex: 3, alignItems: 'flex-start' }]}>
+  <Text style={[styles.tableSubHeaderText, { textAlign: 'left' }]}>
+    当月統計
+  </Text>
+</View>
             {sectionNames.map((name, index) => (
               <View 
                 key={`monthly-header-${index}`} 
-                style={[styles.tableCell, { flex: 3 }, index === 2 && styles.lastTableCell]}
+                style={[styles.tableCell, { flex: 2.5 }, index === 3 && styles.lastTableCell]}
               >
                 <Text style={styles.tableSubHeaderText}>{name}</Text>
               </View>
@@ -743,13 +781,13 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
               key={`monthly-${rowIndex}`} 
               style={[styles.tableRow, rowIndex === monthlyDataRows.length - 1 && { borderBottomWidth: 0 }]}
             >
-              <View style={[styles.tableCell, { flex: 3 }]}>
-                <Text style={styles.cellText}>{row.label}</Text>
+              <View style={[styles.tableCell, { flex: 3, alignItems: 'flex-start' }]}>
+                <Text style={[styles.cellText, { textAlign: 'left', paddingLeft: 2 }]}>{row.label}</Text>
               </View>
               {row.values.map((value, colIndex) => (
                 <View 
                   key={`monthly-val-${rowIndex}-${colIndex}`} 
-                  style={[styles.tableCell, { flex: 3 }, colIndex === 2 && styles.lastTableCell]}
+                  style={[styles.tableCell, { flex: 2.5 }, colIndex === 3 && styles.lastTableCell]}
                 >
                   <Text style={styles.cellText}>{value}</Text>
                 </View>
@@ -764,13 +802,13 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
         <View style={styles.table}>
           {/* Header Row */}
           <View style={[styles.tableRow, styles.tableSubHeader]}>
-            <View style={[styles.tableCell, { flex: 3 }]}>
+            <View style={[styles.tableCell, { flex: 3, alignItems: 'flex-start' }]}>
               <Text style={styles.tableSubHeaderText}>年度統計</Text>
             </View>
             {sectionNames.map((name, index) => (
               <View 
                 key={`annual-header-${index}`} 
-                style={[styles.tableCell, { flex: 3 }, index === 2 && styles.lastTableCell]}
+                style={[styles.tableCell, { flex: 2.5 }, index === 3 && styles.lastTableCell]}
               >
                 <Text style={styles.tableSubHeaderText}>{name}</Text>
               </View>
@@ -783,13 +821,13 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
               key={`annual-${rowIndex}`} 
               style={[styles.tableRow, rowIndex === annualDataRows.length - 1 && { borderBottomWidth: 0 }]}
             >
-              <View style={[styles.tableCell, { flex: 3 }]}>
-                <Text style={styles.cellText}>{row.label}</Text>
+              <View style={[styles.tableCell, { flex: 3, alignItems: 'flex-start' }]}>
+                <Text style={[styles.cellText, { textAlign: 'left', paddingLeft: 2 }]}>{row.label}</Text>
               </View>
               {row.values.map((value, colIndex) => (
                 <View 
                   key={`annual-val-${rowIndex}-${colIndex}`} 
-                  style={[styles.tableCell, { flex: 3 }, colIndex === 2 && styles.lastTableCell]}
+                  style={[styles.tableCell, { flex: 2.5 }, colIndex === 3 && styles.lastTableCell]}
                 >
                   <Text style={styles.cellText}>{value}</Text>
                 </View>
@@ -802,7 +840,7 @@ const DailyVisitorsPDF = ({ welfareData, capacities }) => {
   );
 };
 
-// 3. Daily Users Section (利用者状況)
+// 3. Daily Users Section (利用者状況) - UPDATED with left-aligned labels, consistent column widths, and invisible columns when capacity is 0
 const DailyUsersPDF = ({ welfareData, sectionNames, capacities }) => {
   const sections = ['section4', 'section5', 'section6', 'section7'];
   
@@ -815,6 +853,11 @@ const DailyUsersPDF = ({ welfareData, sectionNames, capacities }) => {
       case 'section7': return capacities?.section7_capacity || 0;
       default: return 0;
     }
+  };
+
+  // Check if column should be invisible (capacity is 0)
+  const isColumnInvisible = (section) => {
+    return getCapacity(section) === 0;
   };
 
   const dailyUserRows = [
@@ -863,19 +906,26 @@ const DailyUsersPDF = ({ welfareData, sectionNames, capacities }) => {
         <View style={styles.table}>
           {/* Header Row */}
           <View style={[styles.tableRow, styles.tableSubHeader]}>
-            <View style={[styles.tableCell, { flex: 2 }]}>
+            <View style={[styles.tableCell, { flex: 3 }]}>
               <Text style={styles.tableSubHeaderText}></Text>
             </View>
-            {sections.map((section, index) => (
-              <View 
-                key={`user-header-${index}`} 
-                style={[styles.tableCell, { flex: 2 }, index === 3 && styles.lastTableCell]}
-              >
-                <Text style={styles.tableSubHeaderText}>
-                  {sectionNames?.[section] || `セクション${index + 4}`}
-                </Text>
-              </View>
-            ))}
+            {sections.map((section, index) => {
+              const isInvisible = isColumnInvisible(section);
+              return (
+                <View 
+                  key={`user-header-${index}`} 
+                  style={[
+                    isInvisible ? styles.invisibleCell : styles.tableCell, 
+                    { flex: 2.5 },
+                    index === 3 && styles.lastTableCell
+                  ]}
+                >
+                  <Text style={isInvisible ? styles.invisibleText : styles.tableSubHeaderText}>
+                    {sectionNames?.[section] || `セクション${index + 4}`}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
 
           {/* Data Rows */}
@@ -884,23 +934,26 @@ const DailyUsersPDF = ({ welfareData, sectionNames, capacities }) => {
               key={`user-${rowIndex}`} 
               style={[styles.tableRow, rowIndex === dailyUserRows.length - 1 && { borderBottomWidth: 0 }]}
             >
-              <View style={[styles.tableCell, { flex: 2, backgroundColor: row.bold ? '#f5f5f5' : 'white' }]}>
-                <Text style={row.bold ? styles.cellTextBold : styles.cellText}>{row.label}</Text>
+              <View style={[styles.tableCell, { flex: 3, backgroundColor: row.bold ? '#f5f5f5' : 'white', alignItems: 'flex-start' }]}>
+                <Text style={[row.bold ? styles.cellTextBold : styles.cellText, { textAlign: 'left', paddingLeft: 2 }]}>{row.label}</Text>
               </View>
-              {sections.map((section, colIndex) => (
-                <View 
-                  key={`user-val-${rowIndex}-${colIndex}`} 
-                  style={[
-                    styles.tableCell, 
-                    { flex: 2, backgroundColor: row.bold ? '#f5f5f5' : 'white' },
-                    colIndex === 3 && styles.lastTableCell
-                  ]}
-                >
-                  <Text style={row.bold ? styles.cellTextBold : styles.cellText}>
-                    {row.getValue(section)}
-                  </Text>
-                </View>
-              ))}
+              {sections.map((section, colIndex) => {
+                const isInvisible = isColumnInvisible(section);
+                return (
+                  <View 
+                    key={`user-val-${rowIndex}-${colIndex}`} 
+                    style={[
+                      isInvisible ? styles.invisibleCell : styles.tableCell, 
+                      { flex: 2.5, backgroundColor: row.bold && !isInvisible ? '#f5f5f5' : 'white' },
+                      colIndex === 3 && styles.lastTableCell
+                    ]}
+                  >
+                    <Text style={isInvisible ? styles.invisibleText : (row.bold ? styles.cellTextBold : styles.cellText)}>
+                      {row.getValue(section)}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           ))}
         </View>
@@ -911,19 +964,26 @@ const DailyUsersPDF = ({ welfareData, sectionNames, capacities }) => {
         <View style={styles.table}>
           {/* Header Row */}
           <View style={[styles.tableRow, styles.tableSubHeader]}>
-            <View style={[styles.tableCell, { flex: 2 }]}>
+            <View style={[styles.tableCell, { flex: 3, alignItems: 'flex-start' }]}>
               <Text style={styles.tableSubHeaderText}>年度統計</Text>
             </View>
-            {sections.map((section, index) => (
-              <View 
-                key={`yearly-header-${index}`} 
-                style={[styles.tableCell, { flex: 2 }, index === 3 && styles.lastTableCell]}
-              >
-                <Text style={styles.tableSubHeaderText}>
-                  {sectionNames?.[section] || `セクション${index + 4}`}
-                </Text>
-              </View>
-            ))}
+            {sections.map((section, index) => {
+              const isInvisible = isColumnInvisible(section);
+              return (
+                <View 
+                  key={`yearly-header-${index}`} 
+                  style={[
+                    isInvisible ? styles.invisibleCell : styles.tableCell, 
+                    { flex: 2.5 },
+                    index === 3 && styles.lastTableCell
+                  ]}
+                >
+                  <Text style={isInvisible ? styles.invisibleText : styles.tableSubHeaderText}>
+                    {sectionNames?.[section] || `セクション${index + 4}`}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
 
           {/* Data Rows */}
@@ -932,17 +992,26 @@ const DailyUsersPDF = ({ welfareData, sectionNames, capacities }) => {
               key={`yearly-${rowIndex}`} 
               style={[styles.tableRow, rowIndex === yearlyUserRows.length - 1 && { borderBottomWidth: 0 }]}
             >
-              <View style={[styles.tableCell, { flex: 2 }]}>
-                <Text style={styles.cellText}>{row.label}</Text>
+              <View style={[styles.tableCell, { flex: 3, alignItems: 'flex-start' }]}>
+                <Text style={[styles.cellText, { textAlign: 'left', paddingLeft: 2 }]}>{row.label}</Text>
               </View>
-              {sections.map((section, colIndex) => (
-                <View 
-                  key={`yearly-val-${rowIndex}-${colIndex}`} 
-                  style={[styles.tableCell, { flex: 2 }, colIndex === 3 && styles.lastTableCell]}
-                >
-                  <Text style={styles.cellText}>{row.getValue(section)}</Text>
-                </View>
-              ))}
+              {sections.map((section, colIndex) => {
+                const isInvisible = isColumnInvisible(section);
+                return (
+                  <View 
+                    key={`yearly-val-${rowIndex}-${colIndex}`} 
+                    style={[
+                      isInvisible ? styles.invisibleCell : styles.tableCell, 
+                      { flex: 2.5 },
+                      colIndex === 3 && styles.lastTableCell
+                    ]}
+                  >
+                    <Text style={isInvisible ? styles.invisibleText : styles.cellText}>
+                      {row.getValue(section)}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           ))}
         </View>
@@ -1103,12 +1172,14 @@ export const PDFDocument = ({
             </>
           )}
 
-          {/* Footer * /}
+          {/* Footer - Commented out as in original */}
+          {/*
           <View style={styles.footer}>
             <Text>作成者: {reportData?.report?.created_by_admin?.name || '不明'}</Text>
             <Text>ページ 1/1</Text>
             <Text>承認者: {reportData?.report?.approved_by_admin?.name || '未承認'}</Text>
-          </View>*/}
+          </View>
+          */}
         </View>
       </Page>
     </Document>

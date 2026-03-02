@@ -891,11 +891,22 @@ const FrameScreen = React.memo(({
                 }} />
                 患者数
               </Typography>
-              <Tooltip title={timerActive ? 
-                "患者数に関する統計情報（初期値、3秒間保持）" : 
-                "患者数に関する統計情報（自動計算）"}>
-                <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
-              </Tooltip>
+<Tooltip
+  title={
+    timerActive
+      ? "患者数に関する統計情報（初期値、3秒間保持）"
+      : (
+        <>
+          午前診・午後診・当直に診療を行った患者数が自動で計算されて表示されます。<br />
+          こちらに表示される人数は、当日の集計された患者数が表示されます。<br />
+          当日の合計人数が表示されます。<br />
+          こちらは自動計算されて表示されますので入力不要項目です。
+        </>
+      )
+  }
+>
+  <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
+</Tooltip>
             </Box>
 
             <Grid container spacing={isMobile ? 2 : 3}>
@@ -1081,7 +1092,12 @@ const FrameScreen = React.memo(({
                 }} />
                 患者数 (PET / MR / CT)
               </Typography>
-              <Tooltip title="PET/MR/CT検査に関する情報">
+              <Tooltip title={
+    <>
+      本日実施した検査人数を入力してください。<br />
+      こちらに入力した人数は自動的に収集されます。
+    </>
+  }>
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>
@@ -1305,7 +1321,8 @@ const FrameScreen = React.memo(({
                 }} />
                 管理事項
               </Typography>
-              <Tooltip title="特記事項や備考を入力">
+              <Tooltip title="当日の業務に関する特記事項を記入する欄になります。
+フリーでテキスト入力ができます。">
                 <InfoOutlinedIcon sx={{ color: '#7f8c8d', fontSize: 20 }} />
               </Tooltip>
             </Box>

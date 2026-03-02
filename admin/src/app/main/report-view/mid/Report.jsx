@@ -84,7 +84,7 @@ const PatientCountTable = ({ reportData }) => {
               </tr>
               
               {/* Values row */}
-              <tr style={{ height: '145px' }}>
+              <tr style={{ height: '122px' }}>
                 {patientCountData[1].map((value, index) => (
                   <td 
                     key={`value-${index}`}
