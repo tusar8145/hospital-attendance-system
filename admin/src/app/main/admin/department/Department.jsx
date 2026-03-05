@@ -828,9 +828,9 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       return;
     }
 
-    if (!checkForDuplicates()) {
+    /*if (!checkForDuplicates()) {
       return;
-    }
+    }*/
 
     const validDepartments = departments.filter(dept => 
       dept.name.trim() !== '' && dept.medical_center_id !== ''

@@ -193,7 +193,7 @@ model department {
   created_admin admins? @relation("DepartmentCreatedBy", fields: [created_by], references: [id])
   updated_admin admins? @relation("DepartmentUpdatedBy", fields: [updated_by], references: [id])
 
-  @@unique([name, medical_center_id])  // Department names must be unique within a medical center
+  //@@unique([name, medical_center_id])  // Department names must be unique within a medical center
 }
 
 /////////////////////////////

@@ -308,7 +308,7 @@ export const getReportByDateTable = async (req, res, next) => {
 
     const reportDate = new Date(date);
     
-    let existingReport= null
+    let existingReport = null;
     // Get existing report
     existingReport = await prisma.report.findUnique({
       where: {
@@ -336,39 +336,79 @@ export const getReportByDateTable = async (req, res, next) => {
       }
     });
 
-    // NEW: Get duty staff from 7 days prior if current report's duty_staff is null or empty
+    // NEW: Get duty staff from recent reports (up to 5 weeks back)
     let dutyStaffData = existingReport?.duty_staff || [];
     
     if (!dutyStaffData || dutyStaffData.length === 0) {
-      // Calculate date 7 days earlier
-      const priorDate = new Date(reportDate);
-      priorDate.setDate(priorDate.getDate() - 7);
+      // Try to find the most recent report with duty staff from last 5 weeks
+      // Create an array of dates to check: 7, 14, 21, 28, 35 days ago
+      const weeksToCheck = [7, 14, 21, 28, 35];
       
-      // Create a DateTime object for the start of the prior day
-      const searchPriorDate = new Date(priorDate);
-      searchPriorDate.setUTCHours(0, 0, 0, 0);
-      
-      // Find the report from 7 days prior
-      const priorReport = await prisma.report.findFirst({
-        where: {
-          medical_center_id: parseInt(hospital_id),
-          report_date: searchPriorDate,
-          status: {
-           // notIn: ['draft', 'rejected']
-          }
-        },
-        include: {
-          duty_staff: true
-        }
-      });
-      
-      // If found prior report with duty staff, use it
-      if (priorReport && priorReport.duty_staff && priorReport.duty_staff.length > 0) {
-        dutyStaffData = priorReport.duty_staff;
+      for (const days of weeksToCheck) {
+        const priorDate = new Date(reportDate);
+        priorDate.setDate(priorDate.getDate() - days);
         
-        // Update the existingReport object with the fetched duty staff
-        if (existingReport) {
-          existingReport.duty_staff = dutyStaffData;
+        // Create a DateTime object for the start of the prior day
+        const searchPriorDate = new Date(priorDate);
+        searchPriorDate.setUTCHours(0, 0, 0, 0);
+        
+        // Find the report from this prior date
+        const priorReport = await prisma.report.findFirst({
+          where: {
+            medical_center_id: parseInt(hospital_id),
+            report_date: searchPriorDate,
+            status: {
+              // notIn: ['draft', 'rejected'] // Uncomment if you have status filtering
+            }
+          },
+          include: {
+            duty_staff: true
+          }
+        });
+        
+        // If found prior report with duty staff, use it and break the loop
+        if (priorReport && priorReport.duty_staff && priorReport.duty_staff.length > 0) {
+          dutyStaffData = priorReport.duty_staff;
+          
+          // Update the existingReport object with the fetched duty staff
+          if (existingReport) {
+            existingReport.duty_staff = dutyStaffData;
+          }
+          break; // Stop checking further weeks once we find data
+        }
+      }
+      
+      // If still no duty staff found, try to find any report with duty staff in the last 5 weeks
+      if ((!dutyStaffData || dutyStaffData.length === 0)) {
+        const oldestDate = new Date(reportDate);
+        oldestDate.setDate(oldestDate.getDate() - 35); // 5 weeks ago
+        oldestDate.setUTCHours(0, 0, 0, 0);
+        
+        const anyRecentReportWithStaff = await prisma.report.findFirst({
+          where: {
+            medical_center_id: parseInt(hospital_id),
+            report_date: {
+              gte: oldestDate,
+              lt: reportDate
+            },
+            status: {
+              // notIn: ['draft', 'rejected'] // Uncomment if you have status filtering
+            }
+          },
+          orderBy: {
+            report_date: 'desc' // Get the most recent one
+          },
+          include: {
+            duty_staff: true
+          }
+        });
+        
+        if (anyRecentReportWithStaff && anyRecentReportWithStaff.duty_staff && anyRecentReportWithStaff.duty_staff.length > 0) {
+          dutyStaffData = anyRecentReportWithStaff.duty_staff;
+          
+          if (existingReport) {
+            existingReport.duty_staff = dutyStaffData;
+          }
         }
       }
     }
@@ -2396,38 +2436,49 @@ export const getHospitalDepartmentsDoctors = async (req, res, next) => {
       return response.error("Invalid report date format", res, next);
     }
 
-    // Calculate date 7 days earlier
-    const targetDate = new Date(providedDate);
-    targetDate.setDate(targetDate.getDate() - 7);
+    let report = null;
     
-    // Create a DateTime object for the start of the target day
-    const searchDate = new Date(targetDate);
-    searchDate.setUTCHours(0, 0, 0, 0); // Set to start of day (00:00:00)
-
-    // Find the report for the calculated date
-    const report = await prisma.report.findFirst({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        OR: [
-          { status: 'submitted' },
-          { status: 'approved' }
-        ],
-        report_date: searchDate  // Pass Date object directly
-      },
-      select: {
-        id: true,
-        report_date: true
-      },
-      orderBy: {
-        report_date: 'desc'
+    // Try to find a report from 7, 14, 21, 28, or 35 days prior
+    const daysToCheck = [7, 14, 21, 28, 35];
+    
+    for (const days of daysToCheck) {
+      // Calculate date X days earlier
+      const targetDate = new Date(providedDate);
+      targetDate.setDate(targetDate.getDate() - days);
+      
+      // Create a DateTime object for the start of the target day
+      const searchDate = new Date(targetDate);
+      searchDate.setUTCHours(0, 0, 0, 0); // Set to start of day (00:00:00)
+      
+      // Find the report for the calculated date
+      const foundReport = await prisma.report.findFirst({
+        where: {
+          medical_center_id: parseInt(hospital_id),
+          /*OR: [
+            { status: 'submitted' },
+            { status: 'approved' }
+          ],*/
+          report_date: searchDate
+        },
+        select: {
+          id: true,
+          report_date: true
+        },
+        orderBy: {
+          report_date: 'desc'
+        }
+      });
+      
+      if (foundReport) {
+        report = foundReport;
+        console.log(`Found report from ${days} days prior (date: ${report.report_date.toISOString().split('T')[0]})`);
+        break; // Stop checking once we find a report
       }
-    });
+    }
 
-    // If no report found for the calculated date, return error
+    // If no report found for any of the calculated dates, return empty array
     if (!report) {
-      const dateString = searchDate.toISOString().split('T')[0];
-      //return response.error(`No report found for date: ${dateString} (7 days before ${report_date})`, res, next);
-     response.success([], res);
+      return response.success([], res);
     }
 
     // Get report details

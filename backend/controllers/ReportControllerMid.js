@@ -467,37 +467,51 @@ export const getHospitalDepartmentsDoctors = async (req, res, next) => {
       return response.error("Invalid report date format", res, next);
     }
 
-    // Calculate date 7 days earlier
-    const targetDate = new Date(providedDate);
-    targetDate.setDate(targetDate.getDate() - 7);
+    let report = null;
+    let daysFound = null;
     
-    // Create a DateTime object for the start of the target day
-    const searchDate = new Date(targetDate);
-    searchDate.setUTCHours(0, 0, 0, 0);
-
-    // Find the report for the calculated date
-    const report = await prisma.report.findFirst({
-      where: {
-        medical_center_id: parseInt(hospital_id),
-        OR: [
-          { status: 'submitted' },
-          { status: 'approved' }
-        ],
-        report_date: searchDate
-      },
-      select: {
-        id: true,
-        report_date: true
-      },
-      orderBy: {
-        report_date: 'desc'
+    // Try to find a report from 7, 14, 21, 28, or 35 days prior
+    const daysToCheck = [7, 14, 21, 28, 35];
+    
+    for (const days of daysToCheck) {
+      // Calculate date X days earlier
+      const targetDate = new Date(providedDate);
+      targetDate.setDate(targetDate.getDate() - days);
+      
+      // Create a DateTime object for the start of the target day
+      const searchDate = new Date(targetDate);
+      searchDate.setUTCHours(0, 0, 0, 0);
+      
+      // Find the report for the calculated date
+      const foundReport = await prisma.report.findFirst({
+        where: {
+          medical_center_id: parseInt(hospital_id),
+         /* OR: [
+            { status: 'submitted' },
+            { status: 'approved' }
+          ],*/
+          report_date: searchDate
+        },
+        select: {
+          id: true,
+          report_date: true
+        },
+        orderBy: {
+          report_date: 'desc'
+        }
+      });
+      
+      if (foundReport) {
+        report = foundReport;
+        daysFound = days;
+        break; // Stop checking once we find a report
       }
-    });
+    }
 
-    // If no report found for the calculated date, return error
+    // If no report found for any of the calculated dates, return error
     if (!report) {
-      const dateString = searchDate.toISOString().split('T')[0];
-      return response.error(`No report found for date: ${dateString} (7 days before ${report_date})`, res, next);
+      const dateString = providedDate.toISOString().split('T')[0];
+      return response.error(`No report found for any of the previous 5 weeks (7, 14, 21, 28, or 35 days before ${dateString})`, res, next);
     }
 
     // Get report details

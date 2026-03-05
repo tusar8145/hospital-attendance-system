@@ -108,6 +108,8 @@ const PatientCountTable = ({ reportData }) => {
 };
 
 // 2. Treatment Time Table Component - UPDATED DESIGN
+// 2. Treatment Time Table Component - UPDATED DESIGN - ALWAYS 6 COLUMNS
+// 2. Treatment Time Table Component - UPDATED DESIGN - ALWAYS 6 COLUMNS - NO HOVER
 const TreatmentTimeTable = ({ reportDetails, doctors }) => {
   if (!reportDetails || reportDetails.length === 0) return null;
   
@@ -148,7 +150,33 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
     }
   });
   
-  const floors = Object.values(groupedData);
+  // Convert grouped data to array and sort by floor
+  let floors = Object.values(groupedData).sort((a, b) => {
+    // Extract numeric part from floor for sorting (e.g., "1F" -> 1)
+    const aNum = parseInt(a.floor) || 0;
+    const bNum = parseInt(b.floor) || 0;
+    return aNum - bNum;
+  });
+  
+  // Always ensure we have exactly 6 columns
+  const TOTAL_COLUMNS = 6;
+  const displayFloors = [];
+  
+  // First, add all existing floors
+  for (let i = 0; i < floors.length; i++) {
+    displayFloors.push(floors[i]);
+  }
+  
+  // Then add empty placeholders until we reach TOTAL_COLUMNS
+  const emptyFloorsNeeded = Math.max(0, TOTAL_COLUMNS - displayFloors.length);
+  for (let i = 0; i < emptyFloorsNeeded; i++) {
+    displayFloors.push({
+      floor: `-`,
+      morning: [],
+      afternoon: [],
+      night: []
+    });
+  }
   
   const consultationTypes = [
     { key: 'morning', label: '午前診' },
@@ -157,160 +185,158 @@ const TreatmentTimeTable = ({ reportDetails, doctors }) => {
   ];
 
   return (
-    <div className="detailed-duty-table w-full h-full">
+    <div className="detailed-duty-table w-full h-full ml-48">
       <div className="overflow-hidden rounded-md mb-4">
         <div className="overflow-x-auto">
-
-
-<table className="w-full border-collapse table-fixed bg-white border border-gray-300 shadow-lg">
-  <thead>
-    <tr>
-      {/* Empty header for vertical text column */}
-      <th 
-        className="bg-gradient-to-b from-blue-700 to-blue-600 border-r-2 border-gray-400"
-        style={{ width: '50px' }}
-      />
-      
-      {/* Empty header for row labels column */}
-      <th 
-        className="bg-gray-100 border-r border-gray-300"
-        style={{ width: '80px' }}
-      />
-      
-      {/* Floor headers */}
-      {floors.map((floorData, index) => (
-        <th
-          key={`floor-${index}`}
-          className="bg-gradient-to-b from-gray-200 to-gray-300 text-gray-800 font-bold p-3 text-center border border-gray-400"
-        >
-          <div className="flex flex-col items-center">
-            <span className="text-md   text-gray-700">  {floorData.floor} </span>
-           </div>
-        </th>
-      ))}
-    </tr>
-  </thead>
-  
-  <tbody>
-    {/* First row with vertical text and first row label */}
-    <tr className="bg-white hover:bg-blue-50 transition-colors duration-150">
-      {/* Vertical text cell - spans all rows */}
-<td 
-  className="bg-gradient-to-b from-blue-700 to-blue-600 text-white font-bold border-r-2 border-gray-400"
-  rowSpan={consultationTypes.length}
->
-  <div className="h-full flex items-center justify-center p-0">
-    <div className="text-center">
-      <span className="block leading-tight" style={{
-        fontSize: '18px',
-        fontWeight: 'bold',
-        letterSpacing: '4px',
-         lineHeight: '1.4',
-		 color: 'gray'
-      }}>
-        診<br/>療<br/>時<br/>間<br/><br/>
-      </span>
-    </div>
-  </div>
-</td>
-      
-      {/* First row label (午前診) */}
-      <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
-        午前診
-      </td>
-      
-      {/* First row data cells */}
-      {floors.map((floorData, colIndex) => (
-        <td
-          key={`cell-morning-${colIndex}`}
-          className="border border-gray-200 p-3 text-left align-middle"
-        >
-          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
-            {floorData['morning'] && floorData['morning'].length > 0 ? (
-              floorData['morning'].map((item, idx) => (
-                <span 
-                  key={idx}
-                  className="inline-flex items-left justify-center px-3 py-1 rounded-full   text-purple-800 text-sm font-medium shadow-sm  transition-colors"
+          <table className="w-full border-collapse table-fixed bg-white border border-gray-300 shadow-lg">
+            <thead>
+              <tr>
+                {/* Empty header for vertical text column */}
+                <th 
+                  className="bg-gradient-to-b from-blue-700 to-blue-600 border-r-2 border-gray-400"
+                  style={{ width: '50px' }}
+                />
+                
+                {/* Empty header for row labels column */}
+                <th 
+                  className="bg-gray-100 border-r border-gray-300"
+                  style={{ width: '80px' }}
+                />
+                
+                {/* Floor headers - Always 6 columns */}
+                {displayFloors.map((floorData, index) => (
+                  <th
+                    key={`floor-${index}`}
+                    className="bg-gradient-to-b from-gray-200 to-gray-300 text-gray-800 font-bold p-3 text-center border border-gray-400"
+                    style={{ width: `${100/TOTAL_COLUMNS}%` }}
+                  >
+                    <div className="flex flex-col items-center">
+                      <span className="text-md text-gray-700">{floorData.floor}</span>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            
+            <tbody>
+              {/* First row with vertical text and first row label */}
+              <tr className="bg-white">
+                {/* Vertical text cell - spans all rows */}
+                <td 
+                  className="bg-gradient-to-b from-blue-700 to-blue-600 text-white font-bold border-r-2 border-gray-400"
+                  rowSpan={consultationTypes.length}
                 >
-                 <div dangerouslySetInnerHTML={{ __html: item }} /> 
-                </span>
-              ))
-            ) : (
-              <span className="text-gray-400 italic text-sm">-</span>
-            )}
-          </div>
-        </td>
-      ))}
-    </tr>
-    
-    {/* Second row (午後診) */}
-    <tr className="bg-gray-50 hover:bg-blue-50 transition-colors duration-150">
-      {/* No first cell - covered by rowSpan from first row */}
-      
-      {/* Second row label */}
-      <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
-        午後診
-      </td>
-      
-      {/* Second row data cells */}
-      {floors.map((floorData, colIndex) => (
-        <td
-          key={`cell-afternoon-${colIndex}`}
-          className="border border-gray-200 p-3 text-left align-middle"
-        >
-          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
-            {floorData['afternoon'] && floorData['afternoon'].length > 0 ? (
-              floorData['afternoon'].map((item, idx) => (
-                <span 
-                  key={idx}
-                  className="inline-flex items-left justify-center px-3 py-1 rounded-full   text-purple-800 text-sm font-medium shadow-sm   transition-colors"
-                >
-                  <div dangerouslySetInnerHTML={{ __html: item }} /> 
-                </span>
-              ))
-            ) : (
-              <span className="text-gray-400 italic text-sm">-</span>
-            )}
-          </div>
-        </td>
-      ))}
-    </tr>
-    
-    {/* Third row (夜診) */}
-    <tr className="bg-white hover:bg-blue-50 transition-colors duration-150">
-      {/* No first cell - covered by rowSpan from first row */}
-      
-      {/* Third row label */}
-      <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
-        夜診
-      </td>
-      
-      {/* Third row data cells */}
-      {floors.map((floorData, colIndex) => (
-        <td
-          key={`cell-night-${colIndex}`}
-          className="border border-gray-200 p-3 text-left align-middle"
-        >
-          <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
-            {floorData['night'] && floorData['night'].length > 0 ? (
-              floorData['night'].map((item, idx) => (
-                <span 
-                  key={idx}
-                  className="inline-flex items-left justify-center px-3 py-1 rounded-full   text-purple-800 text-sm font-medium shadow-sm   transition-colors"
-                >
-                  <div dangerouslySetInnerHTML={{ __html: item }} /> 
-                </span>
-              ))
-            ) : (
-              <span className="text-gray-400 italic text-sm">-</span>
-            )}
-          </div>
-        </td>
-      ))}
-    </tr>
-  </tbody>
-</table>
-
+                  <div className="h-full flex items-center justify-center p-0">
+                    <div className="text-center">
+                      <span className="block leading-tight text-gray-800 " style={{
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        letterSpacing: '4px',
+                        lineHeight: '1.4',
+                       
+                      }}>
+                        診<br/>療<br/>担<br/>当<br/>医<br/>
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                
+                {/* First row label (午前診) */}
+                <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
+                  午前診
+                </td>
+                
+                {/* First row data cells - Always 6 columns */}
+                {displayFloors.map((floorData, colIndex) => (
+                  <td
+                    key={`cell-morning-${colIndex}`}
+                    className="border border-gray-200 p-3 text-left align-middle"
+                  >
+                    <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
+                      {floorData['morning'] && floorData['morning'].length > 0 ? (
+                        floorData['morning'].map((item, idx) => (
+                          <span 
+                            key={idx}
+                            className="inline-flex items-left justify-center px-3 py-1 rounded-full text-purple-800 text-sm font-medium shadow-sm"
+                          >
+                            <div dangerouslySetInnerHTML={{ __html: item }} /> 
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-400 italic text-sm">-</span>
+                      )}
+                    </div>
+                  </td>
+                ))}
+              </tr>
+              
+              {/* Second row (午後診) */}
+              <tr className="bg-gray-50">
+                {/* No first cell - covered by rowSpan from first row */}
+                
+                {/* Second row label */}
+                <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
+                  午後診
+                </td>
+                
+                {/* Second row data cells - Always 6 columns */}
+                {displayFloors.map((floorData, colIndex) => (
+                  <td
+                    key={`cell-afternoon-${colIndex}`}
+                    className="border border-gray-200 p-3 text-left align-middle"
+                  >
+                    <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
+                      {floorData['afternoon'] && floorData['afternoon'].length > 0 ? (
+                        floorData['afternoon'].map((item, idx) => (
+                          <span 
+                            key={idx}
+                            className="inline-flex items-left justify-center px-3 py-1 rounded-full text-purple-800 text-sm font-medium shadow-sm"
+                          >
+                            <div dangerouslySetInnerHTML={{ __html: item }} /> 
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-400 italic text-sm">-</span>
+                      )}
+                    </div>
+                  </td>
+                ))}
+              </tr>
+              
+              {/* Third row (夜診) */}
+              <tr className="bg-white">
+                {/* No first cell - covered by rowSpan from first row */}
+                
+                {/* Third row label */}
+                <td className="bg-gray-100 font-bold text-gray-800 p-3 text-center border-r border-gray-300 align-middle">
+                  夜診
+                </td>
+                
+                {/* Third row data cells - Always 6 columns */}
+                {displayFloors.map((floorData, colIndex) => (
+                  <td
+                    key={`cell-night-${colIndex}`}
+                    className="border border-gray-200 p-3 text-left align-middle"
+                  >
+                    <div className="text-sm text-gray-800 min-h-[40px] flex flex-wrap items-center justify-left gap-1">
+                      {floorData['night'] && floorData['night'].length > 0 ? (
+                        floorData['night'].map((item, idx) => (
+                          <span 
+                            key={idx}
+                            className="inline-flex items-left justify-center px-3 py-1 rounded-full text-purple-800 text-sm font-medium shadow-sm"
+                          >
+                            <div dangerouslySetInnerHTML={{ __html: item }} /> 
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-400 italic text-sm">-</span>
+                      )}
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -752,9 +778,23 @@ const DiagnosisTable = ({ reportDetailsMid }) => {
 const ExternalConsultationSummary = ({ externalConsultationDetails }) => {
   if (!externalConsultationDetails) return null;
   
-  const calculateCategoryTotal = (category) => {
-    if (!externalConsultationDetails[category]) return 0;
-    
+const calculateCategoryTotal = (category) => {
+  if (!externalConsultationDetails[category]) return 0;
+  
+  // Define which MR fields should be included in total calculation
+  const MR_FIELDS_TO_INCLUDE = ['頭蓋骨盤', '脳ドック', '保険'];
+  
+  if (category === 'MR') {
+    // For MR, only include specific fields
+    return Object.entries(externalConsultationDetails[category]).reduce((sum, [fieldKey, item]) => {
+      if (MR_FIELDS_TO_INCLUDE.includes(fieldKey) && item.enabled) {
+        const value = parseInt(item.value) || 0;
+        return sum + value;
+      }
+      return sum;
+    }, 0);
+  } else {
+    // For PET and CT, include all fields
     return Object.values(externalConsultationDetails[category]).reduce((sum, item) => {
       if (item.enabled) {
         const value = parseInt(item.value) || 0;
@@ -762,7 +802,8 @@ const ExternalConsultationSummary = ({ externalConsultationDetails }) => {
       }
       return sum;
     }, 0);
-  };
+  }
+};
   
   const petTotal = calculateCategoryTotal('PET');
   const mrTotal = calculateCategoryTotal('MR');

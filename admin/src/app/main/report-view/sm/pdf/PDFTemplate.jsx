@@ -910,7 +910,7 @@ const DailyUsersPDF = ({ welfareData, sectionNames, capacities }) => {
               <Text style={styles.tableSubHeaderText}></Text>
             </View>
             {sections.map((section, index) => {
-              const isInvisible = isColumnInvisible(section);
+              const isInvisible = false// isColumnInvisible(section);
               return (
                 <View 
                   key={`user-header-${index}`} 
@@ -968,7 +968,7 @@ const DailyUsersPDF = ({ welfareData, sectionNames, capacities }) => {
               <Text style={styles.tableSubHeaderText}>年度統計</Text>
             </View>
             {sections.map((section, index) => {
-              const isInvisible = isColumnInvisible(section);
+              const isInvisible = false//isColumnInvisible(section);
               return (
                 <View 
                   key={`yearly-header-${index}`} 
@@ -1147,10 +1147,10 @@ export const PDFDocument = ({
             capacities={reportData.capacities}
           />
 
-          {/* Vacant Bed Section */}
-         {/* <Text style={styles.sectionTitle}>空床状況</Text>
+          {/* Vacant Bed Section - Uncommented and properly placed */}
+          <Text style={styles.sectionTitle}>空床状況</Text>
           <VacantBedPDF welfareData={reportData.welfare_data} />
-*/}
+
           {/* Management Comments */}
           {managementComments.length > 0 && (
             <>

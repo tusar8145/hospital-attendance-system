@@ -58,6 +58,9 @@ const ExternalConsultationToggle = ({
   reportStatus = null,
   visibleBoxes = { PET: true, MR: true, CT: true }
 }) => {
+  // Define which MR fields should be included in total calculation
+  const MR_FIELDS_TO_INCLUDE = ['頭蓋骨盤', '脳ドック', '保険'];
+  
   // Section configuration
   const sections = [
     {
@@ -168,11 +171,24 @@ const ExternalConsultationToggle = ({
       });
     }
 
-    const calculateTotal = (id) =>
-      Object.values(newSectionValues[id] || {}).reduce(
-        (sum, f) => (f.enabled ? sum + Number(f.value || 0) : sum),
-        0
-      );
+    const calculateTotal = (id) => {
+      if (id === 'MR') {
+        // For MR, only include specific fields
+        return Object.entries(newSectionValues[id] || {}).reduce(
+          (sum, [fieldKey, field]) => {
+            if (MR_FIELDS_TO_INCLUDE.includes(fieldKey) && field.enabled) {
+              return sum + Number(field.value || 0);
+            }
+            return sum;
+          }, 0
+        );
+      } else {
+        // For PET and CT, include all fields
+        return Object.values(newSectionValues[id] || {}).reduce(
+          (sum, field) => (field.enabled ? sum + Number(field.value || 0) : sum), 0
+        );
+      }
+    };
 
     const newTotals = {
       PET: calculateTotal("PET"),
@@ -185,15 +201,12 @@ const ExternalConsultationToggle = ({
     setSectionValues(newSectionValues);
     setTotals(newTotals);
 
-    // ✅ THIS IS THE MISSING LINE
     isInitializedRef.current = true;
 
     setTimeout(() => {
       skipNotificationRef.current = false;
     }, 100);
   }, [initialValues]);
-
-
 
   // Calculate totals when sectionValues changes
   useEffect(() => {
@@ -202,12 +215,24 @@ const ExternalConsultationToggle = ({
     const calculateSectionTotal = (sectionId) => {
       const sectionData = sectionValues[sectionId];
       if (!sectionData) return 0;
-      return Object.values(sectionData).reduce((total, item) => {
-        if (item.enabled) {
-          return total + (parseInt(item.value) || 0);
-        }
-        return total;
-      }, 0);
+      
+      if (sectionId === 'MR') {
+        // For MR, only include specific fields
+        return Object.entries(sectionData).reduce((total, [fieldKey, item]) => {
+          if (MR_FIELDS_TO_INCLUDE.includes(fieldKey) && item.enabled) {
+            return total + (parseInt(item.value) || 0);
+          }
+          return total;
+        }, 0);
+      } else {
+        // For PET and CT, include all fields
+        return Object.values(sectionData).reduce((total, item) => {
+          if (item.enabled) {
+            return total + (parseInt(item.value) || 0);
+          }
+          return total;
+        }, 0);
+      }
     };
 
     const newTotals = {
@@ -255,7 +280,7 @@ const ExternalConsultationToggle = ({
       [sectionId]: newToggleState,
     }));
 
-    // ✅ If toggled OFF → clear that section's values
+    // If toggled OFF → clear that section's values
     if (!newToggleState) {
       setSectionValues(prev => ({
         ...prev,
@@ -575,8 +600,6 @@ const ExternalConsultationToggle = ({
       <Stack spacing={2}>
         {sections.map(renderSection)}
       </Stack>
-
- 
 
       {/* Read-only warning */}
       {(readOnly || reportStatus === 'submitted') && (

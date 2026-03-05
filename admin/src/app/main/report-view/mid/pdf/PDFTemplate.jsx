@@ -55,6 +55,10 @@ const styles = StyleSheet.create({
   tableContainer: {
     marginBottom: 6,
   },
+    tableContainer2: {
+    marginBottom: 6,
+    marginLeft:24
+  },
   table: {
     display: 'flex',
     width: '100%',
@@ -655,7 +659,7 @@ const PatientCountPDF = ({ reportData }) => {
         </View>
         
         {/* Data row */}
-        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 24 }]}>
+        <View style={[styles.tableRow, { borderBottomWidth: 0, minHeight: 36 }]}>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{admission_count}</Text></View>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{discharge_count}</Text></View>
           <View style={[styles.tableCell, { flex: 1 }]}><Text style={styles.cellTextLarge}>{external_duty}</Text></View>
@@ -670,6 +674,7 @@ const PatientCountPDF = ({ reportData }) => {
 };
 
 // 2. Treatment Time Table Component
+// 2. Treatment Time Table Component - ALWAYS 6 COLUMNS
 const TreatmentTimePDF = ({ reportDetails }) => {
   if (!reportDetails || reportDetails.length === 0) return null;
   
@@ -710,26 +715,59 @@ const TreatmentTimePDF = ({ reportDetails }) => {
     }
   });
   
-  const floors = Object.values(groupedData);
+  // Convert grouped data to array and sort by floor
+  let floors = Object.values(groupedData).sort((a, b) => {
+    // Extract numeric part from floor for sorting (e.g., "1F" -> 1)
+    const aNum = parseInt(a.floor) || 0;
+    const bNum = parseInt(b.floor) || 0;
+    return aNum - bNum;
+  });
+  
+  // Always ensure we have exactly 6 columns
+  const TOTAL_COLUMNS = 6;
+  const displayFloors = [];
+  
+  // First, add all existing floors
+  for (let i = 0; i < floors.length; i++) {
+    displayFloors.push(floors[i]);
+  }
+  
+  // Then add empty placeholders until we reach TOTAL_COLUMNS
+  const emptyFloorsNeeded = Math.max(0, TOTAL_COLUMNS - displayFloors.length);
+  for (let i = 0; i < emptyFloorsNeeded; i++) {
+    displayFloors.push({
+      floor: `-`,
+      morning: [],
+      afternoon: [],
+      night: []
+    });
+  }
 
   return (
     <View style={styles.tableContainer}>
+      {/* Main Header - Similar to 診療科別患者数 */}
+      <View style={[styles.tableRow, styles.tableHeader, { marginBottom: 0 }]}>
+        <View style={[styles.lastTableCell, { flex: TOTAL_COLUMNS + 1 }]}>
+          <Text style={styles.tableHeaderText}>診療担当医</Text>
+        </View>
+      </View>
+
       <View style={styles.table}>
         {/* Header Row with floor headers */}
         <View style={styles.tableRow}>
           {/* Empty cell for vertical text column */}
-          <View style={[styles.tableCell, { flex: 0.8, backgroundColor: '#2563eb' }]}>
-            <Text style={[styles.cellText, { color: 'white' }]}>診療時間</Text>
+          <View style={[styles.tableCell, { flex: 0.8, backgroundColor: '#e5e7eb'  }]}>
+            <Text style={[styles.cellText, { color: 'white' }]}></Text>
           </View>
 
-          {/* Floor headers */}
-          {floors.map((floorData, index) => (
+          {/* Floor headers - Always 6 columns */}
+          {displayFloors.map((floorData, index) => (
             <View 
               key={`floor-${index}`} 
               style={[styles.tableCell, { flex: 1, backgroundColor: '#e5e7eb' }]}
             >
               <Text style={styles.cellTextBold}>{floorData.floor}</Text>
-             </View>
+            </View>
           ))}
         </View>
         
@@ -740,8 +778,8 @@ const TreatmentTimePDF = ({ reportDetails }) => {
             <Text style={styles.cellTextBold}>午前診</Text>
           </View>
           
-          {/* Data cells */}
-          {floors.map((floorData, colIndex) => (
+          {/* Data cells - Always 6 columns */}
+          {displayFloors.map((floorData, colIndex) => (
             <View key={`morning-${colIndex}`} style={[styles.tableCell, { flex: 1 }]}>
               {floorData.morning && floorData.morning.length > 0 ? (
                 floorData.morning.map((item, idx) => (
@@ -761,8 +799,8 @@ const TreatmentTimePDF = ({ reportDetails }) => {
             <Text style={styles.cellTextBold}>午後診</Text>
           </View>
           
-          {/* Data cells */}
-          {floors.map((floorData, colIndex) => (
+          {/* Data cells - Always 6 columns */}
+          {displayFloors.map((floorData, colIndex) => (
             <View key={`afternoon-${colIndex}`} style={[styles.tableCell, { flex: 1 }]}>
               {floorData.afternoon && floorData.afternoon.length > 0 ? (
                 floorData.afternoon.map((item, idx) => (
@@ -782,8 +820,8 @@ const TreatmentTimePDF = ({ reportDetails }) => {
             <Text style={styles.cellTextBold}>夜診</Text>
           </View>
           
-          {/* Data cells */}
-          {floors.map((floorData, colIndex) => (
+          {/* Data cells - Always 6 columns */}
+          {displayFloors.map((floorData, colIndex) => (
             <View key={`night-${colIndex}`} style={[styles.tableCell, { flex: 1 }]}>
               {floorData.night && floorData.night.length > 0 ? (
                 floorData.night.map((item, idx) => (
@@ -1016,22 +1054,40 @@ const DiagnosisPDF = ({ reportDetailsMid }) => {
 const ExternalConsultationSummaryPDF = ({ externalConsultationDetails }) => {
   if (!externalConsultationDetails) return null;
   
+  // Define which MR fields should be included in total calculation
+  const MR_FIELDS_TO_INCLUDE = ['頭蓋骨盤', '脳ドック', '保険'];
+  
   const calculateCategoryTotal = (category) => {
     if (!externalConsultationDetails[category]) return 0;
     
-    return Object.values(externalConsultationDetails[category]).reduce((sum, item) => {
-      if (item.enabled) {
-        const value = parseInt(item.value) || 0;
-        return sum + value;
-      }
-      return sum;
-    }, 0);
+    if (category === 'MR') {
+      // For MR, only include specific fields
+      return Object.entries(externalConsultationDetails[category]).reduce((sum, [fieldKey, item]) => {
+        if (MR_FIELDS_TO_INCLUDE.includes(fieldKey) && item.enabled) {
+          const value = parseInt(item.value) || 0;
+          return sum + value;
+        }
+        return sum;
+      }, 0);
+    } else {
+      // For PET and CT, include all fields
+      return Object.values(externalConsultationDetails[category]).reduce((sum, item) => {
+        if (item.enabled) {
+          const value = parseInt(item.value) || 0;
+          return sum + value;
+        }
+        return sum;
+      }, 0);
+    }
   };
   
   const petTotal = calculateCategoryTotal('PET');
   const mrTotal = calculateCategoryTotal('MR');
   const ctTotal = calculateCategoryTotal('CT');
   const grandTotal = petTotal + mrTotal + ctTotal;
+
+  // Optional: Log for debugging
+  console.log('PDF MR Total (only 頭蓋骨盤, 脳ドック, 保険):', mrTotal);
 
   return (
     <View style={styles.tableContainer}>
