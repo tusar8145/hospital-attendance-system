@@ -195,7 +195,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       return [
         { 
           id: 1, 
-          title: 'システム管理者', 
+          title: '理事長', 
           role: 'superAdmin', 
           checked: false, 
           status: '未確認', 
@@ -335,7 +335,7 @@ function Report({ reportId, initialData, hospitalType, onRefresh }) {
       const missingRoles = allRoles.filter(role => !existingRoles.includes(role));
 
       const defaultStatusData = [
-        { id: 1, title: 'システム管理者', role: 'superAdmin', checked: false, status: '未確認', date: '', color: 'bg-blue-500', disabled: true },
+        { id: 1, title: '理事長', role: 'superAdmin', checked: false, status: '未確認', date: '', color: 'bg-blue-500', disabled: true },
         { id: 2, title: '責任管理者', role: 'admin', checked: false, status: '未確認', date: '', color: 'bg-green-500', disabled: true },
         { id: 3, title: '主任管理者', role: 'hospitalAssistant', checked: false, status: '未確認', date: '', color: 'bg-purple-500', disabled: true },
         { id: 4, title: 'マネージャー', role: 'staff', checked: false, status: '未確認', date: '', color: 'bg-orange-500', disabled: true },

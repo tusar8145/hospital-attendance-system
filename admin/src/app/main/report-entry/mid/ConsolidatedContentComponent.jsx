@@ -426,7 +426,7 @@ const ConsolidatedContentComponent = ({
   const formatFloorDisplay = (floor) => {
     if (!floor || floor === '未設定') return '未選択';
     
-    if (floor.includes('階')) {
+    if (floor.includes('')) {
       return floor;
     }
     
@@ -579,7 +579,7 @@ const ConsolidatedContentComponent = ({
                 backgroundColor: '#3498db',
                 borderRadius: '2px'
               }} />
-              診療階別集計
+              診療担当医
             </Typography>
             <Typography sx={{ 
               fontSize: fontSize.medium,
@@ -602,7 +602,7 @@ const ConsolidatedContentComponent = ({
               }
             }}
           >
-            階追加
+            診療室追加
           </Button>
         </Box>
         
@@ -717,7 +717,7 @@ const ConsolidatedContentComponent = ({
                           }}
                         />
                         <Chip
-                          label={`${departments.length}区`}
+                          label={`${departments.length}室`}
                           size="small"
                           sx={{
                             height: 20,
@@ -805,7 +805,7 @@ const ConsolidatedContentComponent = ({
                 backgroundColor: '#F9FAFB',
                 zIndex: 2
               }}>
-                階
+                診療室
               </TableCell>
 
               <TableCell sx={{ 
@@ -1055,7 +1055,7 @@ const ConsolidatedContentComponent = ({
                                             }}
                                           />
                                           <Chip
-                                            label={`${departments.length}区`}
+                                            label={`${departments.length}室`}
                                             size="small"
                                             sx={{
                                               height: 20,
@@ -1686,11 +1686,11 @@ const ConsolidatedContentComponent = ({
                       borderRadius: '50%',
                       backgroundColor: '#0A6AE3'
                     }} />
-                    総診療階数
+                    総診療室数
                   </Box>
                 </TableCell>
                 <TableCell sx={{ 
-                  border: "1px solid #e0e0e0",
+                  border: "1px solid #e0e0e0", 
                   padding: cellPadding,
                   backgroundColor: '#f8f9fa'
                 }}>
@@ -1706,7 +1706,7 @@ const ConsolidatedContentComponent = ({
                         fontWeight: 600,
                         color: '#2c3e50'
                       }}>
-                        {rows.length} 階
+                        {rows.length} 室
                       </Typography>
                     </Box>
                   </Tooltip>
@@ -1811,7 +1811,7 @@ const ConsolidatedContentComponent = ({
                 fontWeight: 700,
                 color: "#f39c12"
               }}>
-                {departmentOptions.length} 区
+                {departmentOptions.length} 室
               </Typography>
             </Box>
           </Box>
@@ -1825,7 +1825,7 @@ const ConsolidatedContentComponent = ({
               fontSize: fontSize.medium
             }}
           >
-            さらに階を追加
+            さらに診療室を追加
           </Button>
         </Box>
       )}

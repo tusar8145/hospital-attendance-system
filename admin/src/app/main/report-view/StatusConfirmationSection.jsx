@@ -88,7 +88,7 @@ const StatusConfirmationSection = ({
                         </span>
                       </div>
                       <Typography variant="caption" className="font-medium text-gray-700 truncate">
-                        {item.person ? item.person.split(' ')[0] : '未設定'}
+                        {item.person ? item.person : '未設定'}
                       </Typography>
                     </div>
                     

@@ -548,7 +548,7 @@ const StatusConfirmationPDF = ({
                     </Text>
                   </View>
                   <Text style={styles.statusPersonName}>
-                    {item.person ? item.person.split(' ')[0] : '未設定'}
+                    {item.person ? item.person : '未設定'}
                   </Text>
                   
                   {/* Checkbox indicator */}
@@ -1156,11 +1156,40 @@ const DetailedExternalConsultationPDF = ({ externalConsultationDetails }) => {
     return Object.keys(externalConsultationDetails[category]);
   };
 
-  const calculateCategoryTotal = (category) => {
+  /*const calculateCategoryTotal = (category) => {
     if (!externalConsultationDetails[category]) return 0;
     return Object.values(externalConsultationDetails[category])
       .reduce((sum, item) => item.enabled ? sum + (parseInt(item.value) || 0) : sum, 0);
+  };*/
+
+
+    // Define which MR fields should be included in total calculation
+  const MR_FIELDS_TO_INCLUDE = ['頭蓋骨盤', '脳ドック', '保険'];
+  
+  const calculateCategoryTotal = (category) => {
+    if (!externalConsultationDetails[category]) return 0;
+    
+    if (category === 'MR') {
+      // For MR, only include specific fields
+      return Object.entries(externalConsultationDetails[category]).reduce((sum, [fieldKey, item]) => {
+        if (MR_FIELDS_TO_INCLUDE.includes(fieldKey) && item.enabled) {
+          const value = parseInt(item.value) || 0;
+          return sum + value;
+        }
+        return sum;
+      }, 0);
+    } else {
+      // For PET and CT, include all fields
+      return Object.values(externalConsultationDetails[category]).reduce((sum, item) => {
+        if (item.enabled) {
+          const value = parseInt(item.value) || 0;
+          return sum + value;
+        }
+        return sum;
+      }, 0);
+    }
   };
+
 
   const getSubItemValue = (category, subItemKey) => {
     const item = externalConsultationDetails[category]?.[subItemKey];

@@ -874,11 +874,38 @@ const DetailedExternalConsultationTable = ({ externalConsultationDetails }) => {
   };
 
   // Calculate totals
-  const calculateCategoryTotal = (category) => {
+  /*const calculateCategoryTotal = (category) => {
     if (!externalConsultationDetails[category]) return 0;
     return Object.values(externalConsultationDetails[category])
       .reduce((sum, item) => item.enabled ? sum + (parseInt(item.value) || 0) : sum, 0);
-  };
+  };*/
+
+  const calculateCategoryTotal = (category) => {
+  if (!externalConsultationDetails[category]) return 0;
+  
+  // Define which MR fields should be included in total calculation
+  const MR_FIELDS_TO_INCLUDE = ['頭蓋骨盤', '脳ドック', '保険'];
+  
+  if (category === 'MR') {
+    // For MR, only include specific fields
+    return Object.entries(externalConsultationDetails[category]).reduce((sum, [fieldKey, item]) => {
+      if (MR_FIELDS_TO_INCLUDE.includes(fieldKey) && item.enabled) {
+        const value = parseInt(item.value) || 0;
+        return sum + value;
+      }
+      return sum;
+    }, 0);
+  } else {
+    // For PET and CT, include all fields
+    return Object.values(externalConsultationDetails[category]).reduce((sum, item) => {
+      if (item.enabled) {
+        const value = parseInt(item.value) || 0;
+        return sum + value;
+      }
+      return sum;
+    }, 0);
+  }
+};
 
   const calculateGrandTotal = () => {
     return categories.reduce((total, category) => 
@@ -1460,7 +1487,7 @@ const handleExportMenuClick = () => {
       return [
         { 
           id: 1, 
-          title: 'システム管理者', 
+          title: '理事長', 
           role: 'superAdmin', 
           checked: false, 
           status: '未確認', 
@@ -1595,7 +1622,7 @@ const handleExportMenuClick = () => {
       const missingRoles = allRoles.filter(role => !existingRoles.includes(role));
 
       const defaultStatusData = [
-        { id: 1, title: 'システム管理者', role: 'superAdmin', checked: false, status: '未確認', date: '', color: 'bg-blue-500', disabled: true },
+        { id: 1, title: '理事長', role: 'superAdmin', checked: false, status: '未確認', date: '', color: 'bg-blue-500', disabled: true },
         { id: 2, title: '責任管理者', role: 'admin', checked: false, status: '未確認', date: '', color: 'bg-green-500', disabled: true },
         { id: 3, title: '主任管理者', role: 'hospitalAssistant', checked: false, status: '未確認', date: '', color: 'bg-purple-500', disabled: true },
         { id: 4, title: 'マネージャー', role: 'staff', checked: false, status: '未確認', date: '', color: 'bg-orange-500', disabled: true },

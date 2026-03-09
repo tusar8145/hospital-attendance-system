@@ -1156,7 +1156,7 @@ const StatusConfirmationPDF = ({
                     </Text>
                   </View>
                   <Text style={styles.statusPersonName}>
-                    {item.person ? item.person.split(' ')[0] : '未設定'}
+                    {item.person ? item.person : '未設定'}
                   </Text>
                   
                   {/* Checkbox indicator */}
