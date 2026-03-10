@@ -808,62 +808,63 @@ const VisitPDF = ({ visitCount = 0 }) => {
 };
 
 // DiagnosisTable component
+// DiagnosisTable component
 const DiagnosisPDF = ({ diagnosisData = {} }) => {
   const departments = Object.keys(diagnosisData);
-  const totalColumns = 15;
-  const usedColumns = departments.length + 2;
-  const additionalColumnsCount = Math.max(0, totalColumns - usedColumns);
+  const totalColumns = 15; // Total number of columns including the label column
+  const usedColumns = departments.length;
+  const additionalColumnsCount = Math.max(0, totalColumns - usedColumns - 1); // -1 for the label column
   const additionalColumns = Array.from({ length: additionalColumnsCount }, (_, i) => ({ id: i + 1 }));
+
+  // Calculate flex for each column - all data columns get flex: 1
+  const labelColumnFlex = 1;
+  const dataColumnFlex = 1;
+  const totalFlex = labelColumnFlex + (usedColumns + additionalColumnsCount) * dataColumnFlex;
 
   return (
     <View style={styles.tableContainer}>
       <View style={styles.table}>
-
-
-
         {/* Row 1 - Numbers */}
         <View style={styles.tableRow}>
- 
-          <View style={[styles.tableCell, { flex: 1 }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex }]}>
             <Text style={styles.cellText}></Text>
           </View>
           {departments.map((_, idx) => (
-            <View key={`num-${idx}`} style={[styles.tableCell, { flex: 1 }]}>
+            <View key={`num-${idx}`} style={[styles.tableCell, { flex: dataColumnFlex }]}>
               <Text style={[styles.cellTextBold, { fontSize: 5 }]}>{idx + 1}</Text>
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-num-${col.id}`} style={[styles.tableCell, { flex: 1 }]}>
+            <View key={`add-num-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex }]}>
               <Text style={[styles.cellTextBold, { fontSize: 5 }]}>{col.id + departments.length}</Text>
             </View>
           ))}
         </View>
 
-
-        {/* Row 1 - Department Names */}
+        {/* Row 2 - Department Names */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}></Text>
           </View>
           {departments.map(dept => (
-            <View key={`dept-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+            <View key={`dept-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f3f4f6' }]}>
               <Text style={styles.cellTextBold}>{dept}</Text>
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-dept-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+            <View key={`add-dept-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f3f4f6' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
         </View>
         
-        {/* Row 2 - Morning */}
+        {/* Row 3 - Morning */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午前診</Text>
           </View>
           {departments.map(dept => (
-            <View key={`morning-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#eff6ff' }]}>
+            <View key={`morning-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#eff6ff' }]}>
               <View style={{ flexDirection: 'column' }}>
                 {diagnosisData[dept]?.morning?.map((doctor, i) => (
                   <Text key={i} style={styles.cellText}>{doctor}</Text>
@@ -872,19 +873,19 @@ const DiagnosisPDF = ({ diagnosisData = {} }) => {
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-morning-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f9fafb' }]}>
+            <View key={`add-morning-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f9fafb' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
         </View>
         
-        {/* Row 3 - Afternoon */}
+        {/* Row 4 - Afternoon */}
         <View style={styles.tableRow}>
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午後診</Text>
           </View>
           {departments.map(dept => (
-            <View key={`afternoon-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f0fdf4' }]}>
+            <View key={`afternoon-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f0fdf4' }]}>
               <View style={{ flexDirection: 'column' }}>
                 {diagnosisData[dept]?.afternoon?.map((doctor, i) => (
                   <Text key={i} style={styles.cellText}>{doctor}</Text>
@@ -893,19 +894,19 @@ const DiagnosisPDF = ({ diagnosisData = {} }) => {
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-afternoon-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f9fafb' }]}>
+            <View key={`add-afternoon-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f9fafb' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
         </View>
         
-        {/* Row 4 - Night */}
+        {/* Row 5 - Night */}
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>夜診</Text>
           </View>
           {departments.map(dept => (
-            <View key={`night-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#faf5ff' }]}>
+            <View key={`night-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#faf5ff' }]}>
               <View style={{ flexDirection: 'column' }}>
                 {diagnosisData[dept]?.night?.map((doctor, i) => (
                   <Text key={i} style={styles.cellText}>{doctor}</Text>
@@ -914,7 +915,7 @@ const DiagnosisPDF = ({ diagnosisData = {} }) => {
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-night-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f9fafb' }]}>
+            <View key={`add-night-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f9fafb' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
@@ -937,123 +938,122 @@ const PatientCountPDF = ({ patientData = {} }) => {
   }, { morning: 0, afternoon: 0, night: 0 });
   totals.total = totals.morning + totals.afternoon + totals.night;
 
-  const totalColumns = 15;
-  const usedColumns = departments.length + 2;
-  const additionalColumnsCount = Math.max(0, totalColumns - usedColumns);
+  const totalColumns = 15; // Total number of columns including label and total columns
+  const usedColumns = departments.length;
+  const additionalColumnsCount = Math.max(0, totalColumns - usedColumns - 2); // -2 for label and total columns
   const additionalColumns = Array.from({ length: additionalColumnsCount }, (_, i) => ({ id: i + 1 }));
+
+  // Calculate flex for each column - all data columns get flex: 1
+  const labelColumnFlex = 1;
+  const dataColumnFlex = 1;
+  const totalColumnFlex = 1;
 
   return (
     <View style={styles.tableContainer}>
       <View style={styles.table}>
         {/* Row 1 - Numbers */}
         <View style={styles.tableRow}>
- 
-          <View style={[styles.tableCell, { flex: 1 }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex }]}>
             <Text style={styles.cellText}></Text>
           </View>
           {departments.map((_, idx) => (
-            <View key={`num-${idx}`} style={[styles.tableCell, { flex: 1 }]}>
+            <View key={`num-${idx}`} style={[styles.tableCell, { flex: dataColumnFlex }]}>
               <Text style={[styles.cellTextBold, { fontSize: 5 }]}>{idx + 1}</Text>
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-num-${col.id}`} style={[styles.tableCell, { flex: 1 }]}>
+            <View key={`add-num-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex }]}>
               <Text style={[styles.cellTextBold, { fontSize: 5 }]}>{col.id + departments.length}</Text>
             </View>
           ))}
-          <View style={[styles.lastTableCell, { flex: 1 }]}>
+          <View style={[styles.lastTableCell, { flex: totalColumnFlex }]}>
             <Text style={styles.cellTextBold}>合計</Text>
           </View>
         </View>
         
         {/* Row 2 - Department Names */}
         <View style={styles.tableRow}>
- 
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}></Text>
           </View>
           {departments.map(dept => (
-            <View key={`dept-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+            <View key={`dept-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f3f4f6' }]}>
               <Text style={styles.cellTextBold}>{dept}</Text>
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-dept-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+            <View key={`add-dept-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f3f4f6' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
-          <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.lastTableCell, { flex: totalColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}></Text>
           </View>
         </View>
         
         {/* Row 3 - Morning */}
         <View style={styles.tableRow}>
- 
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午前診</Text>
           </View>
           {departments.map(dept => (
-            <View key={`morning-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#eff6ff' }]}>
+            <View key={`morning-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#eff6ff' }]}>
               <Text style={styles.cellTextBold}>{patientData[dept]?.morning || 0}</Text>
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-morning-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f9fafb' }]}>
+            <View key={`add-morning-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f9fafb' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
-          <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#eff6ff' }]}>
+          <View style={[styles.lastTableCell, { flex: totalColumnFlex, backgroundColor: '#eff6ff' }]}>
             <Text style={styles.cellTextBold}>{totals.morning}</Text>
           </View>
         </View>
         
         {/* Row 4 - Afternoon */}
         <View style={styles.tableRow}>
- 
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>午後診</Text>
           </View>
           {departments.map(dept => (
-            <View key={`afternoon-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f0fdf4' }]}>
+            <View key={`afternoon-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f0fdf4' }]}>
               <Text style={styles.cellTextBold}>{patientData[dept]?.afternoon || 0}</Text>
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-afternoon-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f9fafb' }]}>
+            <View key={`add-afternoon-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f9fafb' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
-          <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#f0fdf4' }]}>
+          <View style={[styles.lastTableCell, { flex: totalColumnFlex, backgroundColor: '#f0fdf4' }]}>
             <Text style={styles.cellTextBold}>{totals.afternoon}</Text>
           </View>
         </View>
         
         {/* Row 5 - Night */}
         <View style={styles.tableRow}>
- 
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#f3f4f6' }]}>
             <Text style={styles.cellTextBold}>夜診</Text>
           </View>
           {departments.map(dept => (
-            <View key={`night-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#faf5ff' }]}>
+            <View key={`night-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#faf5ff' }]}>
               <Text style={styles.cellTextBold}>{patientData[dept]?.night || 0}</Text>
             </View>
           ))}
           {additionalColumns.map(col => (
-            <View key={`add-night-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f9fafb' }]}>
+            <View key={`add-night-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f9fafb' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
-          <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#faf5ff' }]}>
+          <View style={[styles.lastTableCell, { flex: totalColumnFlex, backgroundColor: '#faf5ff' }]}>
             <Text style={styles.cellTextBold}>{totals.night}</Text>
           </View>
         </View>
         
         {/* Row 6 - Totals */}
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
- 
-          <View style={[styles.tableCell, { flex: 1, backgroundColor: '#e5e7eb' }]}>
+          <View style={[styles.tableCell, { flex: labelColumnFlex, backgroundColor: '#e5e7eb' }]}>
             <Text style={styles.cellTextBold}>合計</Text>
           </View>
           {departments.map(dept => {
@@ -1061,17 +1061,17 @@ const PatientCountPDF = ({ patientData = {} }) => {
                              (patientData[dept]?.afternoon || 0) + 
                              (patientData[dept]?.night || 0);
             return (
-              <View key={`total-${dept}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f3f4f6' }]}>
+              <View key={`total-${dept}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f3f4f6' }]}>
                 <Text style={styles.cellTextBold}>{deptTotal}</Text>
               </View>
             );
           })}
           {additionalColumns.map(col => (
-            <View key={`add-total-${col.id}`} style={[styles.tableCell, { flex: 1, backgroundColor: '#f9fafb' }]}>
+            <View key={`add-total-${col.id}`} style={[styles.tableCell, { flex: dataColumnFlex, backgroundColor: '#f9fafb' }]}>
               <Text style={styles.cellText}>-</Text>
             </View>
           ))}
-          <View style={[styles.lastTableCell, { flex: 1, backgroundColor: '#e5e7eb' }]}>
+          <View style={[styles.lastTableCell, { flex: totalColumnFlex, backgroundColor: '#e5e7eb' }]}>
             <Text style={styles.cellTextBold}>{totals.total}</Text>
           </View>
         </View>
@@ -1079,6 +1079,8 @@ const PatientCountPDF = ({ patientData = {} }) => {
     </View>
   );
 };
+
+
 
 // New StatusConfirmationPDF Component (PDF version of StatusConfirmationSection)
 const StatusConfirmationPDF = ({ 

@@ -412,7 +412,7 @@ function Dashboard() {
       admin: '管理者ダッシュボードへようこそ',
       hospitalAssistant: '病院アシスタントダッシュボードへようこそ',
       staff: 'スタッフダッシュボードへようこそ',
-      operator: 'オペレーターダッシュボードへようこそ'
+      operator: 'データ入力者ダッシュボードへようこそ'
     };
     return messages[userRole] || 'ダッシュボードへようこそ';
   };

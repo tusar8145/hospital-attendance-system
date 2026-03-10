@@ -1016,6 +1016,7 @@ const ConsolidatedContentComponentCount = ({
                               </Typography>
                               <TextField
                                 value={consultation.total_patients || ''}
+                                autoComplete="off" 
                                 onChange={(e) => handleTotalPatientsChange(row.id, consultationIndex, e.target.value)}
                                 variant="outlined"
                                 size="small"
@@ -1062,6 +1063,7 @@ const ConsolidatedContentComponentCount = ({
                               </Typography>
                               <TextField
                                 value={consultation.new_patients || ''}
+                                autoComplete="off" 
                                 onChange={(e) => handleNewPatientsChange(row.id, consultationIndex, e.target.value)}
                                 variant="outlined"
                                 size="small"

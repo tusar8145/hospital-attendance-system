@@ -1357,6 +1357,7 @@ const ConsolidatedContentComponent = ({
                       }}>
                         <TextField
                           value={consultation.patient_count || ''}
+                          autoComplete="off" // Add this line
                           onChange={(e) => handlePatientCountChange(row.id, consultationIndex, e.target.value)}
                           variant="outlined"
                           size="small"

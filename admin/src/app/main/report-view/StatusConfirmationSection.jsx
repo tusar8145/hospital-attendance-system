@@ -73,7 +73,7 @@ const StatusConfirmationSection = ({
                 {/* Header - Compact */}
                 <div className={`${item.title === '理事長' ? 'bg-blue-600' : item.title === '専務' ? 'bg-green-600' : 'bg-purple-600'} p-2`}>
                   <Typography variant="caption" className="font-bold text-white text-center block truncate">
-                    {item.title || '未設定'}
+                    {item.title}
                   </Typography>
                 </div>
                 

@@ -617,10 +617,10 @@ export const getApprovalStats = async (req, res, next) => {
 
     // Role hierarchy
     const roleHierarchy = [
-      { role: 'superAdmin', label: 'システム管理者' },
+      { role: 'superAdmin', label: '理事長' },
       { role: 'admin', label: '専務' },
       { role: 'hospitalAssistant', label: '主任管理者' },
-      { role: 'staff', label: 'マネージャー' },
+      { role: 'staff', label: '管理者' },
       { role: 'operator', label: 'データ入力者' }
     ];
 

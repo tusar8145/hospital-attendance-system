@@ -128,7 +128,7 @@ const locale = {
 
 	'Email or password not match':'メールアドレスまたはパスワードが一致しません',
 	'staff':'スタッフ',
-	'hospitalAssistant':'病院助手',
+	'hospitalAssistant':'主任管理者',
 	'admin':'管理者',
 	'Loading':'読み込み中',
 	
@@ -402,8 +402,8 @@ const locale = {
 
 
 
-"System Administrator": "システム管理者",
-"Chief Executive": "責任管理者",
+"System Administrator": "理事長",
+"Chief Executive": "専務",
 "Head Manager": "主任管理者",
 "Manager": "管理者", 
 "Data Input Person": "データ入力者",
@@ -436,7 +436,7 @@ const locale = {
   "Staff Member": "スタッフ",
   "Super Admin": "スーパー管理者",
   "Admin": "管理者",
-  "Manager": "マネージャー",
+  "Manager": "管理者",
   "Staff": "スタッフ",
   "User": "ユーザー",
   

@@ -940,7 +940,7 @@ const handleExportMenuClick = () => {
         },
         { 
           id: 2, 
-          title: '責任管理者', 
+          title: '専務', 
           role: 'admin', 
           checked: false, 
           status: '未確認', 
@@ -966,7 +966,7 @@ const handleExportMenuClick = () => {
         },
         { 
           id: 4, 
-          title: 'マネージャー', 
+          title: '管理者', 
           role: 'staff', 
           checked: false, 
           status: '未確認', 
@@ -1003,14 +1003,14 @@ const handleExportMenuClick = () => {
           case 'admin':
             title = '専務';
             break;
-          case 'ヘッドマネージャー':
-            title = '部長';
+          case 'hospitalAssistant':
+            title = '主任管理者';
             break;
           case 'staff':
-            title = 'マネージャー';
+            title = '管理者';
             break;
           case 'operator':
-            title = 'オペレーター';
+            title = 'データ入力者';
             break;
           default:
             title = approval.admin?.role || 'Unknown';
@@ -1063,9 +1063,9 @@ const handleExportMenuClick = () => {
 
       const defaultStatusData = [
         { id: 1, title: '理事長', role: 'superAdmin', checked: false, status: '未確認', date: '', color: 'bg-blue-500', disabled: true },
-        { id: 2, title: '責任管理者', role: 'admin', checked: false, status: '未確認', date: '', color: 'bg-green-500', disabled: true },
+        { id: 2, title: '専務', role: 'admin', checked: false, status: '未確認', date: '', color: 'bg-green-500', disabled: true },
         { id: 3, title: '主任管理者', role: 'hospitalAssistant', checked: false, status: '未確認', date: '', color: 'bg-purple-500', disabled: true },
-        { id: 4, title: 'マネージャー', role: 'staff', checked: false, status: '未確認', date: '', color: 'bg-orange-500', disabled: true },
+        { id: 4, title: '管理者', role: 'staff', checked: false, status: '未確認', date: '', color: 'bg-orange-500', disabled: true },
         { id: 5, title: 'データ入力者', role: 'operator', checked: false, status: '未確認', date: '', color: 'bg-pink-500', disabled: true }
       ];
 
