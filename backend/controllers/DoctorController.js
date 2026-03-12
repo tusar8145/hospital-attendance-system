@@ -1,3 +1,4 @@
+// controllers/doctorController.js
 import { PrismaClient } from '@prisma/client';
 import { user_id } from '../middleware/Auth.js';
 import * as response from "../helpers/Response.js";
@@ -86,13 +87,35 @@ export const doctor_list = async (req, res, next) => {
       where,
       include: {
         medical_center: {
-          select: { id: true, name: true, type: true, status:true }
+          select: { id: true, name: true, type: true, status: true }
         },
         dept_links: {
           where: { status: 1 },
           include: {
             department: {
-              select: { id: true, name: true, status:true }
+              select: { 
+                id: true, 
+                name: true, 
+                status: true,
+                department_room: {
+                  where: { status: 1 },
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
+            },
+            doctor_department_room: {
+              where: { status: 1 },
+              include: {
+                department_room: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
             }
           }
         },
@@ -143,7 +166,7 @@ export const doctor_create = async (req, res, next) => {
       const createdDoctors = [];
       
       for (const doctor of doctors) {
-        const { name, license_no, medical_center_id, department_ids } = doctor;
+        const { name, license_no, medical_center_id, department_rooms = [] } = doctor;
 
         const newDoctor = await prisma.doctor.create({
           data: {
@@ -154,17 +177,42 @@ export const doctor_create = async (req, res, next) => {
           }
         });
 
-        // Create department links if department_ids provided
-        if (department_ids && department_ids.length > 0) {
-          const departmentLinks = department_ids.map(deptId => ({
-            doctor_id: newDoctor.id,
-            department_id: parseInt(deptId),
-            created_by: user_id
-          }));
-
-          await prisma.doctor_department.createMany({
-            data: departmentLinks
+        // Create department links and room assignments if provided
+        if (department_rooms && department_rooms.length > 0) {
+          // Group by department_id
+          const departmentMap = {};
+          
+          department_rooms.forEach(item => {
+            if (!departmentMap[item.department_id]) {
+              departmentMap[item.department_id] = [];
+            }
+            if (item.room_id) {
+              departmentMap[item.department_id].push(item.room_id);
+            }
           });
+
+          // Create doctor_department entries and room assignments
+          for (const [deptId, roomIds] of Object.entries(departmentMap)) {
+            // Create doctor_department
+            const doctorDepartment = await prisma.doctor_department.create({
+              data: {
+                doctor_id: newDoctor.id,
+                department_id: parseInt(deptId),
+                created_by: user_id,
+              }
+            });
+
+            // Create room assignments if any
+            if (roomIds.length > 0) {
+              await prisma.doctor_department_room.createMany({
+                data: roomIds.map(roomId => ({
+                  doctor_department_id: doctorDepartment.id,
+                  department_room_id: parseInt(roomId),
+                  created_by: user_id
+                }))
+              });
+            }
+          }
         }
 
         // Get the complete doctor with relationships
@@ -174,7 +222,18 @@ export const doctor_create = async (req, res, next) => {
             medical_center: true,
             dept_links: {
               include: {
-                department: true
+                department: {
+                  include: {
+                    department_room: {
+                      where: { status: 1 }
+                    }
+                  }
+                },
+                doctor_department_room: {
+                  include: {
+                    department_room: true
+                  }
+                }
               }
             }
           }
@@ -191,7 +250,7 @@ export const doctor_create = async (req, res, next) => {
 
     } else {
       // Single doctor creation
-      const { name, license_no, medical_center_id, department_ids } = doctors;
+      const { name, license_no, medical_center_id, department_rooms = [] } = doctors;
 
       const newDoctor = await prisma.doctor.create({
         data: {
@@ -202,17 +261,42 @@ export const doctor_create = async (req, res, next) => {
         }
       });
 
-      // Create department links if department_ids provided
-      if (department_ids && department_ids.length > 0) {
-        const departmentLinks = department_ids.map(deptId => ({
-          doctor_id: newDoctor.id,
-          department_id: parseInt(deptId),
-          created_by: user_id
-        }));
-
-        await prisma.doctor_department.createMany({
-          data: departmentLinks
+      // Create department links and room assignments if provided
+      if (department_rooms && department_rooms.length > 0) {
+        // Group by department_id
+        const departmentMap = {};
+        
+        department_rooms.forEach(item => {
+          if (!departmentMap[item.department_id]) {
+            departmentMap[item.department_id] = [];
+          }
+          if (item.room_id) {
+            departmentMap[item.department_id].push(item.room_id);
+          }
         });
+
+        // Create doctor_department entries and room assignments
+        for (const [deptId, roomIds] of Object.entries(departmentMap)) {
+          // Create doctor_department
+          const doctorDepartment = await prisma.doctor_department.create({
+            data: {
+              doctor_id: newDoctor.id,
+              department_id: parseInt(deptId),
+              created_by: user_id,
+            }
+          });
+
+          // Create room assignments if any
+          if (roomIds.length > 0) {
+            await prisma.doctor_department_room.createMany({
+              data: roomIds.map(roomId => ({
+                doctor_department_id: doctorDepartment.id,
+                department_room_id: parseInt(roomId),
+                created_by: user_id
+              }))
+            });
+          }
+        }
       }
 
       const doctorWithRelations = await prisma.doctor.findUnique({
@@ -221,7 +305,18 @@ export const doctor_create = async (req, res, next) => {
           medical_center: true,
           dept_links: {
             include: {
-              department: true
+              department: {
+                include: {
+                  department_room: {
+                    where: { status: 1 }
+                  }
+                }
+              },
+              doctor_department_room: {
+                include: {
+                  department_room: true
+                }
+              }
             }
           }
         }
@@ -236,54 +331,107 @@ export const doctor_create = async (req, res, next) => {
 
 export const doctor_update = async (req, res, next) => {
   try {
-    const { id, name, license_no, medical_center_id, department_ids} = req.body;
-    let doctor_id = id
+    const { id, name, license_no, medical_center_id, department_rooms = [] } = req.body;
+    let doctor_id = id;
 
-    // Remove existing department links
-    await prisma.doctor_department.deleteMany({
-      where: { 
-        doctor_id: parseInt(doctor_id) 
+    // Start a transaction
+    await prisma.$transaction(async (prisma) => {
+      // First, get all doctor_department records for this doctor
+      const existingDoctorDepartments = await prisma.doctor_department.findMany({
+        where: { doctor_id: parseInt(doctor_id) },
+        include: {
+          doctor_department_room: true
+        }
+      });
+
+      // Delete all existing doctor_department_room records
+      for (const dept of existingDoctorDepartments) {
+        await prisma.doctor_department_room.deleteMany({
+          where: { doctor_department_id: dept.id }
+        });
       }
+
+      // Delete all existing doctor_department records
+      await prisma.doctor_department.deleteMany({
+        where: { doctor_id: parseInt(doctor_id) }
+      });
+
+      // Create new department links and room assignments
+      if (department_rooms && department_rooms.length > 0) {
+        // Group by department_id
+        const departmentMap = {};
+        
+        department_rooms.forEach(item => {
+          if (!departmentMap[item.department_id]) {
+            departmentMap[item.department_id] = [];
+          }
+          if (item.room_id) {
+            departmentMap[item.department_id].push(item.room_id);
+          }
+        });
+
+        // Create doctor_department entries and room assignments
+        for (const [deptId, roomIds] of Object.entries(departmentMap)) {
+          // Create doctor_department
+          const doctorDepartment = await prisma.doctor_department.create({
+            data: {
+              doctor_id: parseInt(doctor_id),
+              department_id: parseInt(deptId),
+              created_by: user_id,
+            }
+          });
+
+          // Create room assignments if any
+          if (roomIds.length > 0) {
+            await prisma.doctor_department_room.createMany({
+              data: roomIds.map(roomId => ({
+                doctor_department_id: doctorDepartment.id,
+                department_room_id: parseInt(roomId),
+                created_by: user_id
+              }))
+            });
+          }
+        }
+      }
+
+      // Update doctor basic info
+      await prisma.doctor.update({
+        where: { id: parseInt(id) },
+        data: {
+          name,
+          license_no,
+          medical_center_id: parseInt(medical_center_id),
+          updated_by: user_id,
+          updated_at: new Date()
+        }
+      });
     });
 
-    // Create new department links
-    if (department_ids && department_ids.length > 0) {
-      const departmentLinks = department_ids.map(deptId => ({
-        doctor_id: parseInt(doctor_id),
-        department_id: parseInt(deptId),
-        created_by: user_id
-      }));
-
-      await prisma.doctor_department.createMany({
-        data: departmentLinks
-      });
-    }
-
-    const doctorWithDepartments = await prisma.doctor.findUnique({
-      where: { id: parseInt(doctor_id) },
+    // Fetch updated doctor with relations
+    const updatedDoctorWithRelations = await prisma.doctor.findUnique({
+      where: { id: parseInt(id) },
       include: {
+        medical_center: true,
         dept_links: {
           include: {
-            department: true
+            department: {
+              include: {
+                department_room: {
+                  where: { status: 1 }
+                }
+              }
+            },
+            doctor_department_room: {
+              include: {
+                department_room: true
+              }
+            }
           }
         }
       }
     });
 
-
-
-    const updatedDoctor = await prisma.doctor.update({
-      where: { id: parseInt(id) },
-      data: {
-        name,
-        license_no,
-        medical_center_id: parseInt(medical_center_id),
-        updated_by: user_id,
-        updated_at: new Date()
-      }
-    });
-
-    response.update(updatedDoctor, res);
+    response.update(updatedDoctorWithRelations, res);
   } catch (error) {
     response.error(error, res, next);
   }
@@ -312,7 +460,22 @@ export const doctor_remove = async (req, res, next) => {
   try {
     const { id } = req.body;
 
-    // First delete doctor department links
+    // First delete doctor department room links
+    const doctorDepartments = await prisma.doctor_department.findMany({
+      where: {
+        doctor_id: parseInt(id)
+      }
+    });
+
+    for (const dept of doctorDepartments) {
+      await prisma.doctor_department_room.deleteMany({
+        where: {
+          doctor_department_id: dept.id
+        }
+      });
+    }
+
+    // Then delete doctor department links
     await prisma.doctor_department.deleteMany({
       where: {
         doctor_id: parseInt(id)
@@ -332,40 +495,114 @@ export const doctor_remove = async (req, res, next) => {
 
 export const doctor_assign_departments = async (req, res, next) => {
   try {
-    const { doctor_id, department_ids } = req.body;
+    const { doctor_id, department_rooms = [] } = req.body;
 
-    // Remove existing department links
-    await prisma.doctor_department.deleteMany({
-      where: { 
-        doctor_id: parseInt(doctor_id) 
+    // Start a transaction
+    await prisma.$transaction(async (prisma) => {
+      // First, get all doctor_department records for this doctor
+      const existingDoctorDepartments = await prisma.doctor_department.findMany({
+        where: { doctor_id: parseInt(doctor_id) },
+        include: {
+          doctor_department_room: true
+        }
+      });
+
+      // Delete all existing doctor_department_room records
+      for (const dept of existingDoctorDepartments) {
+        await prisma.doctor_department_room.deleteMany({
+          where: { doctor_department_id: dept.id }
+        });
+      }
+
+      // Delete all existing doctor_department records
+      await prisma.doctor_department.deleteMany({
+        where: { doctor_id: parseInt(doctor_id) }
+      });
+
+      // Create new department links and room assignments
+      if (department_rooms && department_rooms.length > 0) {
+        // Group by department_id
+        const departmentMap = {};
+        
+        department_rooms.forEach(item => {
+          if (!departmentMap[item.department_id]) {
+            departmentMap[item.department_id] = [];
+          }
+          if (item.room_id) {
+            departmentMap[item.department_id].push(item.room_id);
+          }
+        });
+
+        // Create doctor_department entries and room assignments
+        for (const [deptId, roomIds] of Object.entries(departmentMap)) {
+          // Create doctor_department
+          const doctorDepartment = await prisma.doctor_department.create({
+            data: {
+              doctor_id: parseInt(doctor_id),
+              department_id: parseInt(deptId),
+              created_by: user_id,
+            }
+          });
+
+          // Create room assignments if any
+          if (roomIds.length > 0) {
+            await prisma.doctor_department_room.createMany({
+              data: roomIds.map(roomId => ({
+                doctor_department_id: doctorDepartment.id,
+                department_room_id: parseInt(roomId),
+                created_by: user_id
+              }))
+            });
+          }
+        }
       }
     });
 
-    // Create new department links
-    if (department_ids && department_ids.length > 0) {
-      const departmentLinks = department_ids.map(deptId => ({
-        doctor_id: parseInt(doctor_id),
-        department_id: parseInt(deptId),
-        created_by: user_id
-      }));
-
-      await prisma.doctor_department.createMany({
-        data: departmentLinks
-      });
-    }
-
+    // Fetch updated doctor with relations
     const doctorWithDepartments = await prisma.doctor.findUnique({
       where: { id: parseInt(doctor_id) },
       include: {
         dept_links: {
           include: {
-            department: true
+            department: {
+              include: {
+                department_room: {
+                  where: { status: 1 }
+                }
+              }
+            },
+            doctor_department_room: {
+              include: {
+                department_room: true
+              }
+            }
           }
         }
       }
     });
 
     response.update(doctorWithDepartments, res);
+  } catch (error) {
+    response.error(error, res, next);
+  }
+};
+
+// Helper function to get department rooms
+export const get_department_rooms = async (req, res, next) => {
+  try {
+    const { department_id } = req.params;
+
+    const rooms = await prisma.department_room.findMany({
+      where: {
+        department_id: parseInt(department_id),
+        status: 1
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    response.success(rooms, res);
   } catch (error) {
     response.error(error, res, next);
   }

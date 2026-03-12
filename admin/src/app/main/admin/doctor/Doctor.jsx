@@ -679,7 +679,7 @@ const DoctorTable = (props) => {
           <EditIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
           {t('Edit')}
         </MenuItem>
-        <MenuItem 
+        {/*<MenuItem 
           onClick={() => {
             handleAssignDepartmentsClick(selectedRow);
             handleMenuClose();
@@ -687,7 +687,7 @@ const DoctorTable = (props) => {
         >
           <AssignmentIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
           {t('Assign Departments')}
-        </MenuItem>
+        </MenuItem>*/}
         <MenuItem 
           onClick={() => {
             handleDeleteClick(selectedRow);
@@ -759,11 +759,22 @@ const DoctorTable = (props) => {
   );
 };
 
-// Create Doctor Modal Component
-// Create Doctor Modal Component
+// Doctor.jsx - Updated sections for room selection
+
+// Doctor.jsx - Updated sections for room selection
+
+// Update the CreateDoctorModal component
+// Doctor.jsx - Updated sections for multiple room selection
+
+// Update the CreateDoctorModal component
 const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, departments, hospital }) => {
   const { t } = useTranslation('shared-components');
-  const [doctors, setDoctors] = useState([{ name: '', license_no: '', medical_center_id: '', department_ids: [] }]);
+  const [doctors, setDoctors] = useState([{ 
+    name: '', 
+    license_no: '', 
+    medical_center_id: '', 
+    department_rooms: [] 
+  }]);
   const [errors, setErrors] = useState([]);
   const [apiError, setApiError] = useState('');
   const [lastSelectedHospital, setLastSelectedHospital] = useState('');
@@ -773,11 +784,128 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
   // Filter departments based on selected medical center
   const filterDepartmentsByMedicalCenter = (medicalCenterId) => {
     if (!medicalCenterId) {
-      setFilteredDepartments(departments);
+      setFilteredDepartments([]);
       return;
     }
-    const filtered = departments.filter(dept => dept.medical_center_id === parseInt(medicalCenterId));
+    
+    // Filter departments by medical_center_id and ensure they're active
+    const filtered = departments.filter(dept => 
+      dept.medical_center_id === parseInt(medicalCenterId) && dept.status === 1
+    );
+    
+    console.log('Filtered departments for medical center', medicalCenterId, filtered);
     setFilteredDepartments(filtered);
+  };
+
+  // Get rooms for a department from the department data
+  const getRoomsForDepartment = (departmentId) => {
+    const department = filteredDepartments.find(dept => dept.id === departmentId);
+    // Check both department_room array and _count.department_room
+    const rooms = department?.department_room || [];
+    console.log('Rooms for department', departmentId, rooms);
+    return rooms;
+  };
+
+  // Check if a department has rooms
+  const departmentHasRooms = (departmentId) => {
+    const rooms = getRoomsForDepartment(departmentId);
+    return rooms && rooms.length > 0;
+  };
+
+  // Handle department selection change
+  const handleDepartmentChange = (index, selectedDepts) => {
+    const updated = [...doctors];
+    
+    // Get current department_rooms
+    const currentDepartmentRooms = updated[index].department_rooms || [];
+    
+    // Create a map of existing selections (department_id -> array of room_ids)
+    const existingSelections = {};
+    currentDepartmentRooms.forEach(item => {
+      if (!existingSelections[item.department_id]) {
+        existingSelections[item.department_id] = [];
+      }
+      if (item.room_id) {
+        existingSelections[item.department_id].push(item.room_id);
+      }
+    });
+
+    // Update with new selections
+    const newDepartmentRooms = [];
+    
+    for (const dept of selectedDepts) {
+      const deptId = dept.id;
+      
+      // If this department was previously selected, keep its room selections
+      if (existingSelections[deptId] && existingSelections[deptId].length > 0) {
+        existingSelections[deptId].forEach(roomId => {
+          newDepartmentRooms.push({
+            department_id: deptId,
+            room_id: roomId
+          });
+        });
+      } else {
+        // New department selection, add without rooms initially
+        // Only add if department has rooms? No, always add department even without rooms
+        newDepartmentRooms.push({
+          department_id: deptId,
+          room_id: null
+        });
+      }
+    }
+    
+    updated[index].department_rooms = newDepartmentRooms;
+    setDoctors(updated);
+  };
+
+  // Handle multiple room selection change
+  const handleRoomChange = (index, departmentId, selectedRoomIds) => {
+    const updated = [...doctors];
+    const departmentRooms = updated[index].department_rooms || [];
+    
+    // Remove all existing entries for this department
+    const filteredRooms = departmentRooms.filter(item => item.department_id !== departmentId);
+    
+    // Add new entries for each selected room
+    if (selectedRoomIds && selectedRoomIds.length > 0) {
+      selectedRoomIds.forEach(roomId => {
+        filteredRooms.push({
+          department_id: departmentId,
+          room_id: roomId
+        });
+      });
+    } else {
+      // If no rooms selected, still keep the department entry with null room
+      filteredRooms.push({
+        department_id: departmentId,
+        room_id: null
+      });
+    }
+    
+    updated[index].department_rooms = filteredRooms;
+    setDoctors(updated);
+  };
+
+  // Get selected department objects
+  const getSelectedDepartments = (index) => {
+    const doctor = doctors[index];
+    if (!doctor || !doctor.department_rooms) return [];
+    
+    const selectedDeptIds = doctor.department_rooms
+      .map(item => item.department_id)
+      .filter(id => id);
+    
+    return filteredDepartments.filter(dept => selectedDeptIds.includes(dept.id));
+  };
+
+  // Get selected room IDs for a department
+  const getSelectedRoomIdsForDepartment = (index, departmentId) => {
+    const doctor = doctors[index];
+    if (!doctor || !doctor.department_rooms) return [];
+    
+    return doctor.department_rooms
+      .filter(item => item.department_id === departmentId && item.room_id)
+      .map(item => item.room_id);
   };
 
   useEffect(() => {
@@ -790,7 +918,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
           name: '', 
           license_no: '', 
           medical_center_id: '', 
-          department_ids: [] 
+          department_rooms: [] 
         }]);
       } else {
         // Auto-select hospital from global state
@@ -800,7 +928,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
           name: '', 
           license_no: '', 
           medical_center_id: initialMedicalCenterId, 
-          department_ids: [] 
+          department_rooms: [] 
         }]);
         setHospitalSelectionError('');
       }
@@ -808,9 +936,20 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       setErrors([]);
       setApiError('');
       setLastSelectedHospital(hospital?.id || '');
-      filterDepartmentsByMedicalCenter(hospital?.id);
+      
+      // Filter departments when modal opens
+      if (hospital?.id) {
+        filterDepartmentsByMedicalCenter(hospital.id);
+      }
     }
   }, [open, hospital, departments]);
+
+  useEffect(() => {
+    // Update filtered departments when departments data changes
+    if (hospital?.id && departments.length > 0) {
+      filterDepartmentsByMedicalCenter(hospital.id);
+    }
+  }, [departments, hospital]);
 
   useEffect(() => {
     if (mutationError) {
@@ -847,7 +986,6 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       } else if (doctor.license_no.trim().length < 1) {
         fieldErrors.license_no = t('Last name must be at least 1 characters');
       }
-      // Note: medical_center_id is auto-selected, so we don't need to validate it here
       return fieldErrors;
     });
 
@@ -871,7 +1009,8 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
 
     const validDoctors = doctors.map(doctor => ({
       ...doctor,
-      medical_center_id: hospital.id // Force the hospital ID from global state
+      medical_center_id: hospital.id, // Force the hospital ID from global state
+      department_rooms: doctor.department_rooms?.filter(item => item.department_id) || []
     })).filter(doctor => 
       doctor.name.trim() !== '' && 
       doctor.license_no.trim() !== ''
@@ -889,7 +1028,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       name: '', 
       license_no: '', 
       medical_center_id: hospital?.id || '', // Use hospital from global state
-      department_ids: [] 
+      department_rooms: [] 
     };
     setDoctors([...doctors, newDoctor]);
     setErrors([...errors, {}]);
@@ -915,7 +1054,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
       
       // Clear department selections when hospital changes
       if (value !== updated[index].medical_center_id) {
-        updated[index].department_ids = [];
+        updated[index].department_rooms = [];
       }
     }
 
@@ -938,7 +1077,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
   };
 
   const handleClose = () => {
-    setDoctors([{ name: '', license_no: '', medical_center_id: '', department_ids: [] }]);
+    setDoctors([{ name: '', license_no: '', medical_center_id: '', department_rooms: [] }]);
     setErrors([]);
     setApiError('');
     setHospitalSelectionError('');
@@ -996,10 +1135,11 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
               </div>
             </Grid>
           </Grid>
-          <br></br>
-          {/* Hospital/Facility and Clinical Department in same row */}
+          <br />
+          
+          {/* Hospital/Facility */}
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid item xs={12}>
               <div className="flex flex-col gap-1">
                 <Typography variant="subtitle1" className="font-medium">
                   {t('Hospital/Facility')} *
@@ -1007,13 +1147,13 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                 <FormControl fullWidth error={!!errors[index]?.medical_center_id}>
                   {hospital?.id ? (
                     <TextField
-                      value={medicalCenters.find(mc => mc.id === hospital.id)?.name || hospital.id}
+                      value={medicalCenters.find(mc => mc.id === hospital.id)?.name || 'Selected Hospital'}
                       fullWidth
                       disabled
                       InputProps={{
                         readOnly: true,
                       }}
-                      helperText={t('Selected from global hospital selection')}
+                      helperText={'世界中の病院から選ばれる'}
                     />
                   ) : (
                     <Select
@@ -1039,63 +1179,111 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
                   )}
                   {hospital?.id && (
                     <Typography variant="caption" color="text.secondary">
-                      {t('Hospital/facility is automatically selected from global selection')}
+                     病院/施設はグローバル選択から自動的に選択されます
                     </Typography>
                   )}
                 </FormControl>
               </div>
             </Grid>
-            <Grid item xs={6}>
-              <div className="flex flex-col gap-1">
-                <Typography variant="subtitle1" className="font-medium">
-                  {t('Clinical Department')}
-                </Typography>
-                <Autocomplete
-                  multiple
-                  options={filteredDepartments}
-                  getOptionLabel={(option) => option.name}
-                  value={filteredDepartments.filter(dept => doctor.department_ids.includes(dept.id))}
-                  onChange={(event, newValue) => {
-                    updateDoctor(index, 'department_ids', newValue.map(dept => dept.id));
-                  }}
-                   
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder={
-                        doctor.medical_center_id 
-                          ? t('Select clinical departments') 
-                          : hospital?.id 
-                            ? t('Select clinical departments for the selected hospital')
-                            : t('Please select a hospital/facility first')
-                      }
-                      disabled={(!doctor.medical_center_id && !hospital?.id) || isLoading}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option.name}
-                        {...getTagProps({ index })}
-                        size="small"
-                      />
-                    ))
+          </Grid>
+
+          {/* Clinical Departments with Room Selection */}
+          <div className="flex flex-col gap-3 mt-4">
+            <Typography variant="subtitle1" className="font-medium">
+              {t('Clinical Department')}
+            </Typography>
+            
+            <Autocomplete
+              multiple
+              options={filteredDepartments}
+              getOptionLabel={(option) => option.name}
+              value={getSelectedDepartments(index)}
+              onChange={(event, newValue) => handleDepartmentChange(index, newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder={
+                    doctor.medical_center_id || hospital?.id
+                      ? t('Select clinical departments')
+                      : t('Please select a hospital/facility first')
                   }
                   disabled={(!doctor.medical_center_id && !hospital?.id) || isLoading}
                 />
-                {!doctor.medical_center_id && !hospital?.id && (
-                  <Typography variant="caption" color="text.secondary">
-                    {t('Please select a hospital/facility first')}
-                  </Typography>
-                )}
-                {hospital?.id && (
-                  <Typography variant="caption" color="text.secondary">
-                    {t('Departments are filtered for the selected hospital')}
-                  </Typography>
-                )}
-              </div>
-            </Grid>
-          </Grid>
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, tagIndex) => (
+                  <Chip
+                    label={option.name}
+                    {...getTagProps({ index: tagIndex })}
+                    size="small"
+                  />
+                ))
+              }
+              disabled={(!doctor.medical_center_id && !hospital?.id) || isLoading}
+            />
+
+            {/* Room selection for each selected department - only shown if department has rooms */}
+            {getSelectedDepartments(index).map((dept) => {
+              const rooms = getRoomsForDepartment(dept.id);
+              const hasRooms = rooms && rooms.length > 0;
+              const selectedRoomIds = getSelectedRoomIdsForDepartment(index, dept.id);
+
+              console.log('Department', dept.name, 'has rooms:', hasRooms, rooms);
+
+              // Only show room selection if department has rooms
+              if (hasRooms) {
+                return (
+                  <Box key={dept.id} sx={{ mt: 2, pl: 2, borderLeft: '2px solid', borderColor: 'primary.light', bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
+                      {dept.name} - {t('Select Rooms')} ({rooms.length} {t('rooms available')})
+                    </Typography>
+                    
+                    <Autocomplete
+                      multiple
+                      options={rooms}
+                      getOptionLabel={(option) => option.name}
+                      value={rooms.filter(room => selectedRoomIds.includes(room.id))}
+                      onChange={(event, newValue) => {
+                        const roomIds = newValue.map(room => room.id);
+                        handleRoomChange(index, dept.id, roomIds);
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder={t('Select rooms (optional)')}
+                          size="small"
+                        />
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, tagIndex) => (
+                          <Chip
+                            label={option.name}
+                            {...getTagProps({ index: tagIndex })}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                        ))
+                      }
+                      disabled={isLoading}
+                      size="small"
+                    />
+                    
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      {t('Room selection is optional. You can select multiple rooms or leave empty.')}
+                    </Typography>
+                  </Box>
+                );
+              }
+              return null; // Don't show anything for departments without rooms
+            })}
+
+            {hospital?.id && (
+              <Typography variant="caption" color="text.secondary">
+                選択した病院の部門がフィルタリングされます
+              </Typography>
+            )}
+          </div>
 
           {doctors.length > 1 && (
             <IconButton
@@ -1142,7 +1330,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
         size="large"
         disabled={isLoading || !hospital?.id}
       >
-        {isLoading ? t('Creating...') : `${t('Create Doctor')}${doctors.length > 1 ? '' : ''}`}
+        {isLoading ? t('Creating...') : `${t('Create Doctor')}${doctors.length > 1 ? 's' : ''}`}
       </Button>
     </>
   );
@@ -1151,7 +1339,7 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
     <CommonDialog
       open={open}
       onClose={handleClose}
-      title={`Create Doctor${doctors.length > 1 ? '' : ''}`}
+      title={`Create Doctor${doctors.length > 1 ? 's' : ''}`}
       actions={dialogActions}
       disabled={isLoading}
       maxWidth="lg"
@@ -1161,10 +1349,15 @@ const CreateDoctorModal = ({ open, onClose, onSubmit, isLoading, mutationError, 
   );
 };
 
-// Edit Doctor Modal Component
+// Update the EditDoctorModal component similarly for multiple room selection
 const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationError, medicalCenters, departments }) => {
   const { t } = useTranslation('shared-components');
-  const [formData, setFormData] = useState({ name: '', license_no: '', medical_center_id: '', department_ids: [] });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    license_no: '', 
+    medical_center_id: '', 
+    department_rooms: [] 
+  });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [filteredDepartments, setFilteredDepartments] = useState([]);
@@ -1172,24 +1365,78 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
   // Filter departments based on selected medical center
   const filterDepartmentsByMedicalCenter = (medicalCenterId) => {
     if (!medicalCenterId) {
-      setFilteredDepartments(departments);
+      setFilteredDepartments([]);
       return;
     }
-    const filtered = departments.filter(dept => dept.medical_center_id === parseInt(medicalCenterId));
+    
+    // Filter departments by medical_center_id and ensure they're active
+    const filtered = departments.filter(dept => 
+      dept.medical_center_id === parseInt(medicalCenterId) && dept.status === 1
+    );
+    
+    console.log('Filtered departments for edit modal', medicalCenterId, filtered);
     setFilteredDepartments(filtered);
   };
 
+  // Get rooms for a department from the department data
+  const getRoomsForDepartment = (departmentId) => {
+    const department = filteredDepartments.find(dept => dept.id === departmentId);
+    // Check both department_room array and _count.department_room
+    const rooms = department?.department_room || [];
+    console.log('Rooms for department in edit', departmentId, rooms);
+    return rooms;
+  };
+
+  // Check if a department has rooms
+  const departmentHasRooms = (departmentId) => {
+    const rooms = getRoomsForDepartment(departmentId);
+    return rooms && rooms.length > 0;
+  };
+
+  // Initialize department rooms from doctor data
   useEffect(() => {
     if (doctor && open) {
+      console.log('Doctor data in edit modal:', doctor);
+      
+      // Convert existing department links to department_rooms format
+      const departmentRooms = [];
+      
+      if (doctor.dept_links && doctor.dept_links.length > 0) {
+        doctor.dept_links.forEach(link => {
+          const deptId = link.department_id;
+          
+          // If there are room assignments
+          if (link.doctor_department_room && link.doctor_department_room.length > 0) {
+            link.doctor_department_room.forEach(roomLink => {
+              departmentRooms.push({
+                department_id: deptId,
+                room_id: roomLink.department_room_id
+              });
+            });
+          } else {
+            // Department without room assignment - still include it
+            departmentRooms.push({
+              department_id: deptId,
+              room_id: null
+            });
+          }
+        });
+      }
+
       const initialData = {
         name: doctor.name || '',
         license_no: doctor.license_no || '',
         medical_center_id: doctor.medical_center_id || '',
-        department_ids: doctor.dept_links?.map(link => link.department_id) || []
+        department_rooms: departmentRooms
       };
+      
+      console.log('Initial form data:', initialData);
       setFormData(initialData);
       setApiError('');
-      filterDepartmentsByMedicalCenter(initialData.medical_center_id);
+      
+      if (initialData.medical_center_id) {
+        filterDepartmentsByMedicalCenter(initialData.medical_center_id);
+      }
     }
   }, [doctor, open, departments]);
 
@@ -1247,7 +1494,7 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
       
       // Clear department selections when hospital changes
       if (value !== formData.medical_center_id) {
-        setFormData(prev => ({ ...prev, department_ids: [] }));
+        setFormData(prev => ({ ...prev, department_rooms: [] }));
       }
     }
     
@@ -1259,8 +1506,93 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
     }
   };
 
+  // Handle department selection change
+  const handleDepartmentChange = (selectedDepts) => {
+    // Create a map of existing selections (department_id -> array of room_ids)
+    const existingSelections = {};
+    formData.department_rooms.forEach(item => {
+      if (!existingSelections[item.department_id]) {
+        existingSelections[item.department_id] = [];
+      }
+      if (item.room_id) {
+        existingSelections[item.department_id].push(item.room_id);
+      }
+    });
+
+    // Update with new selections
+    const newDepartmentRooms = [];
+    
+    for (const dept of selectedDepts) {
+      const deptId = dept.id;
+      
+      // If this department was previously selected, keep its room selections
+      if (existingSelections[deptId] && existingSelections[deptId].length > 0) {
+        existingSelections[deptId].forEach(roomId => {
+          newDepartmentRooms.push({
+            department_id: deptId,
+            room_id: roomId
+          });
+        });
+      } else {
+        // New department selection, add without rooms initially
+        newDepartmentRooms.push({
+          department_id: deptId,
+          room_id: null
+        });
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, department_rooms: newDepartmentRooms }));
+  };
+
+  // Handle multiple room selection change
+  const handleRoomChange = (departmentId, selectedRoomIds) => {
+    const departmentRooms = [...(formData.department_rooms || [])];
+    
+    // Remove all existing entries for this department
+    const filteredRooms = departmentRooms.filter(item => item.department_id !== departmentId);
+    
+    // Add new entries for each selected room
+    if (selectedRoomIds && selectedRoomIds.length > 0) {
+      selectedRoomIds.forEach(roomId => {
+        filteredRooms.push({
+          department_id: departmentId,
+          room_id: roomId
+        });
+      });
+    } else {
+      // If no rooms selected, still keep the department entry with null room
+      filteredRooms.push({
+        department_id: departmentId,
+        room_id: null
+      });
+    }
+    
+    setFormData(prev => ({ ...prev, department_rooms: filteredRooms }));
+  };
+
+  // Get selected department objects
+  const getSelectedDepartments = () => {
+    if (!formData.department_rooms) return [];
+    
+    const selectedDeptIds = formData.department_rooms
+      .map(item => item.department_id)
+      .filter(id => id);
+    
+    return filteredDepartments.filter(dept => selectedDeptIds.includes(dept.id));
+  };
+
+  // Get selected room IDs for a department
+  const getSelectedRoomIdsForDepartment = (departmentId) => {
+    if (!formData.department_rooms) return [];
+    
+    return formData.department_rooms
+      .filter(item => item.department_id === departmentId && item.room_id)
+      .map(item => item.room_id);
+  };
+
   const handleClose = () => {
-    setFormData({ name: '', license_no: '', medical_center_id: '', department_ids: [] });
+    setFormData({ name: '', license_no: '', medical_center_id: '', department_rooms: [] });
     setErrors({});
     setApiError('');
     setFilteredDepartments([]);
@@ -1336,20 +1668,18 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
         </FormControl>
       </div>
 
-      {/* Clinical Department */}
-      <div className="flex flex-col gap-2 mt-20">
+      {/* Clinical Departments with Room Selection */}
+      <div className="flex flex-col gap-3 mt-4">
         <Typography variant="subtitle1" className="font-medium">
           {t('Clinical Department')}
         </Typography>
+        
         <Autocomplete
           multiple
           options={filteredDepartments}
           getOptionLabel={(option) => option.name}
-          value={filteredDepartments.filter(dept => formData.department_ids.includes(dept.id))}
-          onChange={(event, newValue) => {
-            handleChange('department_ids', newValue.map(dept => dept.id));
-          }}
-           
+          value={getSelectedDepartments()}
+          onChange={(event, newValue) => handleDepartmentChange(newValue)}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -1362,16 +1692,72 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
             />
           )}
           renderTags={(value, getTagProps) =>
-            value.map((option, index) => (
+            value.map((option, tagIndex) => (
               <Chip
                 label={option.name}
-                {...getTagProps({ index })}
+                {...getTagProps({ index: tagIndex })}
                 size="small"
               />
             ))
           }
           disabled={!formData.medical_center_id || isLoading}
         />
+
+        {/* Room selection for each selected department - only shown if department has rooms */}
+        {getSelectedDepartments().map((dept) => {
+          const rooms = getRoomsForDepartment(dept.id);
+          const hasRooms = rooms && rooms.length > 0;
+          const selectedRoomIds = getSelectedRoomIdsForDepartment(dept.id);
+
+          console.log('Edit - Department', dept.name, 'has rooms:', hasRooms, rooms);
+
+          // Only show room selection if department has rooms
+          if (hasRooms) {
+            return (
+              <Box key={dept.id} sx={{ mt: 2, pl: 2, borderLeft: '2px solid', borderColor: 'primary.light', bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
+                  {dept.name} - {t('部屋を選択')} ({rooms.length} {t('空室状況')})
+                </Typography>
+                
+                <Autocomplete
+                  multiple
+                  options={rooms}
+                  getOptionLabel={(option) => option.name}
+                  value={rooms.filter(room => selectedRoomIds.includes(room.id))}
+                  onChange={(event, newValue) => {
+                    const roomIds = newValue.map(room => room.id);
+                    handleRoomChange(dept.id, roomIds);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder={t('部屋を選択')}
+                      size="small"
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, tagIndex) => (
+                      <Chip
+                        label={option.name}
+                        {...getTagProps({ index: tagIndex })}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))
+                  }
+                  disabled={isLoading}
+                  size="small"
+                />
+                
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+部屋の選択は任意です。複数の部屋を選択することも、空白のままにすることもできます。                </Typography>
+              </Box>
+            );
+          }
+          return null; // Don't show anything for departments without rooms
+        })}
+
         {!formData.medical_center_id && (
           <Typography variant="caption" color="text.secondary">
             {t('Please select a hospital/facility first')}
@@ -1409,7 +1795,7 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
       open={open}
       onClose={handleClose}
       title="Edit Doctor"
-      maxWidth="sm"
+      maxWidth="md"
       contentPadding={{ px: 4, py: 0 }}
       actions={dialogActions}
       disabled={isLoading}
@@ -1419,49 +1805,155 @@ const EditDoctorModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationE
   );
 };
 
-// Assign Departments Modal Component
+// Update the AssignDepartmentsModal component similarly
 const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mutationError, departments }) => {
   const { t } = useTranslation('shared-components');
-  const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [departmentRooms, setDepartmentRooms] = useState([]);
   const [apiError, setApiError] = useState('');
   const [filteredDepartments, setFilteredDepartments] = useState([]);
 
   // Filter departments based on doctor's medical center
   useEffect(() => {
     if (doctor && open) {
-      // Set currently assigned departments - only active ones
-      const currentDepartmentIds = doctor.dept_links?.map(link => link.department_id) || [];
-      setSelectedDepartments(departments.filter(dept => currentDepartmentIds.includes(dept.id)));
-      setApiError('');
-      
       // Filter departments by doctor's medical center
       const doctorMedicalCenterId = doctor.medical_center_id;
       if (doctorMedicalCenterId) {
-        const filtered = departments.filter(dept => dept.medical_center_id === doctorMedicalCenterId);
+        const filtered = departments.filter(dept => 
+          dept.medical_center_id === doctorMedicalCenterId && dept.status === 1
+        );
         setFilteredDepartments(filtered);
       } else {
         setFilteredDepartments(departments);
       }
+      
+      // Convert existing department links to department_rooms format
+      const initialRooms = [];
+      
+      if (doctor.dept_links && doctor.dept_links.length > 0) {
+        doctor.dept_links.forEach(link => {
+          const deptId = link.department_id;
+          
+          // If there are room assignments
+          if (link.doctor_department_room && link.doctor_department_room.length > 0) {
+            link.doctor_department_room.forEach(roomLink => {
+              initialRooms.push({
+                department_id: deptId,
+                room_id: roomLink.department_room_id
+              });
+            });
+          } else {
+            // Department without room assignment - still include it
+            initialRooms.push({
+              department_id: deptId,
+              room_id: null
+            });
+          }
+        });
+      }
+      
+      setDepartmentRooms(initialRooms);
+      setApiError('');
     }
   }, [doctor, open, departments]);
 
-  useEffect(() => {
-    if (mutationError) {
-      const errorMessage = mutationError.response?.data?.message || t('Error assigning departments');
-      setApiError(errorMessage);
-    } else {
-      setApiError('');
+  // Get rooms for a department
+  const getRoomsForDepartment = (departmentId) => {
+    const department = filteredDepartments.find(dept => dept.id === departmentId);
+    return department?.department_room || [];
+  };
+
+  // Check if a department has rooms
+  const departmentHasRooms = (departmentId) => {
+    const rooms = getRoomsForDepartment(departmentId);
+    return rooms && rooms.length > 0;
+  };
+
+  // Get selected department objects
+  const getSelectedDepartments = () => {
+    const selectedDeptIds = departmentRooms
+      .map(item => item.department_id)
+      .filter(id => id);
+    
+    return filteredDepartments.filter(dept => selectedDeptIds.includes(dept.id));
+  };
+
+  // Get selected room IDs for a department
+  const getSelectedRoomIdsForDepartment = (departmentId) => {
+    return departmentRooms
+      .filter(item => item.department_id === departmentId && item.room_id)
+      .map(item => item.room_id);
+  };
+
+  // Handle department selection change
+  const handleDepartmentChange = (selectedDepts) => {
+    // Create a map of existing selections
+    const existingSelections = {};
+    departmentRooms.forEach(item => {
+      if (!existingSelections[item.department_id]) {
+        existingSelections[item.department_id] = [];
+      }
+      if (item.room_id) {
+        existingSelections[item.department_id].push(item.room_id);
+      }
+    });
+
+    // Update with new selections
+    const newDepartmentRooms = [];
+    
+    for (const dept of selectedDepts) {
+      const deptId = dept.id;
+      
+      // If this department was previously selected, keep its room selections
+      if (existingSelections[deptId] && existingSelections[deptId].length > 0) {
+        existingSelections[deptId].forEach(roomId => {
+          newDepartmentRooms.push({
+            department_id: deptId,
+            room_id: roomId
+          });
+        });
+      } else {
+        // New department selection, add without rooms initially
+        newDepartmentRooms.push({
+          department_id: deptId,
+          room_id: null
+        });
+      }
     }
-  }, [mutationError, t]);
+    
+    setDepartmentRooms(newDepartmentRooms);
+  };
+
+  // Handle multiple room selection change
+  const handleRoomChange = (departmentId, selectedRoomIds) => {
+    // Remove all existing entries for this department
+    const filteredRooms = departmentRooms.filter(item => item.department_id !== departmentId);
+    
+    // Add new entries for each selected room
+    if (selectedRoomIds && selectedRoomIds.length > 0) {
+      selectedRoomIds.forEach(roomId => {
+        filteredRooms.push({
+          department_id: departmentId,
+          room_id: roomId
+        });
+      });
+    } else {
+      // If no rooms selected, still keep the department entry with null room
+      filteredRooms.push({
+        department_id: departmentId,
+        room_id: null
+      });
+    }
+    
+    setDepartmentRooms(filteredRooms);
+  };
 
   const handleSubmit = () => {
     setApiError('');
-    const department_ids = selectedDepartments.map(dept => dept.id);
-    onSubmit({ doctor_id: doctor.id, department_ids });
+    onSubmit({ doctor_id: doctor.id, department_rooms: departmentRooms });
   };
 
   const handleClose = () => {
-    setSelectedDepartments([]);
+    setDepartmentRooms([]);
     setApiError('');
     setFilteredDepartments([]);
     onClose();
@@ -1472,22 +1964,20 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
   const dialogContent = (
     <div className="flex flex-col gap-4">
       <Typography variant="body1">
-        {t('Assign departments to')} <strong>{doctor.name}</strong>
+        {t('Assign departments and rooms to')} <strong>{doctor.name}</strong>
       </Typography>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <Typography variant="subtitle1" className="font-medium">
           {t('Clinical Department')}
         </Typography>
+        
         <Autocomplete
           multiple
           options={filteredDepartments}
           getOptionLabel={(option) => option.name}
-          value={selectedDepartments}
-          onChange={(event, newValue) => {
-            setSelectedDepartments(newValue);
-          }}
-          
+          value={getSelectedDepartments()}
+          onChange={(event, newValue) => handleDepartmentChange(newValue)}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -1495,16 +1985,70 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
             />
           )}
           renderTags={(value, getTagProps) =>
-            value.map((option, index) => (
+            value.map((option, tagIndex) => (
               <Chip
                 label={option.name}
-                {...getTagProps({ index })}
+                {...getTagProps({ index: tagIndex })}
                 size="small"
               />
             ))
           }
           disabled={isLoading}
         />
+
+        {/* Room selection for each selected department - only shown if department has rooms */}
+        {getSelectedDepartments().map((dept) => {
+          const rooms = getRoomsForDepartment(dept.id);
+          const hasRooms = rooms && rooms.length > 0;
+          const selectedRoomIds = getSelectedRoomIdsForDepartment(dept.id);
+
+          // Only show room selection if department has rooms
+          if (hasRooms) {
+            return (
+              <Box key={dept.id} sx={{ mt: 2, pl: 2, borderLeft: '2px solid', borderColor: 'primary.light', bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
+                  {dept.name} - {t('Select Rooms')} ({rooms.length} {t('rooms available')})
+                </Typography>
+                
+                <Autocomplete
+                  multiple
+                  options={rooms}
+                  getOptionLabel={(option) => option.name}
+                  value={rooms.filter(room => selectedRoomIds.includes(room.id))}
+                  onChange={(event, newValue) => {
+                    const roomIds = newValue.map(room => room.id);
+                    handleRoomChange(dept.id, roomIds);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder={t('Select rooms (optional)')}
+                      size="small"
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, tagIndex) => (
+                      <Chip
+                        label={option.name}
+                        {...getTagProps({ index: tagIndex })}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))
+                  }
+                  disabled={isLoading}
+                  size="small"
+                />
+                
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                  {t('Room selection is optional. You can select multiple rooms or leave empty.')}
+                </Typography>
+              </Box>
+            );
+          }
+          return null; // Don't show anything for departments without rooms
+        })}
       </div>
 
       {apiError && (
@@ -1527,7 +2071,7 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
         size="large"
         disabled={isLoading}
       >
-        {isLoading ? t('Assigning...') : t('Assign Departments')}
+        {isLoading ? t('Assigning...') : t('Assign Departments & Rooms')}
       </Button>
     </>
   );
@@ -1536,8 +2080,8 @@ const AssignDepartmentsModal = ({ open, onClose, onSubmit, doctor, isLoading, mu
     <CommonDialog
       open={open}
       onClose={handleClose}
-      title="Assign Departments"
-      maxWidth="sm"
+      title="Assign Departments & Rooms"
+      maxWidth="md"
       contentPadding={{ px: 4, py: 0 }}
       actions={dialogActions}
       disabled={isLoading}

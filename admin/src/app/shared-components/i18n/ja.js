@@ -463,8 +463,11 @@ const locale = {
   "An error occurred while updating password": "パスワード更新中にエラーが発生しました",
   "Change Password":"パスワードを変更",
 
-
-
+ "Room name is required": "室名は必須です",
+  "Add Room": "室を追加",
+  "At least one room is required for hospitals": "病院には少なくとも1つの室が必要です",
+  "Rooms":"室",
+  "rooms":"室",
 
 
 };

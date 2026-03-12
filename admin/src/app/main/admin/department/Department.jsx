@@ -1,3 +1,4 @@
+// Department.jsx
 import Button from '@mui/material/Button';
 import _ from '@lodash';
 import { useMemo, useEffect, useState } from 'react';
@@ -29,11 +30,17 @@ import {
   Checkbox,
   FormControlLabel,
   Tooltip,
+  Collapse,
+  Paper,
+  Divider
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import { MaterialReactTable, useMaterialReactTable } from 'material-react-table';
 
 // Import shared components
@@ -167,6 +174,7 @@ const Table = (props) => {
   const [selectedRow, setSelectedRow] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
+  const [expandedRows, setExpandedRows] = useState({});
 
   // Get hospital from theme context
   const { hospital } = useTheme();
@@ -192,6 +200,13 @@ const Table = (props) => {
     },
   });
 
+  const toggleRowExpansion = (rowId) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [rowId]: !prev[rowId]
+    }));
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -201,6 +216,9 @@ const Table = (props) => {
         enableColumnFilter: true,
         Cell: ({ row, cell }) => {
           const serialNumber = (pagination.pageIndex * pagination.pageSize) + row.index + 1;
+          const hasRooms = row.original.department_room?.length > 0;
+          const isExpanded = expandedRows[row.original.id];
+          
           return (
             <Box sx={{ display: 'flex', alignItems: 'stretch', width: '100%', height: '100%' }}>
               {/* SL Cell - 15% width */}
@@ -235,10 +253,29 @@ const Table = (props) => {
                   display: 'flex',
                   alignItems: 'center',
                   pl: 2,
-                  backgroundColor: 'transparent'
+                  backgroundColor: 'transparent',
+                  gap: 1
                 }}
               >
+                {hasRooms && (
+                  <IconButton 
+                    size="small" 
+                    onClick={() => toggleRowExpansion(row.original.id)}
+                    sx={{ mr: 0.5 }}
+                  >
+                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  </IconButton>
+                )}
                 {cell.getValue()}
+                {hasRooms && (
+                  <Chip
+                    icon={<MeetingRoomIcon />}
+                    label={`${row.original.department_room.length} 室`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ ml: 1 }}
+                  />
+                )}
               </Box>
             </Box>
           );
@@ -273,36 +310,7 @@ const Table = (props) => {
           );
         },
       },
-      {
-        accessorKey: 'floor',
-        header: t('診療室'),
-        size: 150,
-        enableColumnFilter: false,
-        Cell: ({ cell, row }) => {
-          const floor = cell.getValue();
-          const medicalCenterType = row.original.medical_center?.type;
-          const isHospital = medicalCenterType === 'hospital';
-          
-          if (isHospital && !floor) {
-            return (
-              <Tooltip title={t('Floor required for hospitals')}>
-                <Chip
-                  label={t('Required')}
-                  size="small"
-                  color="error"
-                  variant="outlined"
-                />
-              </Tooltip>
-            );
-          }
-          
-          return (
-            <Typography variant="body2">
-              {floor || '-'}
-            </Typography>
-          );
-        },
-      },
+ 
       {
         accessorKey: 'status',
         header: t('Status'),
@@ -372,7 +380,7 @@ const Table = (props) => {
         ),
       },
     ],
-    [validationErrors, t, pagination.pageIndex, pagination.pageSize]
+    [validationErrors, t, pagination.pageIndex, pagination.pageSize, expandedRows]
   );
 
   // Build filter payload - Updated structure with hospital_id
@@ -625,6 +633,29 @@ const Table = (props) => {
       showProgressBars: isFetching,
       sorting,
     },
+    renderDetailPanel: ({ row }) => {
+      const rooms = row.original.department_room;
+      if (!rooms || rooms.length === 0) return null;
+      
+      return (
+        <Box sx={{ p: 2, backgroundColor: 'grey.50' }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+            {t('Rooms')}:
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {rooms.map((room) => (
+              <Chip
+                key={room.id}
+                label={room.name}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            ))}
+          </Box>
+        </Box>
+      );
+    },
   });
 
   return (
@@ -715,7 +746,11 @@ const Table = (props) => {
 // Create Department Modal Component
 const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationError, medicalCenters, hospital }) => {
   const { t } = useTranslation('shared-components');
-  const [departments, setDepartments] = useState([{ name: '', floor: '', medical_center_id: '' }]);
+  const [departments, setDepartments] = useState([{ 
+    name: '', 
+    medical_center_id: '',
+    rooms: [] 
+  }]);
   const [errors, setErrors] = useState([]);
   const [duplicateErrors, setDuplicateErrors] = useState({});
   const [apiError, setApiError] = useState('');
@@ -742,8 +777,8 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       
       setDepartments([{ 
         name: '', 
-        floor: '',
-        medical_center_id: initialMedicalCenterId 
+        medical_center_id: initialMedicalCenterId,
+        rooms: [] 
       }]);
       setErrors([]);
       setDuplicateErrors({});
@@ -779,10 +814,22 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
         fieldErrors.medical_center_id = t('This field is Required');
       }
       
-      // Check if floor is required based on hospital type
-      const hospitalType = getMedicalCenterType(department.medical_center_id);
-      if (isHospitalType(hospitalType) && !department.floor?.trim()) {
-        fieldErrors.floor = t('This field is Required for hospitals');
+      // Validate rooms if hospital type
+      if (isHospitalType(getMedicalCenterType(department.medical_center_id))) {
+        if (!department.rooms || department.rooms.length === 0) {
+          fieldErrors.rooms = t('At least one room is required for hospitals');
+        } else {
+          // Validate each room name
+          const roomErrors = [];
+          department.rooms.forEach((room, roomIndex) => {
+            if (!room.name.trim()) {
+              roomErrors[roomIndex] = t('Room name is required');
+            }
+          });
+          if (roomErrors.length > 0) {
+            fieldErrors.roomErrors = roomErrors;
+          }
+        }
       }
       
       return fieldErrors;
@@ -832,10 +879,11 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       return;
     }*/
 
-    const validDepartments = departments.filter(dept => 
-      dept.name.trim() !== '' && dept.medical_center_id !== ''
-    );
-    
+    const validDepartments = departments.map(dept => ({
+      ...dept,
+      rooms: dept.rooms.filter(room => room.name.trim() !== '')
+    })).filter(dept => dept.name.trim() !== '' && dept.medical_center_id !== '');
+
     if (validDepartments.length === 0) {
       return;
     }
@@ -846,8 +894,8 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
   const addDepartment = () => {
     const newDepartment = { 
       name: '', 
-      floor: '',
-      medical_center_id: lastSelectedHospital || '' 
+      medical_center_id: lastSelectedHospital || '',
+      rooms: [] 
     };
     setDepartments([...departments, newDepartment]);
     setErrors([...errors, {}]);
@@ -872,9 +920,10 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
       const hospitalType = getMedicalCenterType(value);
       setSelectedHospitalType(hospitalType);
       
-      // Clear floor if hospital type changes from hospital to clinic
-      if (!isHospitalType(hospitalType) && updated[index].floor) {
-        updated[index].floor = '';
+      // Initialize rooms if hospital type and no rooms exist
+      if (isHospitalType(hospitalType) && (!updated[index].rooms || updated[index].rooms.length === 0)) {
+        updated[index].rooms = [{ name: '' }];
+        setDepartments(updated);
       }
     }
 
@@ -898,6 +947,39 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
     }
   };
 
+  const addRoom = (deptIndex) => {
+    const updated = [...departments];
+    if (!updated[deptIndex].rooms) {
+      updated[deptIndex].rooms = [];
+    }
+    updated[deptIndex].rooms.push({ name: '' });
+    setDepartments(updated);
+  };
+
+  const updateRoom = (deptIndex, roomIndex, value) => {
+    const updated = [...departments];
+    updated[deptIndex].rooms[roomIndex].name = value;
+    setDepartments(updated);
+
+    // Clear room errors
+    if (errors[deptIndex]?.roomErrors?.[roomIndex]) {
+      const updatedErrors = [...errors];
+      if (updatedErrors[deptIndex].roomErrors) {
+        delete updatedErrors[deptIndex].roomErrors[roomIndex];
+        if (Object.keys(updatedErrors[deptIndex].roomErrors).length === 0) {
+          delete updatedErrors[deptIndex].roomErrors;
+        }
+      }
+      setErrors(updatedErrors);
+    }
+  };
+
+  const removeRoom = (deptIndex, roomIndex) => {
+    const updated = [...departments];
+    updated[deptIndex].rooms = updated[deptIndex].rooms.filter((_, i) => i !== roomIndex);
+    setDepartments(updated);
+  };
+
   const removeDepartment = (index) => {
     if (departments.length > 1) {
       setDepartments(departments.filter((_, i) => i !== index));
@@ -918,7 +1000,7 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
 
   const handleClose = () => {
     // Reset form when closing
-    setDepartments([{ name: '', floor: '', medical_center_id: '' }]);
+    setDepartments([{ name: '', medical_center_id: '', rooms: [] }]);
     setErrors([]);
     setDuplicateErrors({});
     setApiError('');
@@ -931,16 +1013,18 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
     <div className="flex flex-col gap-8">
       {departments.map((department, index) => {
         const hospitalType = getMedicalCenterType(department.medical_center_id);
-        const showFloorField = isHospitalType(hospitalType);
+        const showRoomsField = isHospitalType(hospitalType);
         
         return (
-          <div
+          <Paper
             key={index}
-            className="flex mt-20 mb-10 flex-col gap-4 border border-gray-200 p-6 rounded-lg relative bg-gray-50"
+            elevation={1}
+            className="p-6 rounded-lg relative bg-gray-50"
+            sx={{ position: 'relative' }}
           >
             {/* Department Name and Hospital/Facility in same row */}
             <Grid container spacing={2}>
-              <Grid item xs={showFloorField ? 4 : 6}>
+              <Grid item xs={6}>
                 <div className="flex flex-col gap-1">
                   <Typography variant="subtitle1" className="font-medium">
                     {t('Clinical Department')} *
@@ -953,16 +1037,17 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
                     helperText={errors[index]?.name || duplicateErrors[index]}
                     placeholder={t('Enter department name')}
                     disabled={isLoading}
+                    size="small"
                   />
                 </div>
               </Grid>
               
-              <Grid item xs={showFloorField ? 4 : 6}>
+              <Grid item xs={6}>
                 <div className="flex flex-col gap-1">
                   <Typography variant="subtitle1" className="font-medium">
                     {t('Hospital/Facility')} *
                   </Typography>
-                  <FormControl fullWidth error={!!errors[index]?.medical_center_id}>
+                  <FormControl fullWidth error={!!errors[index]?.medical_center_id} size="small">
                     <Select
                       value={department.medical_center_id}
                       onChange={(e) => updateDepartment(index, 'medical_center_id', e.target.value)}
@@ -986,27 +1071,62 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
                   </FormControl>
                 </div>
               </Grid>
-
-              {/* Floor Field - only shown for hospital type */}
-              {showFloorField && (
-                <Grid item xs={4}>
-                  <div className="flex flex-col gap-1">
-                    <Typography variant="subtitle1" className="font-medium">
-                      {t('診療室')} *
-                    </Typography>
-                    <TextField
-                      value={department.floor || ''}
-                      onChange={(e) => updateDepartment(index, 'floor', e.target.value)}
-                      fullWidth
-                      error={!!errors[index]?.floor}
-                      helperText={errors[index]?.floor}
-                      placeholder="例: 診1"
-                      disabled={isLoading}
-                    />
-                  </div>
-                </Grid>
-              )}
             </Grid>
+
+            {/* Rooms Section - only shown for hospital type */}
+            {showRoomsField && (
+              <Box sx={{ mt: 3 }}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle1" className="font-medium" sx={{ mb: 2 }}>
+                  {t('Rooms')} *
+                </Typography>
+                
+                {department.rooms && department.rooms.map((room, roomIndex) => (
+                  <Grid container spacing={2} key={roomIndex} sx={{ mb: 2 }}>
+                    <Grid item xs={10}>
+                      <TextField
+                        value={room.name}
+                        onChange={(e) => updateRoom(index, roomIndex, e.target.value)}
+                        fullWidth
+                        error={!!errors[index]?.roomErrors?.[roomIndex]}
+                        helperText={errors[index]?.roomErrors?.[roomIndex]}
+                        placeholder={'e.g., 診1, 診2...'}
+                        disabled={isLoading}
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={2}>
+                      <IconButton
+                        onClick={() => removeRoom(index, roomIndex)}
+                        color="error"
+                        size="small"
+                        disabled={isLoading || department.rooms.length <= 1}
+                        sx={{ mt: 0.5 }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Grid>
+                  </Grid>
+                ))}
+
+                {errors[index]?.rooms && (
+                  <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+                    {errors[index]?.rooms}
+                  </Typography>
+                )}
+
+                <Button
+                  startIcon={<AddIcon />}
+                  onClick={() => addRoom(index)}
+                  variant="outlined"
+                  size="small"
+                  disabled={isLoading}
+                  sx={{ mt: 1 }}
+                >
+                  {t('Add Room')}
+                </Button>
+              </Box>
+            )}
 
             {departments.length > 1 && (
               <IconButton
@@ -1015,11 +1135,12 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
                 color="error"
                 size="small"
                 disabled={isLoading}
+                sx={{ position: 'absolute', top: 8, right: 8 }}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
             )}
-          </div>
+          </Paper>
         );
       })}
 
@@ -1035,7 +1156,7 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
         </Alert>
       )}
 
-      {/* Add Another */}
+      {/* Add Another Department */}
       <div className="flex justify-center pt-4">
         <Button
           startIcon={<AddIcon />}
@@ -1070,7 +1191,7 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
     <CommonDialog
       open={open}
       onClose={handleClose}
-      title={`Create Department${departments.length > 1 ? '' : ''}`}
+      title={`Create Department${departments.length > 1 ? 's' : ''}`}
       actions={dialogActions}
       disabled={isLoading}
       maxWidth='md'
@@ -1083,10 +1204,15 @@ const CreateDepartmentModal = ({ open, onClose, onSubmit, isLoading, mutationErr
 // Edit Department Modal Component
 const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, mutationError, medicalCenters }) => {
   const { t } = useTranslation('shared-components');
-  const [formData, setFormData] = useState({ name: '', floor: '', medical_center_id: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    medical_center_id: '',
+    rooms: [] 
+  });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [selectedHospitalType, setSelectedHospitalType] = useState('');
+  const [originalRooms, setOriginalRooms] = useState([]);
 
   // Get medical center type from medicalCenters array
   const getMedicalCenterType = (medicalCenterId) => {
@@ -1103,11 +1229,19 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
     if (department && open) {
       const hospitalType = getMedicalCenterType(department.medical_center_id);
       
+      // Map existing rooms
+      const rooms = department.department_room?.map(room => ({
+        id: room.id,
+        name: room.name,
+        status: 1
+      })) || [];
+      
       setFormData({
         name: department.name || '',
-        floor: department.floor || '',
-        medical_center_id: department.medical_center_id || ''
+        medical_center_id: department.medical_center_id || '',
+        rooms: rooms
       });
+      setOriginalRooms(rooms);
       setSelectedHospitalType(hospitalType);
       setApiError('');
     }
@@ -1138,9 +1272,22 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
       newErrors.medical_center_id = t('This field is Required');
     }
     
-    // Check if floor is required based on hospital type
-    if (isHospitalType(selectedHospitalType) && !formData.floor?.trim()) {
-      newErrors.floor = t('This field is Required for hospitals');
+    // Validate rooms if hospital type
+    if (isHospitalType(selectedHospitalType)) {
+      if (!formData.rooms || formData.rooms.length === 0) {
+        newErrors.rooms = t('At least one room is required for hospitals');
+      } else {
+        // Validate each room name
+        const roomErrors = [];
+        formData.rooms.forEach((room, roomIndex) => {
+          if (!room.name.trim()) {
+            roomErrors[roomIndex] = t('Room name is required');
+          }
+        });
+        if (roomErrors.length > 0) {
+          newErrors.roomErrors = roomErrors;
+        }
+      }
     }
     
     setErrors(newErrors);
@@ -1155,7 +1302,30 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
       return;
     }
 
-    onSubmit({ ...formData, id: department.id });
+    // Prepare rooms data - mark removed rooms with status 2
+    const updatedRooms = formData.rooms.map(room => {
+      if (!room.id) {
+        // New room
+        return { name: room.name };
+      } else {
+        // Existing room
+        return { id: room.id, name: room.name, status: 1 };
+      }
+    });
+
+    // Mark deleted rooms (rooms that were in original but not in current)
+    originalRooms.forEach(originalRoom => {
+      const stillExists = formData.rooms.some(r => r.id === originalRoom.id);
+      if (!stillExists) {
+        updatedRooms.push({ id: originalRoom.id, name: originalRoom.name, status: 2 });
+      }
+    });
+
+    onSubmit({ 
+      ...formData, 
+      id: department.id,
+      rooms: updatedRooms 
+    });
   };
 
   const handleChange = (field, value) => {
@@ -1166,9 +1336,9 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
       const hospitalType = getMedicalCenterType(value);
       setSelectedHospitalType(hospitalType);
       
-      // Clear floor if hospital type changes from hospital to clinic
-      if (!isHospitalType(hospitalType) && formData.floor) {
-        setFormData(prev => ({ ...prev, floor: '' }));
+      // Initialize rooms if hospital type and no rooms exist
+      if (isHospitalType(hospitalType) && (!formData.rooms || formData.rooms.length === 0)) {
+        setFormData(prev => ({ ...prev, rooms: [{ name: '' }] }));
       }
     }
     
@@ -1181,24 +1351,53 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
     }
   };
 
+  const addRoom = () => {
+    setFormData(prev => ({
+      ...prev,
+      rooms: [...prev.rooms, { name: '' }]
+    }));
+  };
+
+  const updateRoom = (index, value) => {
+    const updatedRooms = [...formData.rooms];
+    updatedRooms[index] = { ...updatedRooms[index], name: value };
+    setFormData(prev => ({ ...prev, rooms: updatedRooms }));
+
+    // Clear room errors
+    if (errors.roomErrors?.[index]) {
+      const updatedRoomErrors = [...errors.roomErrors];
+      delete updatedRoomErrors[index];
+      setErrors(prev => ({
+        ...prev,
+        roomErrors: updatedRoomErrors.filter(Boolean)
+      }));
+    }
+  };
+
+  const removeRoom = (index) => {
+    const updatedRooms = formData.rooms.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, rooms: updatedRooms }));
+  };
+
   const handleClose = () => {
     // Reset form when closing
-    setFormData({ name: '', floor: '', medical_center_id: '' });
+    setFormData({ name: '', medical_center_id: '', rooms: [] });
     setErrors({});
     setApiError('');
     setSelectedHospitalType('');
+    setOriginalRooms([]);
     onClose();
   };
 
   if (!department) return null;
 
-  const showFloorField = isHospitalType(selectedHospitalType);
+  const showRoomsField = isHospitalType(selectedHospitalType);
 
   const dialogContent = (
     <div className="flex flex-col gap-4 mt-20">
-      {/* Department Name, Hospital/Facility, and Floor in same row */}
+      {/* Department Name and Hospital/Facility in same row */}
       <Grid container spacing={2}>
-        <Grid item xs={showFloorField ? 4 : 6}>
+        <Grid item xs={6}>
           <div className="flex flex-col gap-2">
             <Typography variant="subtitle1" className="font-medium">
               {t('Clinical Department')} *
@@ -1211,15 +1410,16 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
               helperText={errors.name}
               placeholder={t('Enter department name')}
               disabled={isLoading}
+              size="small"
             />
           </div>
         </Grid>
-        <Grid item xs={showFloorField ? 4 : 6}>
+        <Grid item xs={6}>
           <div className="flex flex-col gap-2">
             <Typography variant="subtitle1" className="font-medium">
               {t('Hospital/Facility')} *
             </Typography>
-            <FormControl fullWidth error={!!errors.medical_center_id}>
+            <FormControl fullWidth error={!!errors.medical_center_id} size="small">
               <Select
                 value={formData.medical_center_id}
                 onChange={(e) => handleChange('medical_center_id', e.target.value)}
@@ -1243,27 +1443,62 @@ const EditDepartmentModal = ({ open, onClose, onSubmit, department, isLoading, m
             </FormControl>
           </div>
         </Grid>
-        
-        {/* Floor Field - only shown for hospital type */}
-        {showFloorField && (
-          <Grid item xs={4}>
-            <div className="flex flex-col gap-2">
-              <Typography variant="subtitle1" className="font-medium">
-                {t('診療室')} *
-              </Typography>
-              <TextField
-                value={formData.floor || ''}
-                onChange={(e) => handleChange('floor', e.target.value)}
-                fullWidth
-                error={!!errors.floor}
-                helperText={errors.floor}
-                placeholder="例: 診1"
-                disabled={isLoading}
-              />
-            </div>
-          </Grid>
-        )}
       </Grid>
+
+      {/* Rooms Section - only shown for hospital type */}
+      {showRoomsField && (
+        <Box sx={{ mt: 3 }}>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle1" className="font-medium" sx={{ mb: 2 }}>
+            {t('Rooms')} *
+          </Typography>
+          
+          {formData.rooms && formData.rooms.map((room, roomIndex) => (
+            <Grid container spacing={2} key={room.id || `new-${roomIndex}`} sx={{ mb: 2 }}>
+              <Grid item xs={10}>
+                <TextField
+                  value={room.name}
+                  onChange={(e) => updateRoom(roomIndex, e.target.value)}
+                  fullWidth
+                  error={!!errors.roomErrors?.[roomIndex]}
+                  helperText={errors.roomErrors?.[roomIndex]}
+                  placeholder={t('Enter room name (e.g., 診1, 診2, 処置室)')}
+                  disabled={isLoading}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={2}>
+                <IconButton
+                  onClick={() => removeRoom(roomIndex)}
+                  color="error"
+                  size="small"
+                  disabled={isLoading || formData.rooms.length <= 1}
+                  sx={{ mt: 0.5 }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Grid>
+            </Grid>
+          ))}
+
+          {errors.rooms && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+              {errors.rooms}
+            </Typography>
+          )}
+
+          <Button
+            startIcon={<AddIcon />}
+            onClick={addRoom}
+            variant="outlined"
+            size="small"
+            disabled={isLoading}
+            sx={{ mt: 1 }}
+          >
+            {t('Add Room')}
+          </Button>
+        </Box>
+      )}
 
       {/* API Error Alert */}
       {apiError && (

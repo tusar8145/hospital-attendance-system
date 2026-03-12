@@ -73,6 +73,15 @@ const apiConfig = {
   reportStatistics: base_url +'/report/statistics',
 
   reportHospitalDepartmentsDoctors: base_url +'/report/hospital-departments-doctors',
+
+    // Room endpoints
+  roomCreate: '/api/room/create',
+  roomUpdate: '/api/room/update',
+  roomStatus: '/api/room/status',
+  roomRemove: '/api/room/remove',
+  roomsByDepartment: '/api/room/by-department',
+
+   getDepartmentRooms: '/api/department/rooms', 
   
 }
 export default apiConfig;

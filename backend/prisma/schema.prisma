@@ -193,8 +193,28 @@ model department {
   created_admin admins? @relation("DepartmentCreatedBy", fields: [created_by], references: [id])
   updated_admin admins? @relation("DepartmentUpdatedBy", fields: [updated_by], references: [id])
 
+  department_room department_room[]
+
   //@@unique([name, medical_center_id])  // Department names must be unique within a medical center
 }
+
+
+model department_room {
+  id           Int        @id @default(autoincrement())
+  name         String
+  department department @relation(fields: [department_id], references: [id])
+  department_id Int
+  status       Int        @default(1)
+
+  doctor_department_room doctor_department_room[]
+
+  created_by   Int?
+  created_at   DateTime?  @default(now())
+  updated_by   Int?
+  updated_at   DateTime?  @default(now())
+}
+
+
 
 /////////////////////////////
 // Doctor
@@ -236,6 +256,7 @@ model doctor_department {
   department   department @relation(fields: [department_id], references: [id])
   department_id Int
   status       Int        @default(1)
+  doctor_department_room doctor_department_room[]
 
   @@unique([doctor_id, department_id])
 
@@ -248,6 +269,23 @@ model doctor_department {
   created_admin admins? @relation("DoctorDepartmentCreatedBy", fields: [created_by], references: [id])
   updated_admin admins? @relation("DoctorDepartmentUpdatedBy", fields: [updated_by], references: [id])
 }
+
+model doctor_department_room {
+  id           Int        @id @default(autoincrement())
+  doctor_department_id    Int
+  department_room_id   Int
+
+  doctor_department   doctor_department @relation(fields: [doctor_department_id], references: [id])
+  department_room   department_room @relation(fields: [department_room_id], references: [id])
+  status       Int        @default(1)
+
+  created_by   Int?
+  created_at   DateTime?  @default(now())
+  updated_by   Int?
+  updated_at   DateTime?  @default(now())
+ 
+  @@unique([doctor_department_id, department_room_id])
+  }
 
 model services_clients_issues {
   id         Int     @id @default(autoincrement())

@@ -555,6 +555,16 @@ export const getDepartmentsWithDoctors = async (req, res, next) => {
         status: 1
       },
       include: {
+        // Include department rooms
+        department_room: {
+          where: { status: 1 },
+          select: {
+            id: true,
+            name: true,
+            status: true
+          }
+        },
+        // Include doctor links with their room assignments
         doctor_links: {
           where: { 
             status: 1,
@@ -567,27 +577,87 @@ export const getDepartmentsWithDoctors = async (req, res, next) => {
                 name: true,
                 license_no: true
               }
+            },
+            // Include room assignments for this doctor-department link
+            doctor_department_room: {
+              where: { status: 1 },
+              include: {
+                department_room: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
             }
           }
         }
       },
       orderBy: [
-        { floor: 'asc' },
         { name: 'asc' }
       ]
     });
 
-    // Format the response
-    const formattedDepartments = departments.map(dept => ({
-      id: dept.id,
-      name: dept.name,
-      floor: dept.floor || '未設定',
-      doctors: dept.doctor_links
-        .filter(link => link.doctor) // Ensure doctor exists
-        .map(link => link.doctor)    // Extract doctor info
-    }));
+    // Format the response - flatten departments by room
+    const formattedData = [];
 
-    response.success(formattedDepartments, res);
+    departments.forEach(dept => {
+      // Get all rooms in this department
+      const rooms = dept.department_room;
+      
+      if (rooms && rooms.length > 0) {
+        // For departments with rooms, create an entry for each room that has doctors
+        rooms.forEach(room => {
+          // Find doctors assigned to this specific room
+          const doctorsInRoom = [];
+          
+          dept.doctor_links.forEach(link => {
+            if (link.doctor) {
+              // Check if this doctor is assigned to this room
+              const isInThisRoom = link.doctor_department_room.some(
+                roomLink => roomLink.department_room_id === room.id
+              );
+              
+              if (isInThisRoom) {
+                doctorsInRoom.push({
+                  id: link.doctor.id,
+                  name: link.doctor.name,
+                  license_no: link.doctor.license_no
+                });
+              }
+            }
+          });
+
+          // Only add entry if there are doctors in this room
+          if (doctorsInRoom.length > 0) {
+            formattedData.push({
+              id: dept.id,
+              name: dept.name,
+              floor: room.name, // Use room name as floor
+              doctors: doctorsInRoom
+            });
+          }
+          // If no doctors in this room, don't add it to the list
+        });
+
+        // Note: We're NOT adding doctors without room assignments
+        // They will only appear if they are assigned to a specific room
+      } else {
+        // For departments without rooms, we don't add anything
+        // because they have no rooms to display
+        // Only departments with rooms that have doctors will appear
+      }
+    });
+
+    // Sort by department name and then by floor
+    formattedData.sort((a, b) => {
+      if (a.name === b.name) {
+        return a.floor.localeCompare(b.floor);
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    response.success(formattedData, res);
   } catch (error) {
     console.error('Error in getDepartmentsWithDoctors:', error);
     response.error(error.message, res, next);
