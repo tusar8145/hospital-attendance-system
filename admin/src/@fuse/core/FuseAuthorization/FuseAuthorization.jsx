@@ -90,10 +90,33 @@ class FuseAuthorization extends Component {
 
 		// ✅ Logged in user
 		if (redirectUrl) {
-			setTimeout(() => {
-				history.push(redirectUrl);
-				resetSessionRedirectUrl(); // IMPORTANT
-			}, 0);
+
+
+
+					if ((redirectUrl == '/user-management' ||
+						redirectUrl == '/doctor' ||
+						redirectUrl == '/department' ||
+						redirectUrl == '/medical-center') && this.props.userRole == 'operator') {
+
+							setTimeout(() => history.push('/dashboard'), 0);
+							resetSessionRedirectUrl();
+
+					}else if ((redirectUrl == '/user-management') && this.props.userRole == 'staff') {
+
+							setTimeout(() => history.push('/dashboard'), 0);
+							resetSessionRedirectUrl();
+
+					} else {
+
+						setTimeout(() => {
+							history.push(redirectUrl);
+							resetSessionRedirectUrl(); // IMPORTANT
+						}, 0);
+
+					}
+
+
+
 		} else {
 			setTimeout(() => {
 				history.push('/dashboard');
