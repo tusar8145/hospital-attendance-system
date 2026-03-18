@@ -87,6 +87,15 @@ class FuseAuthorization extends Component {
 		const redirectUrl = getSessionRedirectUrl() || loginRedirectUrl;
 
 		console.log('ppppppp',redirectUrl,this.props.userRole)
+
+		if (isUserGuest(userRole)) {
+			setTimeout(() => history.push('/sign-in'), 0);
+		}else{
+				setTimeout(() => history.push(redirectUrl), 0);
+	
+		}
+
+
 		/*
         User is guest
         Redirect to Login Page
