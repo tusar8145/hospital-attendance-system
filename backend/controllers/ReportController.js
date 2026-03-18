@@ -1104,18 +1104,31 @@ export const getReportList = async (req, res, next) => {
       if (status === 'pending') {
         where.status = { in: ['draft', 'submitted'] };
       } else if(status== 'pendingApproval'){
-        where.next_role = userRole;
-            if( user.role == 'superAdmin'){
-              where.next_role = 'admin'
-            }else if( user.role == 'staff'){
-              where.next_role = { in: ['staff', 'operator'] };
-            }
+
+      if (user.role === 'superAdmin' || user.role === 'admin') {
+        where.next_role = 'admin';
+      } else if (user.role === 'staff' || user.role === 'hospitalAssistant') {
+        where.next_role = { in: ['hospitalAssistant', 'staff', 'operator', 'admin'] };
+      } else {
+        where.next_role = user.role;
+      }
+
         where.status = { in: ['submitted'] }; // can not where.status = 'approved'
+
+        where.approvals = {
+          none: {
+            admin_id: user.id
+          }
+        };
+
+
       }
       else {
         where.status = status;
       }
     }
+
+    console.log(where,'where')
 
     // Search functionality
     if (search) {

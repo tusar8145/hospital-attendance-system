@@ -69,19 +69,19 @@ export const getDashboardStats = async (req, res, next) => {
   try {
     const user = req.user;
     const { month, year, hospital_id } = req.body;
-    
+
     // Default to current month if not specified
     const now = new Date();
     const selectedYear = year || now.getFullYear();
     const selectedMonth = month || now.getMonth() + 1;
-    
+
     // Calculate date range for the selected month
     const startOfMonth = new Date(selectedYear, selectedMonth - 1, 1);
     const endOfMonth = new Date(selectedYear, selectedMonth, 0);
-    
+
     // Get assigned medical center IDs for non-admin users
     const assignedMedicalCenterIds = await getAssignedMedicalCenterIds(user);
-    
+
     // Build where conditions for report filtering
     const reportWhere = {};
 
@@ -95,7 +95,6 @@ export const getDashboardStats = async (req, res, next) => {
     if (hospital_id) {
       myPendingWhere.medical_center_id = parseInt(hospital_id);
     } else {
-      // Otherwise, get medical center filter based on user role
       const medicalCenterFilter = await getMedicalCenterFilter(user);
       if (medicalCenterFilter) {
         if (medicalCenterFilter === -1) {
@@ -106,21 +105,37 @@ export const getDashboardStats = async (req, res, next) => {
       }
     }
 
-    // Filter by next_role matching user's role for pending approvals
     if (!myreportError) {
-      if (user.role === 'superAdmin') {
+      // Role-based filtering
+      if (user.role === 'superAdmin' || user.role === 'admin') {
         myPendingWhere.next_role = 'admin';
-      } else if (user.role === 'staff') {
-        myPendingWhere.next_role = { in: ['staff', 'operator'] };
+      } else if (user.role === 'staff' || user.role === 'hospitalAssistant') {
+        myPendingWhere.next_role = { in: ['hospitalAssistant', 'staff', 'operator', 'admin'] };
       } else {
         myPendingWhere.next_role = user.role;
       }
 
-      // Only show submitted reports that need approval
-      myPendingWhere.status = { in: ['submitted'] };
+      // Only submitted reports
+      myPendingWhere.status = 'submitted';
 
-      // Get count for user's pending approval reports
-      myreport = await prisma.report.count({ where: myPendingWhere });
+      // ✅ NEW: Exclude reports already approved by this user
+      myPendingWhere.approvals = {
+        none: {
+          admin_id: user.id
+        }
+      };
+
+      // (Optional but recommended)
+      // Filter by month
+      /*myPendingWhere.report_date = {
+        gte: startOfMonth,
+        lte: endOfMonth
+      };*/
+
+      // Get count
+      myreport = await prisma.report.count({
+        where: myPendingWhere
+      });
     }
     /////////////////////////////////////////////////////////
 

@@ -91,17 +91,17 @@ class FuseAuthorization extends Component {
         User is guest
         Redirect to Login Page
         */
-		if (isUserGuest(userRole)) {
+		/*if (isUserGuest(userRole)) {
 			setTimeout(() => history.push('/sign-in'), 0);
 		} else {
-			/*
+			
           User is member
           User must be on unAuthorized page or just logged in
           Redirect to dashboard or loginRedirectUrl
             */
 		   //setTimeout(() => history.push(redirectUrl), 0); redirect-issue
 
-			if ((redirectUrl == '/hospital/dpc-analysis' ||
+		/*	if ((redirectUrl == '/hospital/dpc-analysis' ||
 				redirectUrl == '/hospital/data-upload' ||
 				redirectUrl == '/contact-form' ||
 				redirectUrl == '/staff-management') && this.props.userRole == 'hospitalAssistant') {
@@ -129,7 +129,7 @@ class FuseAuthorization extends Component {
 
 			
 			
-		}
+		}*/
 	}
 
 	render() {
