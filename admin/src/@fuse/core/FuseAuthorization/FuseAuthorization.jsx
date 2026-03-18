@@ -91,8 +91,13 @@ class FuseAuthorization extends Component {
 		if (isUserGuest(userRole)) {
 			setTimeout(() => history.push('/sign-in'), 0);
 		}else{
-				setTimeout(() => history.push(redirectUrl), 0);
-	
+
+			if (!redirectUrl || redirectUrl == '/') {
+					setTimeout(() => history.push('/dashboard'), 0);
+					resetSessionRedirectUrl();
+				}else{
+					setTimeout(() => history.push(redirectUrl), 0);
+				}
 		}
 
 
