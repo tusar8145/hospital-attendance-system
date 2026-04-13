@@ -14,6 +14,8 @@ router.post("/report/status", auth, ReportController.getReportStatus);
 router.post("/report/view", auth, ReportController.getReportView);
 router.post("/report/update-status", auth, ReportController.updateReportStatus);
 
+router.delete("/report/delete", auth, ReportController.deleteReport);
+
 
 
 //common// New routes for approval and comments

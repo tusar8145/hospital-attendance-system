@@ -11,16 +11,26 @@ import {
   MenuItem,
   Tooltip,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  CircularProgress,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DownloadIcon from '@mui/icons-material/Download';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import GridOnIcon from '@mui/icons-material/GridOn';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SaveIcon from '@mui/icons-material/Save';
+import DeleteIcon from '@mui/icons-material/Delete';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import apiConfig from '../../configs/apiConfig';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -57,18 +67,42 @@ const ActionButton = styled(Button)(({ theme, buttoncolor = 'primary' }) => ({
   },
 }));
 
+const DeleteButton = styled(Button)(({ theme }) => ({
+  fontWeight: 'bold',
+  borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[2],
+  transition: 'all 0.3s ease',
+  textTransform: 'none',
+  minWidth: '100px',
+  backgroundColor: theme.palette.error.main,
+  color: '#ffffff',
+  '&:hover': {
+    backgroundColor: theme.palette.error.dark,
+    boxShadow: theme.shadows[4],
+    transform: 'translateY(-2px)',
+  },
+  '&:disabled': {
+    backgroundColor: theme.palette.error.light,
+    color: '#ffffff',
+    opacity: 0.7,
+  },
+}));
+
 const HeaderSection = ({
   title,
   subtitle,
   primaryButtonText = '承認する',
   secondaryButtonText = '編集',
   tertiaryButtonText = 'ダウンロード',
+  quaternaryButtonText = '削除',
   showSecondaryButton = true,
   showTertiaryButton = false,
+  showQuaternaryButton = false,
   primaryButtonColor = 'success',
   secondaryButtonColor = 'warning',
   tertiaryButtonColor = 'info',
   tertiaryButtonIcon = <DownloadIcon />,
+  quaternaryButtonIcon = <DeleteIcon />,
   onPrimaryButtonClick,
   onSecondaryButtonClick,
   onTertiaryButtonClick,
@@ -82,10 +116,30 @@ const HeaderSection = ({
   userRole,
   reportNo,
   approval,
-  reportExists = false
+  reportExists = false,
+  // Delete-related props
+  reportId,
+  reportDate,
+  hospitalName,
+  onDeleteSuccess,
+  deleteEndpoint = `${apiConfig.baseURL}/report/delete`,
+  redirectPath = '/report-list'
 }) => {
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  
+  // Snackbar state for alerts
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const getCurrentJapaneseDate = () => {
     const now = new Date();
@@ -142,6 +196,88 @@ const HeaderSection = ({
     }
   };
 
+  // Handle delete button click - open dialog
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!reportId) {
+      setDeleteError('レポートIDが見つかりません');
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+      setDeleteError(null);
+      
+      const response = await axios.delete(deleteEndpoint, {
+        data: { report_id: reportId }
+      });
+      
+      if (response.data.success) {
+        setDeleteDialogOpen(false);
+        
+        // Show success message
+        setSnackbar({
+          open: true,
+          message: 'レポートが正常に削除されました',
+          severity: 'success'
+        });
+        
+        // Call the success callback if provided
+        if (onDeleteSuccess) {
+          onDeleteSuccess(response.data);
+        }
+        
+        // Redirect to report list page after 1.5 seconds
+        setTimeout(() => {
+          navigate(redirectPath);
+        }, 1500);
+      } else {
+        // Show error message in dialog
+        setDeleteError(response.data.message || 'レポートの削除に失敗しました');
+        
+        // Also show snackbar error
+        setSnackbar({
+          open: true,
+          message: response.data.message || 'レポートの削除に失敗しました',
+          severity: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      const errorMessage = error.response?.data?.message || 'レポートの削除に失敗しました';
+      setDeleteError(errorMessage);
+      
+      // Show snackbar error
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Handle delete dialog close
+  const handleDeleteDialogClose = () => {
+    if (!deleteLoading) {
+      setDeleteDialogOpen(false);
+      setDeleteError(null);
+    }
+  };
+
+  // Handle snackbar close
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   // Check if primary button (approval) should be enabled
   const isPrimaryButtonEnabled = status === 'submitted' && onPrimaryButtonClick && !loading;
   
@@ -150,6 +286,9 @@ const HeaderSection = ({
   
   // Check if draft button should be visible (not for operators)
   const showMakeDraftOption = userRole !== 'operator' && onMakeDraft;
+  
+  // Check if delete button should be enabled (only for draft reports)
+  const isDeleteButtonEnabled = status === 'draft' && !loading && !deleteLoading;
   
   // Check if primary button should show as disabled/approved
   const isPrimaryButtonDisabled = loading || !isPrimaryButtonEnabled || status === 'approved';
@@ -199,6 +338,13 @@ const HeaderSection = ({
     return 'レポートを編集する';
   };
   
+  // Get delete button tooltip message
+  const getDeleteButtonTooltip = () => {
+    if (status !== 'draft') return '下書き状態のレポートのみ削除できます';
+    if (loading || deleteLoading) return '処理中...';
+    return 'レポートを削除する';
+  };
+  
   // Helper function to get status text
   const getStatusText = (status) => {
     switch(status) {
@@ -211,171 +357,237 @@ const HeaderSection = ({
   };
 
   return (
-    <StyledPaper elevation={2} sx={getPaperStyle()}> 
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
-        <Box sx={{ flex: 1 }}>
-          <Stack spacing={1}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <StyledTitle variant="h4">
-                {title}
-              </StyledTitle>
-            </Box>
-            {subtitle && (
-              <StyledSubtitle variant="body1">
-                {subtitle}
-              </StyledSubtitle>
-            )}
-            {showDate && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                {customDate || getCurrentJapaneseDate()}
-              </Typography>
-            )}
-            {children && (
-              <Box sx={{ mt: 2 }}>
-                {children}
+    <>
+      <StyledPaper elevation={2} sx={getPaperStyle()}> 
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ flex: 1 }}>
+            <Stack spacing={1}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <StyledTitle variant="h4">
+                  {title}
+                </StyledTitle>
               </Box>
-            )}
-          </Stack>
-        </Box>
-        
-        <Box sx={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
-          {/* Edit Button */}
-          {showSecondaryButton && (
-            <Tooltip title={getEditButtonTooltip()} arrow>
-              <span>
-                <ActionButton
-                  variant="contained"
-                  color={secondaryButtonColor}
-                  onClick={onSecondaryButtonClick}
-                 // disabled={loading || status === 'approved'}
-                  startIcon={<EditIcon />}
-                  sx={{ 
-                    bgcolor: secondaryButtonColor === 'warning' ? '#FF9800' : undefined,
-                    '&:hover': {
-                      bgcolor: secondaryButtonColor === 'warning' ? '#F57C00' : undefined,
-                    }
-                  }}
-                >
-                  {secondaryButtonText}
-                </ActionButton>
-              </span>
-            </Tooltip>
-          )}
+              {subtitle && (
+                <StyledSubtitle variant="body1">
+                  {subtitle}
+                </StyledSubtitle>
+              )}
+              {showDate && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {customDate || getCurrentJapaneseDate()}
+                </Typography>
+              )}
+              {children && (
+                <Box sx={{ mt: 2 }}>
+                  {children}
+                </Box>
+              )}
+            </Stack>
+          </Box>
           
-          {/* Download/Export Button */}
-          {showTertiaryButton && (
-            <ActionButton
-              variant="contained"
-              color={tertiaryButtonColor}
-              onClick={handleTertiaryButtonClick}
-              disabled={loading}
-              startIcon={tertiaryButtonIcon}
-              sx={{ 
-                bgcolor: tertiaryButtonColor === 'info' ? '#2196F3' : undefined,
-                '&:hover': {
-                  bgcolor: tertiaryButtonColor === 'info' ? '#1976D2' : undefined,
-                }
-              }}
-            >
-              {tertiaryButtonText}
-            </ActionButton>
-          )}
-          
-          {/* Approval Button */}
-          <Tooltip title={getApprovalButtonTooltip()} arrow>
-            <span>
-              <ActionButton
-                variant="contained"
-                color={getPrimaryButtonColor()}
-                onClick={onPrimaryButtonClick}
-                disabled={isPrimaryButtonDisabled || approval}
-                startIcon={getPrimaryButtonIcon()}
-                sx={{ 
-                  bgcolor: getPrimaryButtonColor() === 'success' ? '#4CAF50' : 
-                          getPrimaryButtonColor() === 'secondary' ? '#9E9E9E' : undefined,
-                  '&:hover': {
-                    bgcolor: getPrimaryButtonColor() === 'success' ? '#388E3C' : 
-                            getPrimaryButtonColor() === 'secondary' ? '#757575' : undefined,
-                  }
-                }}
-              >
-                {getPrimaryButtonText()}
-              </ActionButton>
-            </span>
-          </Tooltip>
-
-          {/* Three-dot menu for additional options */}
-          <IconButton
-            aria-label="more"
-            aria-controls={open ? 'options-menu' : undefined}
-            aria-expanded={open ? 'true' : undefined}
-            aria-haspopup="true"
-            onClick={handleMenuClick}
-            disabled={loading}
-            sx={{ 
-              border: '1px solid #e0e0e0',
-              '&:hover': {
-                bgcolor: 'rgba(0, 0, 0, 0.04)'
-              }
-            }}
-          >
-            <MoreVertIcon />
-          </IconButton>
-          
-          <Menu
-            id="options-menu"
-            anchorEl={anchorEl}
-            open={open}
-            onClose={handleMenuClose}
-            PaperProps={{
-              style: {
-                width: '220px',
-              },
-            }}
-          >
-            {/* Export to PDF Option */}
-            {/*<MenuItem 
-              onClick={() => {
-                handleMenuClose();
-                if (onTertiaryButtonClick) {
-                  // Trigger export menu via parent component
-                  const event = { currentTarget: null };
-                  onTertiaryButtonClick(event);
-                }
-              }}
-              disabled={loading}
-            >
-              <ListItemIcon>
-                <PictureAsPdfIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>PDFとしてダウンロード</ListItemText>
-            </MenuItem>
-
- 
-
-            {/* Separator * /}
-            <Box sx={{ borderBottom: '1px solid #e0e0e0', my: 1 }} />*/}
-
-            {/* Make Draft Option */}
-            {showMakeDraftOption && (
-              <Tooltip title={getDraftButtonTooltip()} arrow placement="left">
+          <Box sx={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Edit Button */}
+            {showSecondaryButton && (
+              <Tooltip title={getEditButtonTooltip()} arrow>
                 <span>
-                  <MenuItem 
-                    onClick={handleMakeDraftClick}
-                    disabled={!isDraftButtonEnabled || userRole === 'operator'}
+                  <ActionButton
+                    variant="contained"
+                    color={secondaryButtonColor}
+                    onClick={onSecondaryButtonClick}
+                    disabled={loading || status === 'approved'}
+                    startIcon={<EditIcon />}
+                    sx={{ 
+                      bgcolor: secondaryButtonColor === 'warning' ? '#FF9800' : undefined,
+                      '&:hover': {
+                        bgcolor: secondaryButtonColor === 'warning' ? '#F57C00' : undefined,
+                      }
+                    }}
                   >
-                    <ListItemIcon>
-                      <SaveIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText>下書き保存</ListItemText>
-                  </MenuItem>
+                    {secondaryButtonText}
+                  </ActionButton>
                 </span>
               </Tooltip>
             )}
-          </Menu>
+            
+            {/* Delete Button - Only for draft reports */}
+            {showQuaternaryButton && (
+              <Tooltip title={getDeleteButtonTooltip()} arrow>
+                <span>
+                  <DeleteButton
+                    variant="contained"
+                    onClick={handleDeleteClick}
+                    disabled={!isDeleteButtonEnabled}
+                    startIcon={deleteLoading ? <CircularProgress size={20} sx={{ color: '#ffffff' }} /> : quaternaryButtonIcon}
+                  >
+                    {deleteLoading ? '削除中...' : quaternaryButtonText}
+                  </DeleteButton>
+                </span>
+              </Tooltip>
+            )}
+            
+            {/* Download/Export Button */}
+            {showTertiaryButton && (
+              <ActionButton
+                variant="contained"
+                color={tertiaryButtonColor}
+                onClick={handleTertiaryButtonClick}
+                disabled={loading}
+                startIcon={tertiaryButtonIcon}
+                sx={{ 
+                  bgcolor: tertiaryButtonColor === 'info' ? '#2196F3' : undefined,
+                  '&:hover': {
+                    bgcolor: tertiaryButtonColor === 'info' ? '#1976D2' : undefined,
+                  }
+                }}
+              >
+                {tertiaryButtonText}
+              </ActionButton>
+            )}
+            
+            {/* Approval Button */}
+            <Tooltip title={getApprovalButtonTooltip()} arrow>
+              <span>
+                <ActionButton
+                  variant="contained"
+                  color={getPrimaryButtonColor()}
+                  onClick={onPrimaryButtonClick}
+                  disabled={isPrimaryButtonDisabled || approval}
+                  startIcon={getPrimaryButtonIcon()}
+                  sx={{ 
+                    bgcolor: getPrimaryButtonColor() === 'success' ? '#4CAF50' : 
+                            getPrimaryButtonColor() === 'secondary' ? '#9E9E9E' : undefined,
+                    '&:hover': {
+                      bgcolor: getPrimaryButtonColor() === 'success' ? '#388E3C' : 
+                              getPrimaryButtonColor() === 'secondary' ? '#757575' : undefined,
+                    }
+                  }}
+                >
+                  {getPrimaryButtonText()}
+                </ActionButton>
+              </span>
+            </Tooltip>
+
+            {/* Three-dot menu for additional options */}
+            <IconButton
+              aria-label="more"
+              aria-controls={open ? 'options-menu' : undefined}
+              aria-expanded={open ? 'true' : undefined}
+              aria-haspopup="true"
+              onClick={handleMenuClick}
+              disabled={loading}
+              sx={{ 
+                border: '1px solid #e0e0e0',
+                '&:hover': {
+                  bgcolor: 'rgba(0, 0, 0, 0.04)'
+                }
+              }}
+            >
+              <MoreVertIcon />
+            </IconButton>
+            
+            <Menu
+              id="options-menu"
+              anchorEl={anchorEl}
+              open={open}
+              onClose={handleMenuClose}
+              PaperProps={{
+                style: {
+                  width: '220px',
+                },
+              }}
+            >
+              {/* Make Draft Option */}
+              {showMakeDraftOption && (
+                <Tooltip title={getDraftButtonTooltip()} arrow placement="left">
+                  <span>
+                    <MenuItem 
+                      onClick={handleMakeDraftClick}
+                      disabled={!isDraftButtonEnabled || userRole === 'operator'}
+                    >
+                      <ListItemIcon>
+                        <SaveIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>下書き保存</ListItemText>
+                    </MenuItem>
+                  </span>
+                </Tooltip>
+              )}
+            </Menu>
+          </Box>
         </Box>
-      </Box>
-    </StyledPaper>
+      </StyledPaper>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteDialogClose}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle id="delete-dialog-title" sx={{ bgcolor: '#ef5350', color: 'white' }}>
+          レポートを削除しますか？
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description" sx={{ mt: 2 }}>
+            以下のレポートを削除します。この操作は取り消せません。
+            <Box sx={{ mt: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 1 }}>
+              <Typography variant="body2">
+                <strong>レポート番号:</strong> {reportNo || '---'}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <strong>日付:</strong> {reportDate || customDate || getCurrentJapaneseDate()}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <strong>医療機関:</strong> {hospitalName || subtitle || '---'}
+              </Typography>
+            </Box>
+            {deleteError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {deleteError}
+              </Alert>
+            )}
+            <Typography variant="body2" sx={{ mt: 2, color: 'error.main' }}>
+              注意: この操作は元に戻せません。すべての関連データが削除されます。
+            </Typography>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteDialogClose} color="primary" disabled={deleteLoading}>
+            キャンセル
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            color="error"
+            variant="contained"
+            disabled={deleteLoading}
+            startIcon={deleteLoading ? <CircularProgress size={20} /> : <DeleteIcon />}
+            autoFocus
+            sx={{ color: '#ffffff' }}
+          >
+            {deleteLoading ? '削除中...' : '削除する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for alerts */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity={snackbar.severity} 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 
@@ -385,12 +597,15 @@ HeaderSection.propTypes = {
   primaryButtonText: PropTypes.string,
   secondaryButtonText: PropTypes.string,
   tertiaryButtonText: PropTypes.string,
+  quaternaryButtonText: PropTypes.string,
   showSecondaryButton: PropTypes.bool,
   showTertiaryButton: PropTypes.bool,
+  showQuaternaryButton: PropTypes.bool,
   primaryButtonColor: PropTypes.oneOf(['primary', 'secondary', 'success', 'error', 'warning', 'info']),
   secondaryButtonColor: PropTypes.oneOf(['primary', 'secondary', 'success', 'error', 'warning', 'info']),
   tertiaryButtonColor: PropTypes.oneOf(['primary', 'secondary', 'success', 'error', 'warning', 'info']),
   tertiaryButtonIcon: PropTypes.node,
+  quaternaryButtonIcon: PropTypes.node,
   onPrimaryButtonClick: PropTypes.func,
   onSecondaryButtonClick: PropTypes.func,
   onTertiaryButtonClick: PropTypes.func,
@@ -405,7 +620,13 @@ HeaderSection.propTypes = {
   reportNo: PropTypes.string,
   approval: PropTypes.bool,
   reportExists: PropTypes.bool,
+  // Delete-related props
+  reportId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  reportDate: PropTypes.string,
+  hospitalName: PropTypes.string,
+  onDeleteSuccess: PropTypes.func,
+  deleteEndpoint: PropTypes.string,
+  redirectPath: PropTypes.string,
 };
 
 export default HeaderSection;
- 

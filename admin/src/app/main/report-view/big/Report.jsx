@@ -904,6 +904,19 @@ handleExportPDF();
 
       {/* Header Section with Status Badge as children */}
       <HeaderSection
+
+  // Delete button props (NEW - add these)
+  showQuaternaryButton={reportData.report?.status === 'draft'}
+  quaternaryButtonText="削除"
+  quaternaryButtonIcon={<DeleteIcon />}
+  reportId={reportData.report?.id}              // NEW - report ID for deletion
+  reportDate={reportDate}                        // NEW - for dialog display
+  hospitalName={hospitalInfo.name}               // NEW - for dialog display
+  onDeleteSuccess={(data) => {                   // NEW - optional callback
+    console.log('Delete successful:', data);
+    // You can add additional logic here if needed
+  }}
+
         title={`管理日誌レポート - ${reportDate}`}
         subtitle={`${hospitalInfo.name}　　${hospitalInfo.address}`}
         primaryButtonText={reportData.report?.status === 'approved' ? '承認済み' : '承認する'}

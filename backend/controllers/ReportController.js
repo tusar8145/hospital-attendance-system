@@ -2519,3 +2519,213 @@ export const getHospitalDepartmentsDoctors = async (req, res, next) => {
     response.error(error.message, res, next);
   }
 };
+
+// Delete draft report (only allowed for draft status)
+export const deleteReport = async (req, res, next) => {
+  try {
+    const { report_id } = req.body;
+    
+    if (!report_id) {
+      return response.error("Report ID is required", res, next);
+    }
+
+    // Get the report first to check status
+    const report = await prisma.report.findUnique({
+      where: {
+        id: parseInt(report_id)
+      },
+      include: {
+        welfare_report_data: true,
+        report_details: true,
+        report_details_mid: true,
+        report_comments: true,
+        shift_nurses: true,
+        duty_staff: true,
+        approvals: true
+      }
+    });
+
+    if (!report) {
+      return response.error("Report not found", res, next);
+    }
+
+    // Only allow deletion of draft reports
+    if (report.status !== 'draft') {
+      return response.error(
+        "Only draft reports can be deleted. Current status: " + report.status,
+        res,
+        next
+      );
+    }
+
+    // Delete all related records (Prisma will handle cascade if configured)
+    // But we'll do it explicitly for clarity and to handle any non-cascade relations
+    
+    // Delete welfare report data if exists
+    if (report.welfare_report_data) {
+      await prisma.welfare_report_data.delete({
+        where: { report_id: report.id }
+      });
+    }
+
+    // Delete report details (for big hospitals)
+    if (report.report_details.length > 0) {
+      await prisma.report_detail.deleteMany({
+        where: { report_id: report.id }
+      });
+    }
+
+    // Delete report details mid (for mid hospitals)
+    if (report.report_details_mid.length > 0) {
+      await prisma.report_detail_mid.deleteMany({
+        where: { report_id: report.id }
+      });
+    }
+
+    // Delete report comments
+    if (report.report_comments.length > 0) {
+      await prisma.report_comment.deleteMany({
+        where: { report_id: report.id }
+      });
+    }
+
+    // Delete shift nurses
+    if (report.shift_nurses.length > 0) {
+      await prisma.report_shift_nurse.deleteMany({
+        where: { report_id: report.id }
+      });
+    }
+
+    // Delete duty staff
+    if (report.duty_staff.length > 0) {
+      await prisma.report_duty_staff.deleteMany({
+        where: { report_id: report.id }
+      });
+    }
+
+    // Delete approvals
+    if (report.approvals.length > 0) {
+      await prisma.report_approval.deleteMany({
+        where: { report_id: report.id }
+      });
+    }
+
+    // Finally delete the report itself
+    await prisma.report.delete({
+      where: { id: report.id }
+    });
+
+    response.success({
+      message: "Report deleted successfully",
+      report_id: report.id,
+      report_no: report.report_no
+    }, res);
+
+  } catch (error) {
+    console.error('Error in deleteReport:', error);
+    response.error(error.message, res, next);
+  }
+};
+
+// Alternative: Single transaction approach (more efficient)
+export const deleteReportTransaction = async (req, res, next) => {
+  try {
+    const { report_id } = req.body;
+    
+    if (!report_id) {
+      return response.error("Report ID is required", res, next);
+    }
+
+    // Use transaction to ensure all-or-nothing deletion
+    const result = await prisma.$transaction(async (prisma) => {
+      // Get the report with all relations
+      const report = await prisma.report.findUnique({
+        where: { id: parseInt(report_id) },
+        include: {
+          welfare_report_data: true,
+          report_details: { select: { id: true } },
+          report_details_mid: { select: { id: true } },
+          report_comments: { select: { id: true } },
+          shift_nurses: { select: { id: true } },
+          duty_staff: { select: { id: true } },
+          approvals: { select: { id: true } }
+        }
+      });
+
+      if (!report) {
+        throw new Error("Report not found");
+      }
+
+      // Only allow deletion of draft reports
+      if (report.status !== 'draft') {
+        throw new Error("Only draft reports can be deleted");
+      }
+
+      // Delete welfare report data if exists
+      if (report.welfare_report_data) {
+        await prisma.welfare_report_data.delete({
+          where: { report_id: report.id }
+        });
+      }
+
+      // Delete report details
+      if (report.report_details.length > 0) {
+        await prisma.report_detail.deleteMany({
+          where: { report_id: report.id }
+        });
+      }
+
+      // Delete report details mid
+      if (report.report_details_mid.length > 0) {
+        await prisma.report_detail_mid.deleteMany({
+          where: { report_id: report.id }
+        });
+      }
+
+      // Delete report comments
+      if (report.report_comments.length > 0) {
+        await prisma.report_comment.deleteMany({
+          where: { report_id: report.id }
+        });
+      }
+
+      // Delete shift nurses
+      if (report.shift_nurses.length > 0) {
+        await prisma.report_shift_nurse.deleteMany({
+          where: { report_id: report.id }
+        });
+      }
+
+      // Delete duty staff
+      if (report.duty_staff.length > 0) {
+        await prisma.report_duty_staff.deleteMany({
+          where: { report_id: report.id }
+        });
+      }
+
+      // Delete approvals
+      if (report.approvals.length > 0) {
+        await prisma.report_approval.deleteMany({
+          where: { report_id: report.id }
+        });
+      }
+
+      // Delete the report
+      const deletedReport = await prisma.report.delete({
+        where: { id: report.id }
+      });
+
+      return deletedReport;
+    });
+
+    response.success({
+      message: "Report deleted successfully",
+      report_id: result.id,
+      report_no: result.report_no
+    }, res);
+
+  } catch (error) {
+    console.error('Error in deleteReportTransaction:', error);
+    response.error(error.message, res, next);
+  }
+};
